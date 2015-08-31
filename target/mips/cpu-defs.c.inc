@@ -549,7 +549,11 @@ const mips_def_t mips_defs[] =
 #if defined(TARGET_MIPS64)
     {
         .name = "R4000",
+#if defined(TARGET_CHERI)
+        .CP0_PRid = 0x00008900,
+#else
         .CP0_PRid = 0x00000400,
+#endif
         /* No L2 cache, icache size 8k, dcache size 8k, uncached coherency. */
         .CP0_Config0 = (2 << CP0C0_Impl) | (1 << CP0C0_IC) | (1 << CP0C0_DC) |
                        (2 << CP0C0_K0),
@@ -565,7 +569,11 @@ const mips_def_t mips_defs[] =
         .CP1_fcr31 = 0,
         .CP1_fcr31_rw_bitmask = 0x0183FFFF,
         .SEGBITS = 40,
+#if defined(TARGET_CHERI)
+        .PABITS = 40,
+#else
         .PABITS = 36,
+#endif
         .insn_flags = CPU_MIPS3,
         .mmu_type = MMU_TYPE_R4000,
     },
