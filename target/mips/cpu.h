@@ -468,11 +468,15 @@ struct TCState {
      */
     uint64_t gpr_hi[32];
 #endif /* TARGET_MIPS64 */
+    cap_register_t PCC;
     target_ulong PC;
     target_ulong HI[MIPS_DSP_ACC];
     target_ulong LO[MIPS_DSP_ACC];
     target_ulong ACX[MIPS_DSP_ACC];
     target_ulong DSPControl;
+#if defined(TARGET_CHERI)
+// #define CP2CAP_RCC  24  /* Return Code Capability */
+#endif /* TARGET_CHERI */
     int32_t CP0_TCStatus;
 #define CP0TCSt_TCU3    31
 #define CP0TCSt_TCU2    30
