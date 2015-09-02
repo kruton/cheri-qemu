@@ -6510,6 +6510,7 @@ static void gen_mtc0(DisasContext *ctx, TCGv arg, int reg, int sel)
         }
        break;
     case CP0_REGISTER_26:
+        gen_helper_mtc0_dumpstate(tcg_env, arg); /* CHERI: dump reg state */
         switch (sel) {
         case CP0_REG26__ERRCTL:
             gen_helper_mtc0_errctl(tcg_env, arg);
@@ -7967,6 +7968,7 @@ static void gen_dmtc0(DisasContext *ctx, TCGv arg, int reg, int sel)
         }
         break;
     case CP0_REGISTER_26:
+        gen_helper_mtc0_dumpstate(tcg_env, arg); /* CHERI: dump reg state */
         switch (sel) {
         case CP0_REG26__ERRCTL:
             gen_helper_mtc0_errctl(tcg_env, arg);
@@ -14825,6 +14827,12 @@ static bool decode_opc_legacy(CPUMIPSState *env, DisasContext *ctx)
         }
         break;
 
+#if defined(TARGET_CHERI)
+                break;
+            case OPC_CLB:
+            default:
+            }
+#else /* ! TARGET_CHERI */
     /* Compact branches [R6] and COP2 [non-R6] */
     case OPC_BC: /* OPC_LWC2 */
     case OPC_BALC: /* OPC_SWC2 */
