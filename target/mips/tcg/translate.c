@@ -15321,7 +15321,6 @@ void mips_tcg_init(void)
      * set to zero. length is set to (2^64 - 1). Offset (or cursor)
      * is set to zero (or boot vector address for PCC).
      */
-    env->active_tc.PCC_Tag = 1;
     env->active_tc.PCC.cr_perms = CAP_ALL_PERMS;
     env->active_tc.PCC.cr_cursor = (uint64_t)env->active_tc.PC;
     env->active_tc.PCC.cr_base = 0UL;

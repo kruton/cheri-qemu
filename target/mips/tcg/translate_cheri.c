@@ -1,10 +1,16 @@
 {
     }
+}
+{
     TCGv t0 = tcg_temp_new();
     gen_load_gpr(t0, rt);
         break;
         break;
     default:
+    TCGv_i32 tlen = tcg_constant_i32(len);
+#define GEN_CAP_CHECK_STORE(addr, offset, len) \
+static inline void generate_ccheck_load_pcrel(TCGv addr, int32_t len)
+    gen_helper_ccheck_load_pcrel(tcg_env, addr, tlen);
 static void gen_mtc2(DisasContext *ctx, TCGv arg, int reg, int sel)
     const char *rn = "invalid";
     switch (reg) {
@@ -22,6 +28,8 @@ out:
     if (ctx->base.tb->cflags & CF_USE_ICOUNT) {
     return;
 cp2_unimplemented:
+#else /* ! TARGET_CHERI */
+#endif /* ! TARGET_CHERI */
 #if defined(TARGET_CHERI)
 static void gen_cp2 (DisasContext *ctx, uint32_t opc, int r16, int r11, int r6)
     const char *opn = "cp2inst";
