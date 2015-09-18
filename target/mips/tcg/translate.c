@@ -11081,6 +11081,7 @@ static void gen_branch(DisasContext *ctx, int insn_bytes)
             }
             tcg_gen_lookup_and_goto_ptr();
             break;
+            break;
         default:
             LOG_DISAS("unknown branch 0x%x\n", proc_hflags);
             gen_reserved_instruction(ctx);
