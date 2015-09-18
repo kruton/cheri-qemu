@@ -21,6 +21,7 @@ static inline void generate_csetcause(int32_t rd)
         break;
         break;
         break;
+        break;
     default:
     TCGv_i32 tlen = tcg_constant_i32(len);
 #define GEN_CAP_CHECK_STORE(addr, offset, len) \
@@ -80,6 +81,7 @@ static void gen_cp2 (DisasContext *ctx, uint32_t opc, int r16, int r11, int r6)
                     opn = "csetcause";
                     opn = "cjr";
                     goto invalid;
+                goto invalid;
             opn = "cget";
     case OPC_CSETBOUNDS: /* 0x01 */
     case OPC_CSEAL:  /* 0x02 */
