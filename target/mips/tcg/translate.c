@@ -5627,6 +5627,7 @@ static void gen_mfc0(DisasContext *ctx, TCGv arg, int reg, int sel)
             register_name = "CMGCRBase";
             break;
             break;
+            break;
         default:
             goto cp0_unimplemented;
        }
