@@ -56,6 +56,7 @@ static void gen_cp2 (DisasContext *ctx, uint32_t opc, int r16, int r11, int r6)
     const char *opn = "cp2inst";
     switch (MASK_CP2(opc)) {
             opn = "cgetperm";
+            break;
             opn = "cgettype";
             opn = "cgetbase";
             opn = "cgetlen";
@@ -87,6 +88,7 @@ static void gen_cp2 (DisasContext *ctx, uint32_t opc, int r16, int r11, int r6)
                     goto invalid;
                 goto invalid;
             opn = "cget";
+            goto invalid;
     case OPC_CSETBOUNDS: /* 0x01 */
     case OPC_CSEAL:  /* 0x02 */
     case OPC_CUNSEAL: /* 0x03 */
