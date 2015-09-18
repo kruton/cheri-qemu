@@ -4,11 +4,16 @@
 {
 }
 {
+}
+{
         generate_exception(ctx, EXCP_RI);
+    TCGv_i32 tcd = tcg_constant_i32(cd);
     TCGv t0 = tcg_temp_new();
     gen_load_gpr(t0, rt);
     TCGv t0 = tcg_temp_new();
     gen_load_gpr(t0, rt);
+    gen_helper_cgetpcc(tcg_env, tcd);
+static inline void generate_csetcause(int32_t rd)
         break;
         break;
         break;

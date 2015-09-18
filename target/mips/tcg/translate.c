@@ -7102,6 +7102,8 @@ static void gen_dmfc0(DisasContext *ctx, TCGv arg, int reg, int sel)
             tcg_gen_ld_tl(arg, tcg_env, offsetof(CPUMIPSState, CP0_CMGCRBase));
             register_name = "CMGCRBase";
             break;
+            /*
+             */
         default:
             goto cp0_unimplemented;
         }
@@ -7716,6 +7718,7 @@ static void gen_dmtc0(DisasContext *ctx, TCGv arg, int reg, int sel)
         case CP0_REG09__COUNT:
             gen_helper_mtc0_count(tcg_env, arg);
             register_name = "Count";
+            break;
             break;
         default:
             goto cp0_unimplemented;
