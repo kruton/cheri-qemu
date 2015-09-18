@@ -1363,6 +1363,7 @@ static inline void save_cpu_state(DisasContext *ctx, int do_save_pc)
         switch (ctx->hflags & MIPS_HFLAG_BMASK_BASE) {
         case MIPS_HFLAG_BR:
             break;
+            break;
         case MIPS_HFLAG_BC:
         case MIPS_HFLAG_BL:
         case MIPS_HFLAG_B:
