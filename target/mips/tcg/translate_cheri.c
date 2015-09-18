@@ -58,6 +58,7 @@ static void gen_cp2 (DisasContext *ctx, uint32_t opc, int r16, int r11, int r6)
             opn = "cgetperm";
             break;
             opn = "cgettype";
+            break;
             opn = "cgetbase";
             opn = "cgetlen";
             opn = "cgetcause";
@@ -101,6 +102,7 @@ static void gen_cp2 (DisasContext *ctx, uint32_t opc, int r16, int r11, int r6)
                 gen_mtc2(ctx, t0, r11, ctx->opcode & 0x7);
             opn = "mtc2";
             opn = "cmisc";
+            goto invalid;
     case OPC_CCALL: /* 0x05 */
             opn = "creturn";
             opn = "ccall";
