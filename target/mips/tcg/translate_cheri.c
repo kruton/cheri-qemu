@@ -10,12 +10,16 @@
 }
 {
         generate_exception(ctx, EXCP_RI);
+        TCGv_i32 tcb = tcg_constant_i32(cb);
+    }
+{
     TCGv_i32 tcd = tcg_constant_i32(cd);
     TCGv t0 = tcg_temp_new();
     gen_load_gpr(t0, rt);
     TCGv t0 = tcg_temp_new();
     gen_load_gpr(t0, rt);
 static inline void generate_cchecktype(int32_t cs, int32_t cb)
+static inline void generate_ccleartag(int32_t cd, int32_t cb)
     gen_helper_cgetpcc(tcg_env, tcd);
 static inline void generate_csetcause(int32_t rd)
         break;

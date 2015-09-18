@@ -7015,6 +7015,7 @@ static void gen_dmfc0(DisasContext *ctx, TCGv arg, int reg, int sel)
             ctx->base.is_jmp = DISAS_EXIT;
             register_name = "Count";
             break;
+            break;
         default:
             goto cp0_unimplemented;
         }
