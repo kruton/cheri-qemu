@@ -7107,6 +7107,7 @@ static void gen_dmfc0(DisasContext *ctx, TCGv arg, int reg, int sel)
             break;
             /*
              */
+            break;
         default:
             goto cp0_unimplemented;
         }
