@@ -1379,6 +1379,7 @@ static inline void restore_cpu_state(CPUMIPSState *env, DisasContext *ctx)
     switch (ctx->hflags & MIPS_HFLAG_BMASK_BASE) {
     case MIPS_HFLAG_BR:
         break;
+        break;
     case MIPS_HFLAG_BC:
     case MIPS_HFLAG_BL:
     case MIPS_HFLAG_B:
@@ -14957,6 +14958,7 @@ static bool decode_opc_legacy(CPUMIPSState *env, DisasContext *ctx)
         }
         break;
     case OPC_CP2:
+        gen_cp2(ctx, ctx->opcode, rt, rd, sa);
         check_insn(ctx, ASE_LMMI);
         /* Note that these instructions use different fields.  */
         gen_loongson_multimedia(ctx, sa, rd, rt);
