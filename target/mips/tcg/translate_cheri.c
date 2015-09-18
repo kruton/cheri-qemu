@@ -28,11 +28,13 @@
 {
 }
 {
+}
 {
 }
 {
         TCGv_i32 tcd = tcg_constant_i32(cd);
         TCGv_i32 tcb = tcg_constant_i32(cb);
+{
         TCGv_i32 tcb = tcg_constant_i32(cb);
 {
     TCGv t0 = tcg_temp_new();
@@ -40,13 +42,17 @@
 static inline void generate_cchecktype(int32_t cs, int32_t cb)
     TCGv_i32 tcb = tcg_constant_i32(cb);
 static inline void generate_ccleartag(int32_t cd, int32_t cb)
+    TCGv_i32 tcb = tcg_constant_i32(cb);
     TCGv_i32 tcd = tcg_constant_i32(cd);
+static inline void generate_cfromptr(int32_t cd, int32_t cb, int32_t rt)
     TCGv_i32 tcd = tcg_constant_i32(cd);
+    gen_helper_cfromptr(tcg_env, tcd, tcb, t0);
     gen_helper_cgetcause(t0, tcg_env);
     TCGv_i32 tcd = tcg_constant_i32(cd);
     gen_helper_cgetpcc(tcg_env, tcd);
     TCGv_i32 tcd = tcg_constant_i32(cd);
 static inline void generate_cincoffset(int32_t cd, int32_t cb, int32_t rt)
+    TCGv_i32 tcd = tcg_constant_i32(cd);
     gen_helper_cincoffset(tcg_env, tcd, tcb, t0);
     gen_helper_cincoffset(tcg_env, tcd, tcs, t0);
 static inline void generate_creturn(void)
