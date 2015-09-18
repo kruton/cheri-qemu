@@ -14,11 +14,15 @@
     }
 }
 {
+    TCGv_i32 tcb = tcg_constant_i32(cb);
     TCGv_i32 tcd = tcg_constant_i32(cd);
     TCGv t0 = tcg_temp_new();
     gen_load_gpr(t0, rt);
 }
 {
+}
+{
+        TCGv_i32 tcd = tcg_constant_i32(cd);
 {
     TCGv t0 = tcg_temp_new();
     gen_load_gpr(t0, rt);
@@ -27,6 +31,8 @@ static inline void generate_ccleartag(int32_t cd, int32_t cb)
     gen_helper_cgetcause(t0, tcg_env);
     gen_helper_cgetpcc(tcg_env, tcd);
 static inline void generate_creturn(void)
+static inline void generate_cseal(int32_t cd, int32_t cb, int32_t ct)
+    gen_helper_csetbounds(tcg_env, tcd, tcb, t0);
 static inline void generate_csetcause(int32_t rd)
     gen_helper_csetcause(tcg_env, t0);
         break;
