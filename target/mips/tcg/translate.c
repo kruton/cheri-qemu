@@ -14616,7 +14616,6 @@ static bool decode_opc_legacy(CPUMIPSState *env, DisasContext *ctx)
             break;
         case OPC_RDPGPR:
             check_insn(ctx, ISA_MIPS_R2);
-            gen_load_srsgpr(rt, rd);
             break;
         case OPC_WRPGPR:
             check_insn(ctx, ISA_MIPS_R2);
