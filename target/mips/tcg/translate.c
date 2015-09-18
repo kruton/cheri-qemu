@@ -5626,6 +5626,7 @@ static void gen_mfc0(DisasContext *ctx, TCGv arg, int reg, int sel)
             tcg_gen_ext32s_tl(arg, arg);
             register_name = "CMGCRBase";
             break;
+            break;
         default:
             goto cp0_unimplemented;
        }
