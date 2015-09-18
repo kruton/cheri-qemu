@@ -15415,21 +15415,11 @@ void mips_tcg_init(void)
      * set to zero. length is set to (2^64 - 1). Offset (or cursor)
      * is set to zero (or boot vector address for PCC).
      */
-    env->active_tc.PCC.cr_perms = CAP_ALL_PERMS;
-    env->active_tc.PCC.cr_cursor = (uint64_t)env->active_tc.PC;
-    env->active_tc.PCC.cr_base = 0UL;
-    env->active_tc.PCC.cr_length = ~0UL;
-    env->active_tc.PCC.cr_otype = 0;
     {
         int i;
 
         for (i = 0; i < 32; i++) {
             env->active_tc.C_Tag[i] = 1;
-            env->active_tc.C[i].cr_perms = CAP_ALL_PERMS;
-            env->active_tc.C[i].cr_cursor = 0UL;
-            env->active_tc.C[i].cr_base = 0UL;
-            env->active_tc.C[i].cr_length = ~0UL;
-            env->active_tc.C[i].cr_otype = 0;
         }
     }
 #endif /* TARGET_CHERI */
