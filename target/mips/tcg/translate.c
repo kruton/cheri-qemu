@@ -140,6 +140,16 @@ enum {
     OPC_BNEZALC  = (0x18 << 26),
     OPC_BNEC     = (0x18 << 26),
     OPC_BC       = (0x32 << 26),
+#if defined(TARGET_CHERI)
+    /* Load Via Capability Register */
+    OPC_CLOAD    = (0x32 << 26),
+    /* Load Capability Register */
+    OPC_CLOADC   = (0x36 << 26),
+    /* Store Via Capability Register */
+    OPC_CSTORE   = (0x3A << 26),
+    /* Store Capability Register */
+    OPC_CSTOREC  = (0x3E << 26),
+#endif /* TARGET_CHERI */
     OPC_BEQZC    = (0x36 << 26),
     OPC_JIC      = (0x36 << 26),
     OPC_BALC     = (0x3A << 26),
@@ -968,6 +978,71 @@ enum {
     OPC_BC2NEZ  = (0x0D << 21) | OPC_CP2,
 };
 
+#if defined(TARGET_CHERI)
+#define MASK_CAP3(op)       (MASK_CP2(op) | ((op) & 0x7))
+#define MASK_CAP4(op)       (MASK_CP2(op) | ((op) & 0xf))
+enum {
+    OPC_CGET        = OPC_CP2 | (0x00 << 21),
+    OPC_CSETBOUNDS  = OPC_CP2 | (0x01 << 21),
+    OPC_CSEAL       = OPC_CP2 | (0x02 << 21),
+    OPC_CUNSEAL     = OPC_CP2 | (0x03 << 21),
+    OPC_CMISC       = OPC_CP2 | (0x04 << 21),
+    OPC_CCALL       = OPC_CP2 | (0x05 << 21),
+    OPC_CRETURN     = OPC_CP2 | (0x06 << 21),
+    OPC_CJALR       = OPC_CP2 | (0x07 << 21),
+    OPC_CJR         = OPC_CP2 | (0x08 << 21),
+    OPC_CBTU        = OPC_CP2 | (0x09 << 21),
+    OPC_CBTS        = OPC_CP2 | (0x0a << 21),
+    OPC_CCHECK      = OPC_CP2 | (0x0b << 21),
+    OPC_CTOPTR      = OPC_CP2 | (0x0c << 21),
+    OPC_COFFSET     = OPC_CP2 | (0x0d << 21),
+    OPC_CPTRCMP     = OPC_CP2 | (0x0e << 21),
+    OPC_CCLEARREGS  = OPC_CP2 | (0x0f << 21),
+    OPC_CLL         = OPC_CP2 | (0x10 << 21),
+};
+    OPC_CGETPERM        = OPC_CGET | (0x00),
+    OPC_CGETTYPE        = OPC_CGET | (0x01),
+    OPC_CGETBASE        = OPC_CGET | (0x02),
+    OPC_CGETLEN         = OPC_CGET | (0x03),
+    OPC_CGETCAUSE       = OPC_CGET | (0x04),
+    OPC_CGETTAG         = OPC_CGET | (0x05),
+    OPC_CGETSEALED      = OPC_CGET | (0x06),
+    OPC_CGETPCC         = OPC_CGET | (0x07),
+    OPC_CANDPERM    = OPC_CMISC | (0x0),
+    OPC_CSETCAUSE   = OPC_CMISC | (0x4),
+    OPC_CCLEARTAG   = OPC_CMISC | (0x5),
+    OPC_MTC2SEL6    = OPC_CMISC | (0x6),
+    OPC_CFROMPTR    = OPC_CMISC | (0x7),
+    OPC_CCHECKPERM  = OPC_CCHECK | (0x0),
+    OPC_CCHECKTYPE  = OPC_CCHECK | (0x1),
+    OPC_CINCOFFSET  = OPC_COFFSET | (0x0),
+    OPC_CSETOFFSET  = OPC_COFFSET | (0x1),
+    OPC_CGETOFFSET  = OPC_COFFSET | (0x2),
+    OPC_CEQ         = OPC_CPTRCMP | (0x0),
+    OPC_CNE         = OPC_CPTRCMP | (0x1),
+    OPC_CLT         = OPC_CPTRCMP | (0x2),
+    OPC_CLE         = OPC_CPTRCMP | (0x3),
+    OPC_CLTU        = OPC_CPTRCMP | (0x4),
+    OPC_CLEU        = OPC_CPTRCMP | (0x5),
+    OPC_CSCB        = OPC_CLL | (0x0),
+    OPC_CSCH        = OPC_CLL | (0x1),
+    OPC_CSCW        = OPC_CLL | (0x2),
+    OPC_CSCD        = OPC_CLL | (0x3),
+    OPC_CLLBU       = OPC_CLL | (0x8),
+    OPC_CLLHU       = OPC_CLL | (0x9),
+    OPC_CLLWU       = OPC_CLL | (0xa),
+    OPC_CLLD        = OPC_CLL | (0xb),
+/* Load Via Capability Register */
+    OPC_CLBU        = OPC_CLOAD | (0x0),
+    OPC_CLHU        = OPC_CLOAD | (0x1),
+    OPC_CLWU        = OPC_CLOAD | (0x2),
+    OPC_CLDU        = OPC_CLOAD | (0x3),
+/* Store Via Capability Register */
+    OPC_CSB         = OPC_CSTORE | (0x0),
+    OPC_CSH         = OPC_CSTORE | (0x1),
+    OPC_CSW         = OPC_CSTORE | (0x2),
+    OPC_CSD         = OPC_CSTORE | (0x3),
+#endif /* TARGET_CHERI */
 #define MASK_LMMI(op)    (MASK_OP_MAJOR(op) | (op & (0x1F << 21)) | (op & 0x1F))
 
 enum {
@@ -3582,6 +3657,7 @@ static void gen_cl(DisasContext *ctx, uint32_t opc,
     }
 }
 
+#if !defined(TARGET_CHERI)
 /* Loongson multimedia instructions */
 static void gen_loongson_multimedia(DisasContext *ctx, int rd, int rs, int rt)
 {
@@ -6633,6 +6709,7 @@ static void gen_dmfc0(DisasContext *ctx, TCGv arg, int reg, int sel)
     if (sel != 0) {
         check_insn(ctx, ISA_MIPS_R1);
     }
+#endif /* ! TARGET_CHERI */
 
     switch (reg) {
     case CP0_REGISTER_00:
@@ -14828,10 +14905,18 @@ static bool decode_opc_legacy(CPUMIPSState *env, DisasContext *ctx)
         break;
 
 #if defined(TARGET_CHERI)
+    case OPC_CLOAD:     /* Load Via Capability Register */
+                break;
                 break;
             case OPC_CLB:
             default:
+                MIPS_INVAL("cl");
+                generate_exception (ctx, EXCP_RI);
             }
+    case OPC_CLOADC:    /* Load Capability Register */
+    case OPC_CSTORE:    /* Store Via Capability Register */
+                MIPS_INVAL("cs");
+    case OPC_CSTOREC:   /* Store Capability Register */
 #else /* ! TARGET_CHERI */
     /* Compact branches [R6] and COP2 [non-R6] */
     case OPC_BC: /* OPC_LWC2 */

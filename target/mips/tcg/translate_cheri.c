@@ -2,8 +2,14 @@
     }
 }
 {
+}
+{
+        generate_exception(ctx, EXCP_RI);
     TCGv t0 = tcg_temp_new();
     gen_load_gpr(t0, rt);
+    TCGv t0 = tcg_temp_new();
+    gen_load_gpr(t0, rt);
+        break;
         break;
         break;
     default:
@@ -20,6 +26,7 @@ static void gen_mtc2(DisasContext *ctx, TCGv arg, int reg, int sel)
             gen_helper_mtc2_dumpcstate(tcg_env, arg);
             rn = "capdump";
             goto out;
+        default:
             goto cp2_unimplemented;
 out:
     (void)rn; /* avoid a compiler warning */
@@ -33,9 +40,109 @@ cp2_unimplemented:
 #if defined(TARGET_CHERI)
 static void gen_cp2 (DisasContext *ctx, uint32_t opc, int r16, int r11, int r6)
     const char *opn = "cp2inst";
+    switch (MASK_CP2(opc)) {
+            opn = "cgetperm";
+            opn = "cgettype";
+            opn = "cgetbase";
+            opn = "cgetlen";
+            opn = "cgetcause";
+            opn = "cgettag";
+        case OPC_CGETSEALED:        /* 0x06 */
+            opn = "cgetsealed";
+            opn = "cgetpcc";
+            opn = "cseal";
+            opn = "cunseal";
+            opn = "candperm";
+            opn = "csetoffset";
+            opn = "csetbounds";
+            opn = "cincoffset";
+            opn = "ctoptr";
+            opn = "ceq";
+            opn = "cne";
+            opn = "clt";
+            opn = "cle";
+            opn = "cltu";
+            opn = "cleu";
+                opn = "cgetoffset";
+                opn = "ccheckperm";
+                opn = "cchecktype";
+                opn = "ccleartag";
+                opn = "cjalr";
+                    opn = "csetcause";
+                    opn = "cjr";
+                    goto invalid;
+            opn = "cget";
+    case OPC_CSETBOUNDS: /* 0x01 */
+    case OPC_CSEAL:  /* 0x02 */
+    case OPC_CUNSEAL: /* 0x03 */
+    case OPC_CMISC: /* 0x04 */
+        switch(MASK_CAP3(opc)) {
+        case OPC_CANDPERM: /* 0x0 */
+        case OPC_CSETCAUSE: /* 0x4 */
+        case OPC_CCLEARTAG: /* 0x5 */
+        case OPC_MTC2SEL6: /* 0x6 */
                 gen_mtc2(ctx, t0, r11, ctx->opcode & 0x7);
             opn = "mtc2";
+            opn = "cmisc";
+    case OPC_CCALL: /* 0x05 */
+            opn = "creturn";
+            opn = "ccall";
+    case OPC_CRETURN: /* 0x06 */
+    case OPC_CJALR: /* 0x07 */
+    case OPC_CJR: /* 0x08 */
+    case OPC_CBTU: /* 0x09 */
+        opn = "cbtu";
+    case OPC_CBTS: /* 0x0a */
+        opn = "cbts";
+    case OPC_CCHECK: /* 0x0b */
+        case OPC_CCHECKPERM: /* 0x0 */
+        case OPC_CCHECKTYPE: /* 0x1 */
+            opn = "ccheck";
+    case OPC_CTOPTR: /* 0x0c */
+    case OPC_COFFSET: /* 0x0d */
+        case OPC_CINCOFFSET: /* 0x0 */
+        case OPC_CSETOFFSET: /* 0x1 */
+        case OPC_CGETOFFSET: /* 0x2 */
+            opn = "coffset";
+    case OPC_CPTRCMP: /* 0x0e */
+        case OPC_CEQ:  /* 0x0 */
+        case OPC_CNE:  /* 0x1 */
+        case OPC_CLT:  /* 0x2 */
+        case OPC_CLE:  /* 0x3 */
+        case OPC_CLTU: /* 0x4 */
+        case OPC_CLEU: /* 0x5 */
+            opn = "cptrcmp";
+    case OPC_CCLEARREGS: /* 0x0f */
+        opn = "cclearregs";
+    case OPC_CLL:   /* 0x10 */
+        switch(MASK_CAP4(opc)) {
+        case OPC_CSCB: /* 0x0 */
+            opn = "cscb";
+        case OPC_CSCH: /* 0x1 */
+            opn = "csch";
+        case OPC_CSCW: /* 0x2 */
+            opn = "cscw";
+        case OPC_CSCD: /* 0x3 */
+            opn = "cscd";
+        case OPC_CSCC: /* 0x7 */
+        case OPC_CLLB: /* 0xc */
+            opn = "cllb";
+        case OPC_CLLH: /* 0xd */
+            opn = "cllh";
+        case OPC_CLLW: /* 0xe */
+            opn = "cllw";
+        case OPC_CLLD: /* 0xb */
+            opn = "clld";
+        case OPC_CLLBU: /* 0x8 */
+            opn = "cllbu";
+        case OPC_CLLHU: /* 0x9 */
+            opn = "cllhu";
+        case OPC_CLLWU: /* 0xa */
+            opn = "cllwu";
+            opn = "cll";
     (void)opn; /* avoid a compiler warning */
+    return;
+invalid:
     MIPS_INVAL(opn);
     generate_exception (ctx, EXCP_RI);
 #endif /* TARGET_CHERI */
