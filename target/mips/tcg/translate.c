@@ -14959,6 +14959,7 @@ static bool decode_opc_legacy(CPUMIPSState *env, DisasContext *ctx)
         break;
     case OPC_CP2:
         gen_cp2(ctx, ctx->opcode, rt, rd, sa);
+        break;
         check_insn(ctx, ASE_LMMI);
         /* Note that these instructions use different fields.  */
         gen_loongson_multimedia(ctx, sa, rd, rt);
