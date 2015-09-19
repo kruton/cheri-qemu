@@ -11009,6 +11009,7 @@ void gen_rdhwr(DisasContext *ctx, int rt, int rd, int sel)
         }
         break;
         break;
+        break;
 #endif
     default:            /* Invalid */
         MIPS_INVAL("rdhwr");
