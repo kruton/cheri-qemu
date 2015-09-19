@@ -60,6 +60,7 @@ static inline void generate_ccleartag(int32_t cd, int32_t cb)
     TCGv_i32 tcb = tcg_constant_i32(cb);
     TCGv_i32 tcd = tcg_constant_i32(cd);
     gen_helper_ccleartag(tcg_env, tcd, tcb);
+}
 static inline void generate_cfromptr(int32_t cd, int32_t cb, int32_t rt)
 {
     TCGv_i32 tcb = tcg_constant_i32(cb);
@@ -70,6 +71,7 @@ static inline void generate_cfromptr(int32_t cd, int32_t cb, int32_t rt)
     TCGv_i32 tcb = tcg_constant_i32(cb);
 {
     gen_helper_cgetcause(t0, tcg_env);
+{
     TCGv_i32 tcd = tcg_constant_i32(cd);
     gen_helper_cgetpcc(tcg_env, tcd);
     TCGv_i32 tcd = tcg_constant_i32(cd);
@@ -84,12 +86,15 @@ static inline void generate_cmove(int32_t cd, int32_t cs)
     TCGv_i32 tcd = tcg_constant_i32(cd);
     TCGv_i32 tcb = tcg_constant_i32(cb);
     TCGv_i32 tct = tcg_constant_i32(ct);
+static inline void generate_ccseal(int32_t cd, int32_t cs, int32_t ct)
     TCGv_i32 tct = tcg_constant_i32(ct);
 static inline void generate_ccopytype(int32_t cd, int32_t cb, int32_t ct)
     TCGv_i32 tcb = tcg_constant_i32(cb);
+    TCGv_i32 tct = tcg_constant_i32(ct);
     TCGv_i32 tcb = tcg_constant_i32(cb);
 static inline void generate_creturn(void)
 static inline void generate_cseal(int32_t cd, int32_t cb, int32_t ct)
+    TCGv_i32 tcb = tcg_constant_i32(cb);
     gen_helper_cseal(tcg_env, tcd, tcb, tct);
 static inline void generate_csetbounds(int32_t cd, int32_t cb, int32_t rt)
     gen_helper_csetbounds(tcg_env, tcd, tcb, t0);
@@ -110,6 +115,12 @@ static inline void generate_cunseal(int32_t cd, int32_t cb, int32_t ct)
         break;
         break;
     default:
+    gen_helper_ceq(t0, tcg_env, tcb, tct);
+    gen_helper_cne(t0, tcg_env, tcb, tct);
+    gen_helper_clt(t0, tcg_env, tcb, tct);
+    gen_helper_cle(t0, tcg_env, tcb, tct);
+    gen_helper_cltu(t0, tcg_env, tcb, tct);
+    gen_helper_cleu(t0, tcg_env, tcb, tct);
     TCGv_i32 tlen = tcg_constant_i32(len);
 #define GEN_CAP_CHECK_STORE(addr, offset, len) \
 static inline void generate_ccheck_load_pcrel(TCGv addr, int32_t len)
