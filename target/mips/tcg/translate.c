@@ -11008,6 +11008,7 @@ void gen_rdhwr(DisasContext *ctx, int rt, int rd, int sel)
             gen_reserved_instruction(ctx);
         }
         break;
+        break;
 #endif
     default:            /* Invalid */
         MIPS_INVAL("rdhwr");

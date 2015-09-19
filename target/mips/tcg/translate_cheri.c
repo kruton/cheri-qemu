@@ -40,6 +40,7 @@ static inline void generate_ccall(int32_t cs, int32_t cb)
 {
         TCGv_i32 tcb = tcg_constant_i32(cb);
     }
+}
 {
     TCGv t0 = tcg_temp_new();
     gen_load_gpr(t0, rt);
@@ -56,6 +57,7 @@ static inline void generate_cfromptr(int32_t cd, int32_t cb, int32_t rt)
     TCGv_i32 tcb = tcg_constant_i32(cb);
     TCGv_i32 tcd = tcg_constant_i32(cd);
     gen_helper_cfromptr(tcg_env, tcd, tcb, t0);
+{
     TCGv_i32 tcb = tcg_constant_i32(cb);
     gen_helper_cgetcause(t0, tcg_env);
     TCGv_i32 tcd = tcg_constant_i32(cd);
@@ -68,10 +70,14 @@ static inline void generate_cincoffset(int32_t cd, int32_t cb, int32_t rt)
     TCGv_i32 tcd = tcg_constant_i32(cd);
     gen_helper_cincoffset(tcg_env, tcd, tcs, t0);
     TCGv_i32 tcd = tcg_constant_i32(cd);
+    TCGv_i32 tcd = tcg_constant_i32(cd);
+    TCGv_i32 tcb = tcg_constant_i32(cb);
+    TCGv_i32 tct = tcg_constant_i32(ct);
     TCGv_i32 tct = tcg_constant_i32(ct);
 static inline void generate_ccopytype(int32_t cd, int32_t cb, int32_t ct)
 static inline void generate_creturn(void)
 static inline void generate_cseal(int32_t cd, int32_t cb, int32_t ct)
+    gen_helper_cseal(tcg_env, tcd, tcb, tct);
 static inline void generate_csetbounds(int32_t cd, int32_t cb, int32_t rt)
     gen_helper_csetbounds(tcg_env, tcd, tcb, t0);
 static inline void generate_candaddr(int32_t cd, int32_t cb, int32_t rt)
@@ -85,6 +91,7 @@ static inline void generate_csetcause(int32_t rd)
 static inline void generate_csetoffset(int32_t cd, int32_t cb, int32_t rt)
     gen_helper_csetoffset(tcg_env, tcd, tcb, t0);
     gen_helper_ctoptr(t0, tcg_env, tcb, tct);
+static inline void generate_cunseal(int32_t cd, int32_t cb, int32_t ct)
         break;
         break;
         break;
