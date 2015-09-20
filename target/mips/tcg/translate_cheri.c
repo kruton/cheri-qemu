@@ -69,9 +69,11 @@ static inline void generate_cfromptr(int32_t cd, int32_t cb, int32_t rt)
     TCGv_i32 tcb = tcg_constant_i32(cb);
     TCGv_i32 tcd = tcg_constant_i32(cd);
     TCGv t0 = tcg_temp_new();
+    gen_load_gpr(t0, rt);
     gen_helper_cfromptr(tcg_env, tcd, tcb, t0);
 }
 {
+    TCGv t0 = tcg_temp_new();
     gen_store_gpr(t0, rd);
 {
     TCGv_i32 tcb = tcg_constant_i32(cb);
@@ -90,6 +92,7 @@ static inline void generate_cincoffset(int32_t cd, int32_t cb, int32_t rt)
     gen_helper_cincoffset(tcg_env, tcd, tcs, t0);
 static inline void generate_cmove(int32_t cd, int32_t cs)
     TCGv_i32 tcd = tcg_constant_i32(cd);
+static inline void generate_cbuildcap(int32_t cd, int32_t cb, int32_t ct)
     TCGv_i32 tcd = tcg_constant_i32(cd);
     TCGv_i32 tcb = tcg_constant_i32(cb);
     TCGv_i32 tct = tcg_constant_i32(ct);
@@ -109,6 +112,7 @@ static inline void generate_csetbounds(int32_t cd, int32_t cb, int32_t rt)
 static inline void generate_candaddr(int32_t cd, int32_t cb, int32_t rt)
     gen_helper_candaddr(tcg_env, tcd, tcb, t0);
 static inline void generate_csetaddr(int32_t cd, int32_t cb, int32_t rt)
+    gen_helper_csetaddr(tcg_env, tcd, tcb, t0);
     TCGv t1 = tcg_temp_new();
 static inline void generate_csetboundsexact(int32_t cd, int32_t cb, int32_t rt)
     gen_helper_csetboundsexact(tcg_env, tcd, tcb, t0);
