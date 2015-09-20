@@ -1032,6 +1032,8 @@ enum {
     OPC_CLLHU       = OPC_CLL | (0x9),
     OPC_CLLWU       = OPC_CLL | (0xa),
     OPC_CLLD        = OPC_CLL | (0xb),
+#define MASK_CLDST_OFFSET(opc)   ((opc >> 3) & 0xff)
+#define MASK_CLDST_OPC(opc)     ((opc) & ((0x3f << 26) | 0x7))
 /* Load Via Capability Register */
     OPC_CLBU        = OPC_CLOAD | (0x0),
     OPC_CLHU        = OPC_CLOAD | (0x1),
@@ -14920,16 +14922,30 @@ static bool decode_opc_legacy(CPUMIPSState *env, DisasContext *ctx)
 
 #if defined(TARGET_CHERI)
     case OPC_CLOAD:     /* Load Via Capability Register */
+        {
+            uint32_t opc = ctx->opcode;
+            switch(MASK_CLDST_OPC(opc)) {
+            case OPC_CLBU:
+                generate_cap_load(ctx, rs, rt, rd, MASK_CLDST_OFFSET(opc),
+                break;
+            case OPC_CLHU:
+            case OPC_CLWU:
                 break;
                 break;
             case OPC_CLB:
+            case OPC_CLH:
+            case OPC_CLW:
+            case OPC_CLD:
             default:
                 MIPS_INVAL("cl");
                 generate_exception (ctx, EXCP_RI);
             }
+        }
     case OPC_CLOADC:    /* Load Capability Register */
     case OPC_CSTORE:    /* Store Via Capability Register */
+            default:
                 MIPS_INVAL("cs");
+                generate_exception (ctx, EXCP_RI);
     case OPC_CSTOREC:   /* Store Capability Register */
 #else /* ! TARGET_CHERI */
     /* Compact branches [R6] and COP2 [non-R6] */
