@@ -75,6 +75,7 @@ static inline void generate_cfromptr(int32_t cd, int32_t cb, int32_t rt)
 {
     TCGv t0 = tcg_temp_new();
     gen_store_gpr(t0, rd);
+}
 {
     TCGv_i32 tcb = tcg_constant_i32(cb);
 {
@@ -88,6 +89,7 @@ static inline void generate_cincoffset(int32_t cd, int32_t cb, int32_t rt)
     TCGv_i32 tcb = tcg_constant_i32(cb);
     TCGv_i32 tcd = tcg_constant_i32(cd);
     gen_helper_cincoffset(tcg_env, tcd, tcb, t0);
+{
     TCGv_i32 tcd = tcg_constant_i32(cd);
     gen_helper_cincoffset(tcg_env, tcd, tcs, t0);
 static inline void generate_cmove(int32_t cd, int32_t cs)
@@ -123,11 +125,33 @@ static inline void generate_csetoffset(int32_t cd, int32_t cb, int32_t rt)
     gen_helper_csetoffset(tcg_env, tcd, tcb, t0);
     gen_helper_ctoptr(t0, tcg_env, tcb, tct);
 static inline void generate_cunseal(int32_t cd, int32_t cb, int32_t ct)
+static inline int generate_cclearregs(DisasContext *ctx, int32_t regset, int32_t mask)
+    int i;
+    TCGv t0;
+    TCGv_i32 tcr0;
+    switch(regset) {
+    case 0: /* ClearLO */
+        if (!mask)
+            return 0;
+        t0 = tcg_temp_new();
+        tcg_gen_movi_tl(t0, 0);
+        mask = mask >> 1; /* Skip R0, the zero register */
+        for(i = 1; i < 16; i++) {
+            if (mask & 0x1)
+                gen_store_gpr(t0, i);
+            mask = mask >> 1;
         break;
+    case 1: /* ClearHi */
+        for(i = 16; i < 32; i++) {
         break;
+    case 2: /* CClearLO */
+        tcr0 = tcg_constant_i32(mask);
+        gen_helper_cclearreg(tcg_env, tcr0);
         break;
+    case 3: /* CClearHi */
         break;
     default:
+        return 1; /* Invalid */
     gen_helper_ceq(t0, tcg_env, tcb, tct);
     gen_helper_cne(t0, tcg_env, tcb, tct);
 static inline void generate_clt(DisasContext *ctx, int32_t rd, int32_t cb,
@@ -154,6 +178,7 @@ static void gen_mtc2(DisasContext *ctx, TCGv arg, int reg, int sel)
             goto out;
         default:
             goto cp2_unimplemented;
+    default:
 out:
     (void)rn; /* avoid a compiler warning */
     LOG_DISAS("mtc2 %s (reg %d sel %d)\n", rn, reg, sel);
@@ -176,6 +201,7 @@ static void gen_cp2 (DisasContext *ctx, uint32_t opc, int r16, int r11, int r6)
             opn = "cgetlen";
             break;
             opn = "cgetcause";
+            break;
             opn = "cgettag";
         case OPC_CGETSEALED:        /* 0x06 */
             opn = "cgetsealed";
