@@ -30,6 +30,7 @@
 #include "exec/cputlb.h"
 #include "exec/target_page.h"
 
+ */
 
 /* SMP helpers.  */
 static bool mips_vpe_is_wfi(MIPSCPU *c)
@@ -500,6 +501,7 @@ target_ulong helper_dmfc0_watchhi(CPUMIPSState *env, uint32_t sel)
 
 #endif /* TARGET_MIPS64 */
 
+/*
 void helper_mtc0_index(CPUMIPSState *env, target_ulong arg1)
 {
     uint32_t index_p = env->CP0_Index & 0x80000000;
