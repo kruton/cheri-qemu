@@ -28,14 +28,20 @@ static inline void generate_ccall(int32_t cs, int32_t cb)
 }
 {
         TCGv_i32 tcb = tcg_constant_i32(cb);
+        TCGv_i32 toffset = tcg_constant_i32(offset);
+        ctx->btarget = ctx->base.pc_next + 4 * offset + 4;
+        /* Set conditional branch and branch delay slot flags */
+        ctx->hflags |= (MIPS_HFLAG_BC | MIPS_HFLAG_BDS32);
     }
 }
 {
 }
 {
 }
+static inline void generate_cbts(DisasContext *ctx, int32_t cb, int32_t offset)
 {
 }
+static inline void generate_cbtu(DisasContext *ctx, int32_t cb, int32_t offset)
 {
 }
 {
@@ -78,6 +84,7 @@ static inline void generate_cfromptr(int32_t cd, int32_t cb, int32_t rt)
 }
 {
     TCGv_i32 tcb = tcg_constant_i32(cb);
+}
 {
     gen_helper_cgetcause(t0, tcg_env);
 {
@@ -93,6 +100,7 @@ static inline void generate_cincoffset(int32_t cd, int32_t cb, int32_t rt)
     TCGv_i32 tcd = tcg_constant_i32(cd);
     gen_helper_cincoffset(tcg_env, tcd, tcs, t0);
 static inline void generate_cmove(int32_t cd, int32_t cs)
+{
     TCGv_i32 tcd = tcg_constant_i32(cd);
 static inline void generate_cbuildcap(int32_t cd, int32_t cb, int32_t ct)
     TCGv_i32 tcd = tcg_constant_i32(cd);
@@ -112,6 +120,7 @@ static inline void generate_csetbounds(int32_t cd, int32_t cb, int32_t rt)
     TCGv_i32 tcb = tcg_constant_i32(cb);
     gen_helper_csetbounds(tcg_env, tcd, tcb, t0);
 static inline void generate_candaddr(int32_t cd, int32_t cb, int32_t rt)
+    TCGv_i32 tcb = tcg_constant_i32(cb);
     gen_helper_candaddr(tcg_env, tcd, tcb, t0);
 static inline void generate_csetaddr(int32_t cd, int32_t cb, int32_t rt)
     gen_helper_csetaddr(tcg_env, tcd, tcb, t0);
@@ -203,6 +212,7 @@ static void gen_cp2 (DisasContext *ctx, uint32_t opc, int r16, int r11, int r6)
             opn = "cgetcause";
             break;
             opn = "cgettag";
+            break;
         case OPC_CGETSEALED:        /* 0x06 */
             opn = "cgetsealed";
             opn = "cgetpcc";
@@ -252,8 +262,10 @@ static void gen_cp2 (DisasContext *ctx, uint32_t opc, int r16, int r11, int r6)
     case OPC_CJR: /* 0x08 */
     case OPC_CBTU: /* 0x09 */
         opn = "cbtu";
+        generate_cbtu(ctx, r16, (int16_t)(ctx->opcode));
     case OPC_CBTS: /* 0x0a */
         opn = "cbts";
+        generate_cbts(ctx, r16, (int16_t)(ctx->opcode));
     case OPC_CCHECK: /* 0x0b */
         case OPC_CCHECKPERM: /* 0x0 */
         case OPC_CCHECKTYPE: /* 0x1 */
@@ -265,6 +277,7 @@ static void gen_cp2 (DisasContext *ctx, uint32_t opc, int r16, int r11, int r6)
         case OPC_CSETOFFSET: /* 0x1 */
         case OPC_CGETOFFSET: /* 0x2 */
             opn = "coffset";
+            goto invalid;
     case OPC_CPTRCMP: /* 0x0e */
         case OPC_CEQ:  /* 0x0 */
         case OPC_CNE:  /* 0x1 */
