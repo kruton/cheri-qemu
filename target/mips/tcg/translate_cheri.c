@@ -44,13 +44,18 @@ static inline void generate_cbts(DisasContext *ctx, int32_t cb, int32_t offset)
 static inline void generate_cbtu(DisasContext *ctx, int32_t cb, int32_t offset)
 {
 }
+static inline void generate_cjalr(DisasContext *ctx, int32_t cd, int32_t cb)
 {
         TCGv_i32 tcd = tcg_constant_i32(cd);
         TCGv_i32 tcb = tcg_constant_i32(cb);
+        /* Set branch and delay slot flags */
+        ctx->hflags |= (MIPS_HFLAG_BRC | MIPS_HFLAG_BDS32);
     }
 }
+static inline void generate_cjr(DisasContext *ctx, int32_t cb)
 {
         TCGv_i32 tcb = tcg_constant_i32(cb);
+        gen_helper_cjr(btarget, tcg_env, tcb);
     }
 }
 static inline void generate_ccheckperm(int32_t cs, int32_t rt)
@@ -87,6 +92,7 @@ static inline void generate_cfromptr(int32_t cd, int32_t cb, int32_t rt)
 }
 {
     gen_helper_cgetcause(t0, tcg_env);
+}
 {
     TCGv_i32 tcd = tcg_constant_i32(cd);
     gen_helper_cgetpcc(tcg_env, tcd);
@@ -100,6 +106,8 @@ static inline void generate_cincoffset(int32_t cd, int32_t cb, int32_t rt)
     TCGv_i32 tcd = tcg_constant_i32(cd);
     gen_helper_cincoffset(tcg_env, tcd, tcs, t0);
 static inline void generate_cmove(int32_t cd, int32_t cs)
+{
+    TCGv_i32 tcd = tcg_constant_i32(cd);
 {
     TCGv_i32 tcd = tcg_constant_i32(cd);
 static inline void generate_cbuildcap(int32_t cd, int32_t cb, int32_t ct)
@@ -123,6 +131,7 @@ static inline void generate_candaddr(int32_t cd, int32_t cb, int32_t rt)
     TCGv_i32 tcb = tcg_constant_i32(cb);
     gen_helper_candaddr(tcg_env, tcd, tcb, t0);
 static inline void generate_csetaddr(int32_t cd, int32_t cb, int32_t rt)
+    TCGv_i32 tcb = tcg_constant_i32(cb);
     gen_helper_csetaddr(tcg_env, tcd, tcb, t0);
     TCGv t1 = tcg_temp_new();
 static inline void generate_csetboundsexact(int32_t cd, int32_t cb, int32_t rt)
@@ -215,6 +224,7 @@ static void gen_cp2 (DisasContext *ctx, uint32_t opc, int r16, int r11, int r6)
             break;
         case OPC_CGETSEALED:        /* 0x06 */
             opn = "cgetsealed";
+            break;
             opn = "cgetpcc";
             opn = "cseal";
             opn = "cunseal";
@@ -233,6 +243,7 @@ static void gen_cp2 (DisasContext *ctx, uint32_t opc, int r16, int r11, int r6)
                 opn = "ccheckperm";
                 opn = "cchecktype";
                 opn = "ccleartag";
+                generate_cjalr(ctx, r16, r11);
                 opn = "cjalr";
                     opn = "csetcause";
                     opn = "cjr";
@@ -260,6 +271,7 @@ static void gen_cp2 (DisasContext *ctx, uint32_t opc, int r16, int r11, int r6)
     case OPC_CRETURN: /* 0x06 */
     case OPC_CJALR: /* 0x07 */
     case OPC_CJR: /* 0x08 */
+        generate_cjr(ctx, r11);
     case OPC_CBTU: /* 0x09 */
         opn = "cbtu";
         generate_cbtu(ctx, r16, (int16_t)(ctx->opcode));
@@ -286,6 +298,7 @@ static void gen_cp2 (DisasContext *ctx, uint32_t opc, int r16, int r11, int r6)
         case OPC_CLTU: /* 0x4 */
         case OPC_CLEU: /* 0x5 */
             opn = "cptrcmp";
+            goto invalid;
     case OPC_CCLEARREGS: /* 0x0f */
         opn = "cclearregs";
     case OPC_CLL:   /* 0x10 */
