@@ -840,6 +840,9 @@ void helper_mtc0_entrylo1(CPUMIPSState *env, target_ulong arg1)
     /* 1k pages not implemented */
     target_ulong rxi = arg1 & (env->CP0_PageGrain & (3u << CP0PG_XIE));
     env->CP0_EntryLo1 = (arg1 & MTC0_ENTRYLO_MASK(env))
+#if defined(TARGET_CHERI)
+                        | (rxi << (CP0EnLo_L - 30));
+#else
                         | (rxi << (CP0EnLo_XI - 30));
 }
 
