@@ -158,6 +158,7 @@ static inline int generate_cclearregs(DisasContext *ctx, int32_t regset, int32_t
             if (mask & 0x1)
                 gen_store_gpr(t0, i);
             mask = mask >> 1;
+        }
         break;
     case 1: /* ClearHi */
         for(i = 16; i < 32; i++) {
@@ -170,6 +171,9 @@ static inline int generate_cclearregs(DisasContext *ctx, int32_t regset, int32_t
         break;
     default:
         return 1; /* Invalid */
+{
+    TCGv_i32 tcb = tcg_constant_i32(cb);
+    TCGv t0 = tcg_temp_new();
     gen_helper_ceq(t0, tcg_env, tcb, tct);
     gen_helper_cne(t0, tcg_env, tcb, tct);
 static inline void generate_clt(DisasContext *ctx, int32_t rd, int32_t cb,
@@ -179,9 +183,23 @@ static inline void generate_cltu(DisasContext *ctx, int32_t rd, int32_t cb,
     gen_helper_cltu(t0, tcg_env, tcb, tct);
     gen_helper_cleu(t0, tcg_env, tcb, tct);
     x = x & ((1U << 8) - 1);
+    return (x ^ mask) - mask;
 /* Load Via Capability Register */
+    TCGv t1 = tcg_temp_new();
     gen_load_gpr(t1, rt);
+/*
+ */
     TCGv_i32 tlen = tcg_constant_i32(len);
+    /* Write rs to memory. */
+    gen_load_gpr(t0, rs);
+    x = x & ((1U << bits) - 1);
+static inline void generate_clc(DisasContext *ctx, int32_t cd, int32_t cb,
+    TCGv_i32 tcd = tcg_constant_i32(cd);
+        TCGv taddr = tcg_temp_new();
+        tcg_gen_add_tl(taddr, taddr, toffset);
+static inline void generate_csc(DisasContext *ctx, int32_t cs, int32_t cb,
+    TCGv_i32 tcs = tcg_constant_i32(cs);
+    /* Check the cap registers and compute the address. */
 #define GEN_CAP_CHECK_STORE(addr, offset, len) \
 static inline void generate_ccheck_load_pcrel(TCGv addr, int32_t len)
     gen_helper_ccheck_load_pcrel(tcg_env, addr, tlen);
@@ -306,10 +324,12 @@ static void gen_cp2 (DisasContext *ctx, uint32_t opc, int r16, int r11, int r6)
         case OPC_CSCB: /* 0x0 */
             opn = "cscb";
         case OPC_CSCH: /* 0x1 */
+                                    MO_TEUW | ctx->default_tcg_memop_mask,
             opn = "csch";
         case OPC_CSCW: /* 0x2 */
             opn = "cscw";
         case OPC_CSCD: /* 0x3 */
+                                    MO_TEUQ | ctx->default_tcg_memop_mask,
             opn = "cscd";
         case OPC_CSCC: /* 0x7 */
         case OPC_CLLB: /* 0xc */

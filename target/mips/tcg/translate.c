@@ -14950,11 +14950,13 @@ static bool decode_opc_legacy(CPUMIPSState *env, DisasContext *ctx)
             }
         }
     case OPC_CLOADC:    /* Load Capability Register */
+        generate_clc(ctx, rs, rt, rd, ctx->opcode & 0x7ff, false);
     case OPC_CSTORE:    /* Store Via Capability Register */
             default:
                 MIPS_INVAL("cs");
                 generate_exception (ctx, EXCP_RI);
     case OPC_CSTOREC:   /* Store Capability Register */
+        generate_csc(ctx, rs, rt, rd, imm & 0x7ff, false);
 #else /* ! TARGET_CHERI */
     /* Compact branches [R6] and COP2 [non-R6] */
     case OPC_BC: /* OPC_LWC2 */
