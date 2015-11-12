@@ -162,6 +162,7 @@ static inline int generate_cclearregs(DisasContext *ctx, int32_t regset, int32_t
         break;
     case 1: /* ClearHi */
         for(i = 16; i < 32; i++) {
+        }
         break;
     case 2: /* CClearLO */
         tcr0 = tcg_constant_i32(mask);
@@ -175,6 +176,9 @@ static inline int generate_cclearregs(DisasContext *ctx, int32_t regset, int32_t
     TCGv_i32 tcb = tcg_constant_i32(cb);
     TCGv t0 = tcg_temp_new();
     gen_helper_ceq(t0, tcg_env, tcb, tct);
+{
+    TCGv_i32 tcb = tcg_constant_i32(cb);
+    TCGv t0 = tcg_temp_new();
     gen_helper_cne(t0, tcg_env, tcb, tct);
 static inline void generate_clt(DisasContext *ctx, int32_t rd, int32_t cb,
     gen_helper_clt(t0, tcg_env, tcb, tct);
@@ -190,8 +194,10 @@ static inline void generate_cltu(DisasContext *ctx, int32_t rd, int32_t cb,
 /*
  */
     TCGv_i32 tlen = tcg_constant_i32(len);
+    gen_helper_cstorecond(taddr, tcg_env, tcb, tlen);
     /* Write rs to memory. */
     gen_load_gpr(t0, rs);
+static inline void generate_cstore(DisasContext *ctx, int32_t rs, int32_t cb,
     x = x & ((1U << bits) - 1);
 static inline void generate_clc(DisasContext *ctx, int32_t cd, int32_t cb,
     TCGv_i32 tcd = tcg_constant_i32(cd);
@@ -199,8 +205,10 @@ static inline void generate_clc(DisasContext *ctx, int32_t cd, int32_t cb,
         tcg_gen_add_tl(taddr, taddr, toffset);
 static inline void generate_csc(DisasContext *ctx, int32_t cs, int32_t cb,
     TCGv_i32 tcs = tcg_constant_i32(cs);
+        TCGv taddr = tcg_temp_new();
     /* Check the cap registers and compute the address. */
 #define GEN_CAP_CHECK_STORE(addr, offset, len) \
+    TCGv_i32 tlen = tcg_constant_i32(len);
 static inline void generate_ccheck_load_pcrel(TCGv addr, int32_t len)
     gen_helper_ccheck_load_pcrel(tcg_env, addr, tlen);
 static void gen_mtc2(DisasContext *ctx, TCGv arg, int reg, int sel)
@@ -263,6 +271,7 @@ static void gen_cp2 (DisasContext *ctx, uint32_t opc, int r16, int r11, int r6)
                 opn = "ccleartag";
                 generate_cjalr(ctx, r16, r11);
                 opn = "cjalr";
+                gen_load_gpr(t0, r11);
                     opn = "csetcause";
                     opn = "cjr";
                     goto invalid;
@@ -327,6 +336,7 @@ static void gen_cp2 (DisasContext *ctx, uint32_t opc, int r16, int r11, int r6)
                                     MO_TEUW | ctx->default_tcg_memop_mask,
             opn = "csch";
         case OPC_CSCW: /* 0x2 */
+                                    MO_TEUL | ctx->default_tcg_memop_mask,
             opn = "cscw";
         case OPC_CSCD: /* 0x3 */
                                     MO_TEUQ | ctx->default_tcg_memop_mask,

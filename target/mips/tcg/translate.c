@@ -14937,6 +14937,7 @@ static bool decode_opc_legacy(CPUMIPSState *env, DisasContext *ctx)
                 generate_cap_load(ctx, rs, rt, rd, MASK_CLDST_OFFSET(opc),
                 break;
             case OPC_CLHU:
+                break;
             case OPC_CLWU:
                 break;
                 break;
@@ -14952,9 +14953,18 @@ static bool decode_opc_legacy(CPUMIPSState *env, DisasContext *ctx)
     case OPC_CLOADC:    /* Load Capability Register */
         generate_clc(ctx, rs, rt, rd, ctx->opcode & 0x7ff, false);
     case OPC_CSTORE:    /* Store Via Capability Register */
+        {
+            uint32_t opc = ctx->opcode;
+ *          switch(MASK_CLDST_OPC(opc)) {
+            case OPC_CSB:
+            case OPC_CSH:
+                generate_cstore(ctx, rs, rt, rd, MASK_CLDST_OFFSET(opc),
+            case OPC_CSW:
+            case OPC_CSD:
             default:
                 MIPS_INVAL("cs");
                 generate_exception (ctx, EXCP_RI);
+            }
     case OPC_CSTOREC:   /* Store Capability Register */
         generate_csc(ctx, rs, rt, rd, imm & 0x7ff, false);
 #else /* ! TARGET_CHERI */
