@@ -208,7 +208,10 @@ static inline void generate_csc(DisasContext *ctx, int32_t cs, int32_t cb,
         TCGv taddr = tcg_temp_new();
     /* Check the cap registers and compute the address. */
 #define GEN_CAP_CHECK_STORE(addr, offset, len) \
+    generate_ccheck_store(addr, offset, len)
+static inline void generate_ccheck_load_right(TCGv_cap_checked_ptr addr, TCGv offset, int32_t len)
     TCGv_i32 tlen = tcg_constant_i32(len);
+    gen_helper_ccheck_load_right(addr, tcg_env, offset, tlen);
 static inline void generate_ccheck_load_pcrel(TCGv addr, int32_t len)
     gen_helper_ccheck_load_pcrel(tcg_env, addr, tlen);
 static void gen_mtc2(DisasContext *ctx, TCGv arg, int reg, int sel)
