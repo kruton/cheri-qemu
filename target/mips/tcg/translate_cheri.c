@@ -18,6 +18,7 @@ static inline void generate_ccall(int32_t cs, int32_t cb)
         generate_exception(ctx, EXCP_RI);
         TCGv_i32 tcs = tcg_constant_i32(cs);
         TCGv_i32 tcb = tcg_constant_i32(cb);
+        ctx->hflags |= (MIPS_HFLAG_BRCCALL);
     }
 }
 {

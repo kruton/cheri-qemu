@@ -15458,13 +15458,10 @@ void mips_tcg_init(void)
     if (TARGET_LONG_BITS == 32) {
         mxu_translate_init();
     }
-#if defined(TARGET_CHERI)
-    /*
      * See section "3.5 CPU Reset" of Cheri Architecture Manual.
      * Tag bits are set.  Seal bit is unset. Base and otype are
      * set to zero. length is set to (2^64 - 1). Offset (or cursor)
      * is set to zero (or boot vector address for PCC).
-     */
     {
         int i;
 
@@ -15472,7 +15469,6 @@ void mips_tcg_init(void)
             env->active_tc.C_Tag[i] = 1;
         }
     }
-#endif /* TARGET_CHERI */
 }
 
 void mips_restore_state_to_opc(CPUState *cs,
