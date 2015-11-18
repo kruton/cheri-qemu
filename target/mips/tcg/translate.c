@@ -1032,6 +1032,7 @@ enum {
     OPC_CLLHU       = OPC_CLL | (0x9),
     OPC_CLLWU       = OPC_CLL | (0xa),
     OPC_CLLD        = OPC_CLL | (0xb),
+    OPC_CLLB        = OPC_CLL | (0xc),
 #define MASK_CLDST_OFFSET(opc)   ((opc >> 3) & 0xff)
 #define MASK_CLDST_OPC(opc)     ((opc) & ((0x3f << 26) | 0x7))
 /* Load Via Capability Register */
@@ -14941,11 +14942,14 @@ static bool decode_opc_legacy(CPUMIPSState *env, DisasContext *ctx)
                 generate_cap_load(ctx, rs, rt, rd, MASK_CLDST_OFFSET(opc),
                 break;
             case OPC_CLHU:
+                generate_cap_load(ctx, rs, rt, rd, MASK_CLDST_OFFSET(opc),
                 break;
             case OPC_CLWU:
                 break;
+            case OPC_CLDU:
                 break;
             case OPC_CLB:
+                break;
             case OPC_CLH:
             case OPC_CLW:
             case OPC_CLD:
