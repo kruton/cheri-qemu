@@ -1039,6 +1039,10 @@ enum {
     OPC_CLHU        = OPC_CLOAD | (0x1),
     OPC_CLWU        = OPC_CLOAD | (0x2),
     OPC_CLDU        = OPC_CLOAD | (0x3),
+    OPC_CLB         = OPC_CLOAD | (0x4),
+    OPC_CLH         = OPC_CLOAD | (0x5),
+    OPC_CLW         = OPC_CLOAD | (0x6),
+    OPC_CLD         = OPC_CLOAD | (0x7),
 /* Store Via Capability Register */
     OPC_CSB         = OPC_CSTORE | (0x0),
     OPC_CSH         = OPC_CSTORE | (0x1),
