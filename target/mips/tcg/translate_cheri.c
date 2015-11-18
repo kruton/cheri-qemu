@@ -187,12 +187,14 @@ static inline void generate_clt(DisasContext *ctx, int32_t rd, int32_t cb,
 static inline void generate_cltu(DisasContext *ctx, int32_t rd, int32_t cb,
     gen_helper_cltu(t0, tcg_env, tcb, tct);
     gen_helper_cleu(t0, tcg_env, tcb, tct);
+    tcg_gen_xori_i64(t0, t0, 1);
     x = x & ((1U << 8) - 1);
     return (x ^ mask) - mask;
 /* Load Via Capability Register */
     TCGv t1 = tcg_temp_new();
     gen_load_gpr(t1, rt);
 /*
+ *
  */
     TCGv_i32 tlen = tcg_constant_i32(len);
     gen_helper_cstorecond(taddr, tcg_env, tcb, tlen);
