@@ -722,7 +722,6 @@ void helper_mttc0_tcbind(CPUMIPSState *env, target_ulong arg1)
 
 void helper_mtc0_tcrestart(CPUMIPSState *env, target_ulong arg1)
 {
-    env->active_tc.PC = arg1;
     env->active_tc.CP0_TCStatus &= ~(1 << CP0TCSt_TDS);
     env->CP0_LLAddr = 0;
     env->lladdr = 0;
