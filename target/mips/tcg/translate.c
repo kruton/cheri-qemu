@@ -1729,12 +1729,14 @@ static inline void check_mvh(DisasContext *ctx)
  * This code generates a "reserved instruction" exception if the
  * Config5 XNP bit is set.
  */
+#ifndef TARGET_CHERI
 static inline void check_xnp(DisasContext *ctx)
 {
     if (unlikely(ctx->CP0_Config5 & (1 << CP0C5_XNP))) {
         gen_reserved_instruction(ctx);
     }
 }
+#endif
 
 #ifndef CONFIG_USER_ONLY
 /*
@@ -5207,6 +5209,7 @@ static void gen_mfc0(DisasContext *ctx, TCGv arg, int reg, int sel)
 {
     const char *register_name = "invalid";
 
+#ifndef TARGET_CHERI
     if (sel != 0) {
         check_insn(ctx, ISA_MIPS_R1);
     }

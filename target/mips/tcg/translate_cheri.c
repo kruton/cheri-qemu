@@ -51,12 +51,15 @@ static inline void generate_cjalr(DisasContext *ctx, int32_t cd, int32_t cb)
         TCGv_i32 tcb = tcg_constant_i32(cb);
         /* Set branch and delay slot flags */
         ctx->hflags |= (MIPS_HFLAG_BRC | MIPS_HFLAG_BDS32);
+        /* Save capability register index that is new PCC */
+        // ctx->btcr = cb;
     }
 }
 static inline void generate_cjr(DisasContext *ctx, int32_t cb)
 {
         TCGv_i32 tcb = tcg_constant_i32(cb);
         gen_helper_cjr(btarget, tcg_env, tcb);
+        ctx->hflags |= (MIPS_HFLAG_BRC | MIPS_HFLAG_BDS32);
     }
 }
 static inline void generate_ccheckperm(int32_t cs, int32_t rt)
