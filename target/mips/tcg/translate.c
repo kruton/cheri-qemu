@@ -14940,6 +14940,7 @@ static bool decode_opc_legacy(CPUMIPSState *env, DisasContext *ctx)
     case OPC_CLOAD:     /* Load Via Capability Register */
         {
             uint32_t opc = ctx->opcode;
+            check_cop2x(ctx);
             switch(MASK_CLDST_OPC(opc)) {
             case OPC_CLBU:
                 generate_cap_load(ctx, rs, rt, rd, MASK_CLDST_OFFSET(opc),

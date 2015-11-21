@@ -1,4 +1,8 @@
+ */
+/* Verify that the processor is running with CHERI instructions enabled. */
+static inline void check_cop2x(DisasContext *ctx)
 {
+    if (unlikely(!(ctx->hflags & MIPS_HFLAG_COP2X))) {
     }
 }
 static inline int32_t sign_extend(int32_t x, int offset)
@@ -6,7 +10,10 @@ static inline int32_t sign_extend(int32_t x, int offset)
     int32_t const mask = 1U << (offset - 1);
     return (x ^ mask) - mask;
 }
+/*
+static inline bool is_cop2x_enabled(DisasContext *ctx)
 {
+    return (likely(ctx->hflags & MIPS_HFLAG_COP2X));
 }
 static inline void generate_ccall(int32_t cs, int32_t cb)
 {
@@ -28,6 +35,7 @@ static inline void generate_ccall(int32_t cs, int32_t cb)
     gen_load_gpr(t0, rt);
 }
 {
+        generate_exception(ctx, EXCP_RI);
         TCGv_i32 tcb = tcg_constant_i32(cb);
         TCGv_i32 toffset = tcg_constant_i32(offset);
         ctx->btarget = ctx->base.pc_next + 4 * offset + 4;
@@ -100,6 +108,7 @@ static inline void generate_cfromptr(int32_t cd, int32_t cb, int32_t rt)
 {
     TCGv_i32 tcd = tcg_constant_i32(cd);
     gen_helper_cgetpcc(tcg_env, tcd);
+}
     TCGv_i32 tcd = tcg_constant_i32(cd);
 static inline void generate_cincoffset(int32_t cd, int32_t cb, int32_t rt)
 {
@@ -114,6 +123,7 @@ static inline void generate_cmove(int32_t cd, int32_t cs)
     TCGv_i32 tcd = tcg_constant_i32(cd);
 {
     TCGv_i32 tcd = tcg_constant_i32(cd);
+{
 static inline void generate_cbuildcap(int32_t cd, int32_t cb, int32_t ct)
     TCGv_i32 tcd = tcg_constant_i32(cd);
     TCGv_i32 tcb = tcg_constant_i32(cb);
@@ -196,6 +206,7 @@ static inline void generate_cltu(DisasContext *ctx, int32_t rd, int32_t cb,
 /* Load Via Capability Register */
     TCGv t1 = tcg_temp_new();
     gen_load_gpr(t1, rt);
+    check_cop2x(ctx);
 /*
  *
  */
