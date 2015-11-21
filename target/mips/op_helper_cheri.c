@@ -1,4 +1,8 @@
+        return (target_ulong)0;
     } else if (!cap_has_perms(csp, CAP_PERM_EXECUTE)) {
+    } else if (!cap_has_perms(cbp, CAP_PERM_STORE)) {
+    } else if (!cap_has_perms(cbp, CAP_PERM_STORE_CAP)) {
+    } else if (!cap_has_perms(cbp, CAP_PERM_STORE_LOCAL) && csp->cr_tag &&
     char name[8];
     cpu_fprintf(f, "DEBUG CAP COREID 0\n");
         // snprintf(name, sizeof(name), "C%02d", i);
