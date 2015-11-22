@@ -3,6 +3,7 @@
 static inline void check_cop2x(DisasContext *ctx)
 {
     if (unlikely(!(ctx->hflags & MIPS_HFLAG_COP2X))) {
+        generate_exception_err(ctx, EXCP_CpU, 2);
     }
 }
 static inline int32_t sign_extend(int32_t x, int offset)
@@ -55,6 +56,7 @@ static inline void generate_cbtu(DisasContext *ctx, int32_t cb, int32_t offset)
 }
 static inline void generate_cjalr(DisasContext *ctx, int32_t cd, int32_t cb)
 {
+        generate_exception(ctx, EXCP_RI);
         TCGv_i32 tcd = tcg_constant_i32(cd);
         TCGv_i32 tcb = tcg_constant_i32(cb);
         /* Set branch and delay slot flags */
