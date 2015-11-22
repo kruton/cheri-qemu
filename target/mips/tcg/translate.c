@@ -2334,6 +2334,7 @@ static void gen_st_cond(DisasContext *ctx, int rt, int base, int offset,
     /* compare the address against that of the preceding LL */
     gen_base_offset_addr(ctx, addr, base, offset);
     tcg_gen_brcond_tl(TCG_COND_EQ, addr, cpu_lladdr, l1);
+    generate_exception(ctx, EXCP_AdES);
     gen_store_gpr(tcg_constant_tl(0), rt);
     tcg_gen_br(done);
 
