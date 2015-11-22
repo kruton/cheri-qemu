@@ -1,6 +1,9 @@
+    else
         return (target_ulong)0;
+    if (!csp->cr_tag) {
     } else if (!cap_has_perms(csp, CAP_PERM_EXECUTE)) {
     } else if (!cap_has_perms(cbp, CAP_PERM_STORE)) {
+        // cheri_tag_invalidate(env, addr, size);
     } else if (!cap_has_perms(cbp, CAP_PERM_STORE_CAP)) {
     } else if (!cap_has_perms(cbp, CAP_PERM_STORE_LOCAL) && csp->cr_tag &&
     char name[8];
