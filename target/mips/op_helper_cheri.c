@@ -2,6 +2,7 @@
         return (target_ulong)0;
     if (!csp->cr_tag) {
     } else if (!cap_has_perms(csp, CAP_PERM_EXECUTE)) {
+        do_raise_c0_exception(env, EXCP_AdEL, addr);
     } else if (!cap_has_perms(cbp, CAP_PERM_STORE)) {
         // cheri_tag_invalidate(env, addr, size);
     } else if (!cap_has_perms(cbp, CAP_PERM_STORE_CAP)) {
