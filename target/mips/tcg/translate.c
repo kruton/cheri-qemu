@@ -14967,7 +14967,12 @@ static bool decode_opc_legacy(CPUMIPSState *env, DisasContext *ctx)
     case OPC_CSTORE:    /* Store Via Capability Register */
         {
             uint32_t opc = ctx->opcode;
+/*
+ * XXX CHERI seems to be ignoring bit 2 given how 'cscdr' is encoded.
+ *     For now, just ignore bit 2 by masking it.
+ *
  *          switch(MASK_CLDST_OPC(opc)) {
+ */
             case OPC_CSB:
             case OPC_CSH:
                 generate_cstore(ctx, rs, rt, rd, MASK_CLDST_OFFSET(opc),
