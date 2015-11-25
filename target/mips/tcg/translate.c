@@ -1371,7 +1371,10 @@ static inline void save_cpu_state(DisasContext *ctx, int do_save_pc)
         switch (ctx->hflags & MIPS_HFLAG_BMASK_BASE) {
         case MIPS_HFLAG_BR:
             break;
+#ifdef TARGET_CHERI
+        case MIPS_HFLAG_BRC:
             break;
+#endif
         case MIPS_HFLAG_BC:
         case MIPS_HFLAG_BL:
         case MIPS_HFLAG_B:
@@ -1387,7 +1390,10 @@ static inline void restore_cpu_state(CPUMIPSState *env, DisasContext *ctx)
     switch (ctx->hflags & MIPS_HFLAG_BMASK_BASE) {
     case MIPS_HFLAG_BR:
         break;
+#ifdef TARGET_CHERI
+    case MIPS_HFLAG_BRC:
         break;
+#endif
     case MIPS_HFLAG_BC:
     case MIPS_HFLAG_BL:
     case MIPS_HFLAG_B:
@@ -2504,6 +2510,7 @@ static void gen_logic_imm(DisasContext *ctx, uint32_t opc,
 
     if (rt == 0) {
         /* If no destination, treat it as a NOP. */
+                save_cpu_state(ctx, 1);
         return;
     }
     uimm = (uint16_t)imm;
@@ -11107,6 +11114,7 @@ static void gen_branch(DisasContext *ctx, int insn_bytes)
             }
             tcg_gen_lookup_and_goto_ptr();
             break;
+                save_cpu_state(ctx, 0);
             break;
         default:
             LOG_DISAS("unknown branch 0x%x\n", proc_hflags);
@@ -15497,6 +15505,9 @@ void mips_restore_state_to_opc(CPUState *cs,
     env->hflags |= data[1];
     switch (env->hflags & MIPS_HFLAG_BMASK_BASE) {
     case MIPS_HFLAG_BR:
+#ifdef TARGET_CHERI
+    case MIPS_HFLAG_BRC:
+#endif
         break;
     case MIPS_HFLAG_BC:
     case MIPS_HFLAG_BL:
