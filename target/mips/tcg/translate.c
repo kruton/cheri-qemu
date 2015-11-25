@@ -1033,6 +1033,7 @@ enum {
     OPC_CLLWU       = OPC_CLL | (0xa),
     OPC_CLLD        = OPC_CLL | (0xb),
     OPC_CLLB        = OPC_CLL | (0xc),
+    OPC_CLLC        = OPC_CLL | (0xf),
 #define MASK_CLDST_OFFSET(opc)   ((opc >> 3) & 0xff)
 #define MASK_CLDST_OPC(opc)     ((opc) & ((0x3f << 26) | 0x7))
 /* Load Via Capability Register */
@@ -7126,6 +7127,8 @@ static void gen_dmfc0(DisasContext *ctx, TCGv arg, int reg, int sel)
             tcg_gen_ld_tl(arg, tcg_env, offsetof(CPUMIPSState, CP0_CMGCRBase));
             register_name = "CMGCRBase";
             break;
+            /*
+             */
             break;
             /*
              */
@@ -14956,6 +14959,7 @@ static bool decode_opc_legacy(CPUMIPSState *env, DisasContext *ctx)
             case OPC_CLB:
                 break;
             case OPC_CLH:
+                break;
             case OPC_CLW:
             case OPC_CLD:
             default:
@@ -14964,6 +14968,7 @@ static bool decode_opc_legacy(CPUMIPSState *env, DisasContext *ctx)
             }
         }
     case OPC_CLOADC:    /* Load Capability Register */
+        check_cop2x(ctx);
         generate_clc(ctx, rs, rt, rd, ctx->opcode & 0x7ff, false);
     case OPC_CSTORE:    /* Store Via Capability Register */
         {

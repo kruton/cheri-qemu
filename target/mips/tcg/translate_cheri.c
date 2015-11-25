@@ -188,19 +188,25 @@ static inline int generate_cclearregs(DisasContext *ctx, int32_t regset, int32_t
         break;
     default:
         return 1; /* Invalid */
+    }
 {
     TCGv_i32 tcb = tcg_constant_i32(cb);
     TCGv t0 = tcg_temp_new();
     gen_helper_ceq(t0, tcg_env, tcb, tct);
+    gen_store_gpr(t0, rd);
 {
     TCGv_i32 tcb = tcg_constant_i32(cb);
     TCGv t0 = tcg_temp_new();
     gen_helper_cne(t0, tcg_env, tcb, tct);
 static inline void generate_clt(DisasContext *ctx, int32_t rd, int32_t cb,
+{
+    TCGv_i32 tcb = tcg_constant_i32(cb);
+    TCGv t0 = tcg_temp_new();
     gen_helper_clt(t0, tcg_env, tcb, tct);
     gen_helper_cle(t0, tcg_env, tcb, tct);
 static inline void generate_cltu(DisasContext *ctx, int32_t rd, int32_t cb,
     gen_helper_cltu(t0, tcg_env, tcb, tct);
+static inline void generate_cleu(DisasContext *ctx, int32_t rd, int32_t cb,
     gen_helper_cleu(t0, tcg_env, tcb, tct);
     tcg_gen_xori_i64(t0, t0, 1);
     x = x & ((1U << 8) - 1);
@@ -209,6 +215,7 @@ static inline void generate_cltu(DisasContext *ctx, int32_t rd, int32_t cb,
     TCGv t1 = tcg_temp_new();
     gen_load_gpr(t1, rt);
     check_cop2x(ctx);
+    gen_helper_cloadlinked(taddr, tcg_env, tcb, tlen);
 /*
  *
  */
@@ -222,9 +229,12 @@ static inline void generate_clc(DisasContext *ctx, int32_t cd, int32_t cb,
     TCGv_i32 tcd = tcg_constant_i32(cd);
         TCGv taddr = tcg_temp_new();
         tcg_gen_add_tl(taddr, taddr, toffset);
+static inline void generate_cllc(DisasContext *ctx, int32_t cd, int32_t cb)
 static inline void generate_csc(DisasContext *ctx, int32_t cs, int32_t cb,
     TCGv_i32 tcs = tcg_constant_i32(cs);
         TCGv taddr = tcg_temp_new();
+static inline void generate_cscc(DisasContext *ctx, int32_t cs, int32_t cb,
+        int32_t rd)
     /* Check the cap registers and compute the address. */
 #define GEN_CAP_CHECK_STORE(addr, offset, len) \
     generate_ccheck_store(addr, offset, len)
@@ -232,6 +242,7 @@ static inline void generate_ccheck_load_right(TCGv_cap_checked_ptr addr, TCGv of
     TCGv_i32 tlen = tcg_constant_i32(len);
     gen_helper_ccheck_load_right(addr, tcg_env, offset, tlen);
 static inline void generate_ccheck_load_pcrel(TCGv addr, int32_t len)
+    TCGv_i32 tlen = tcg_constant_i32(len);
     gen_helper_ccheck_load_pcrel(tcg_env, addr, tlen);
 static void gen_mtc2(DisasContext *ctx, TCGv arg, int reg, int sel)
     const char *rn = "invalid";
@@ -293,6 +304,7 @@ static void gen_cp2 (DisasContext *ctx, uint32_t opc, int r16, int r11, int r6)
                 opn = "ccleartag";
                 generate_cjalr(ctx, r16, r11);
                 opn = "cjalr";
+                gen_load_gpr(t0, r11);
                 gen_load_gpr(t0, r11);
                     opn = "csetcause";
                     opn = "cjr";
