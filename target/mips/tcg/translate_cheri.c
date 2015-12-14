@@ -105,13 +105,16 @@ static inline void generate_cfromptr(int32_t cd, int32_t cb, int32_t rt)
     TCGv_i32 tcb = tcg_constant_i32(cb);
 }
 {
+    TCGv t0 = tcg_temp_new();
     gen_helper_cgetcause(t0, tcg_env);
+    gen_store_gpr(t0, rd);
 }
 {
     TCGv_i32 tcd = tcg_constant_i32(cd);
     gen_helper_cgetpcc(tcg_env, tcd);
 }
     TCGv_i32 tcd = tcg_constant_i32(cd);
+}
 static inline void generate_cincoffset(int32_t cd, int32_t cb, int32_t rt)
 {
     TCGv_i32 tcb = tcg_constant_i32(cb);
@@ -123,10 +126,12 @@ static inline void generate_cincoffset(int32_t cd, int32_t cb, int32_t rt)
 static inline void generate_cmove(int32_t cd, int32_t cs)
 {
     TCGv_i32 tcd = tcg_constant_i32(cd);
+static inline void generate_cmovz(int32_t cd, int32_t cs, int32_t rs)
 {
     TCGv_i32 tcd = tcg_constant_i32(cd);
 {
 static inline void generate_cbuildcap(int32_t cd, int32_t cb, int32_t ct)
+{
     TCGv_i32 tcd = tcg_constant_i32(cd);
     TCGv_i32 tcb = tcg_constant_i32(cb);
     TCGv_i32 tct = tcg_constant_i32(ct);
@@ -136,6 +141,7 @@ static inline void generate_ccopytype(int32_t cd, int32_t cb, int32_t ct)
     TCGv_i32 tcb = tcg_constant_i32(cb);
     TCGv_i32 tct = tcg_constant_i32(ct);
     TCGv_i32 tcb = tcg_constant_i32(cb);
+    TCGv_i32 tct = tcg_constant_i32(ct);
 static inline void generate_creturn(void)
 static inline void generate_cseal(int32_t cd, int32_t cb, int32_t ct)
     TCGv_i32 tcb = tcg_constant_i32(cb);
@@ -149,10 +155,12 @@ static inline void generate_candaddr(int32_t cd, int32_t cb, int32_t rt)
 static inline void generate_csetaddr(int32_t cd, int32_t cb, int32_t rt)
     TCGv_i32 tcb = tcg_constant_i32(cb);
     gen_helper_csetaddr(tcg_env, tcd, tcb, t0);
+    TCGv_i32 tcb = tcg_constant_i32(cb);
     TCGv t1 = tcg_temp_new();
 static inline void generate_csetboundsexact(int32_t cd, int32_t cb, int32_t rt)
     gen_helper_csetboundsexact(tcg_env, tcd, tcb, t0);
     gen_helper_csetbounds(tcg_env, tcd, tcb, t0);
+    gen_helper_csub(t0, tcg_env, tcb, tct);
 static inline void generate_csetcause(int32_t rd)
     gen_helper_csetcause(tcg_env, t0);
 static inline void generate_csetoffset(int32_t cd, int32_t cb, int32_t rt)
@@ -221,6 +229,7 @@ static inline void generate_cleu(DisasContext *ctx, int32_t rd, int32_t cb,
  */
     TCGv_i32 tlen = tcg_constant_i32(len);
     gen_helper_cstorecond(taddr, tcg_env, tcb, tlen);
+    check_cop2x(ctx);
     /* Write rs to memory. */
     gen_load_gpr(t0, rs);
 static inline void generate_cstore(DisasContext *ctx, int32_t rs, int32_t cb,
@@ -285,6 +294,7 @@ static void gen_cp2 (DisasContext *ctx, uint32_t opc, int r16, int r11, int r6)
             opn = "cgetsealed";
             break;
             opn = "cgetpcc";
+            break;
             opn = "cseal";
             opn = "cunseal";
             opn = "candperm";
@@ -298,6 +308,8 @@ static void gen_cp2 (DisasContext *ctx, uint32_t opc, int r16, int r11, int r6)
             opn = "cle";
             opn = "cltu";
             opn = "cleu";
+            generate_cexeq(ctx, r16, r11, r6);
+            opn = "cexeq";
                 opn = "cgetoffset";
                 opn = "ccheckperm";
                 opn = "cchecktype";
@@ -358,6 +370,7 @@ static void gen_cp2 (DisasContext *ctx, uint32_t opc, int r16, int r11, int r6)
         case OPC_CLE:  /* 0x3 */
         case OPC_CLTU: /* 0x4 */
         case OPC_CLEU: /* 0x5 */
+        case OPC_CEXEQ: /* 0x6 */
             opn = "cptrcmp";
             goto invalid;
     case OPC_CCLEARREGS: /* 0x0f */

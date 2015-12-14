@@ -1024,6 +1024,7 @@ enum {
     OPC_CLE         = OPC_CPTRCMP | (0x3),
     OPC_CLTU        = OPC_CPTRCMP | (0x4),
     OPC_CLEU        = OPC_CPTRCMP | (0x5),
+    OPC_CEXEQ       = OPC_CPTRCMP | (0x6),
     OPC_CSCB        = OPC_CLL | (0x0),
     OPC_CSCH        = OPC_CLL | (0x1),
     OPC_CSCW        = OPC_CLL | (0x2),
