@@ -629,6 +629,7 @@ const mips_def_t mips_defs[] =
     },
     {
         .name = "5Kf",
+#if defined(TARGET_CHERI)
         .CP0_PRid = 0x00018100,
         .CP0_Config0 = MIPS_CONFIG0 | (0x2 << CP0C0_AT) |
                        (MMU_TYPE_R4000 << CP0C0_MT),
@@ -637,11 +638,14 @@ const mips_def_t mips_defs[] =
                        (1 << CP0C1_DS) | (4 << CP0C1_DL) | (1 << CP0C1_DA) |
                        (1 << CP0C1_PC) | (1 << CP0C1_WR) | (1 << CP0C1_EP),
         .CP0_Config2 = MIPS_CONFIG2,
+#else
         .CP0_Config3 = MIPS_CONFIG3,
+#endif
         .CP0_LLAddr_rw_bitmask = 0,
         .CP0_LLAddr_shift = 4,
         .SYNCI_Step = 32,
         .CCRes = 2,
+        .CP0_Status_rw_bitmask = 0x76F8FFFF,
         .CP0_Status_rw_bitmask = 0x36F8FFFF,
         /* The 5Kf has F64 / L / W but doesn't use the fcr0 bits. */
         .CP1_fcr0 = (1 << FCR0_D) | (1 << FCR0_S) |
@@ -650,6 +654,7 @@ const mips_def_t mips_defs[] =
         .CP1_fcr31_rw_bitmask = 0xFF83FFFF,
         .SEGBITS = 42,
         .PABITS = 36,
+        .insn_flags = CPU_MIPS64R2,
         .insn_flags = CPU_MIPS64R1,
         .mmu_type = MMU_TYPE_R4000,
     },
