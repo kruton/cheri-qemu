@@ -147,6 +147,7 @@ static inline void generate_ccopytype(int32_t cd, int32_t cb, int32_t ct)
     TCGv_i32 tct = tcg_constant_i32(ct);
     TCGv_i32 tcb = tcg_constant_i32(cb);
     TCGv_i32 tct = tcg_constant_i32(ct);
+    gen_store_gpr(t0, rd);
 static inline void generate_creturn(void)
 static inline void generate_cseal(int32_t cd, int32_t cb, int32_t ct)
     TCGv_i32 tcb = tcg_constant_i32(cb);
@@ -162,6 +163,7 @@ static inline void generate_csetaddr(int32_t cd, int32_t cb, int32_t rt)
     gen_helper_csetaddr(tcg_env, tcd, tcb, t0);
     TCGv_i32 tcb = tcg_constant_i32(cb);
     TCGv t1 = tcg_temp_new();
+    gen_store_gpr(t1, rd);
 static inline void generate_csetboundsexact(int32_t cd, int32_t cb, int32_t rt)
     gen_helper_csetboundsexact(tcg_env, tcd, tcb, t0);
     gen_helper_csetbounds(tcg_env, tcd, tcb, t0);
@@ -211,6 +213,7 @@ static inline int generate_cclearregs(DisasContext *ctx, int32_t regset, int32_t
     TCGv_i32 tcb = tcg_constant_i32(cb);
     TCGv t0 = tcg_temp_new();
     gen_helper_cne(t0, tcg_env, tcb, tct);
+    gen_store_gpr(t0, rd);
 static inline void generate_clt(DisasContext *ctx, int32_t rd, int32_t cb,
 {
     TCGv_i32 tcb = tcg_constant_i32(cb);
@@ -227,6 +230,7 @@ static inline void generate_cleu(DisasContext *ctx, int32_t rd, int32_t cb,
 /* Load Via Capability Register */
     TCGv t1 = tcg_temp_new();
     gen_load_gpr(t1, rt);
+    gen_store_gpr(t1, rd);
     check_cop2x(ctx);
     gen_helper_cloadlinked(taddr, tcg_env, tcb, tlen);
 /*

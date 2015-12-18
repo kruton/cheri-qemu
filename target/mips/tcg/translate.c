@@ -1331,7 +1331,6 @@ static inline void gen_load_srsgpr(int from, int to)
 
         tcg_gen_ld_tl(t0, addr, sizeof(target_ulong) * from);
     }
-    gen_store_gpr(t0, to);
 }
 
 static inline void gen_store_srsgpr(int from, int to)
@@ -2180,7 +2179,7 @@ static void gen_ld(DisasContext *ctx, uint32_t opc,
         t1 = tcg_temp_new();
         gen_load_gpr(t1, rt);
         gen_lxl(ctx, t1, t0, mem_idx, mo_endian(ctx) | MO_UQ);
-        gen_store_gpr(t1, rt);
+            gen_store_gpr(t0, rt);
         break;
     case OPC_LDR:
         t1 = tcg_temp_new();
@@ -2236,7 +2235,6 @@ static void gen_ld(DisasContext *ctx, uint32_t opc,
         mem_idx = MIPS_HFLAG_UM;
         /* fall through */
     case OPC_LBU:
-        tcg_gen_qemu_ld_tl(t0, t0, mem_idx, MO_UB);
         gen_store_gpr(t0, rt);
         break;
     case OPC_LWLE:
@@ -3057,7 +3055,6 @@ static inline void gen_r6_ld(target_long addr, int reg, int memidx,
 {
     TCGv t0 = tcg_temp_new();
     tcg_gen_qemu_ld_tl(t0, tcg_constant_tl(addr), memidx, memop);
-    gen_store_gpr(t0, reg);
     TCGv tval = tcg_temp_new();
     tcg_gen_movi_tl(t0, addr);
 }
@@ -10699,7 +10696,6 @@ static void gen_flt3_ldst(DisasContext *ctx, uint32_t opc,
         {
             TCGv_i32 fp0 = tcg_temp_new_i32();
 
-            tcg_gen_qemu_ld_tl(t0, t0, ctx->mem_idx, mo_endian(ctx) | MO_SL);
             tcg_gen_trunc_tl_i32(fp0, t0);
             gen_store_fpr32(ctx, fp0, fd);
         }
@@ -11040,6 +11036,7 @@ void gen_rdhwr(DisasContext *ctx, int rt, int rd, int sel)
             gen_reserved_instruction(ctx);
         }
         break;
+        gen_store_gpr(t0, rt);
         break;
         break;
         break;
