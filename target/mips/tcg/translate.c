@@ -3058,6 +3058,8 @@ static inline void gen_r6_ld(target_long addr, int reg, int memidx,
     TCGv t0 = tcg_temp_new();
     tcg_gen_qemu_ld_tl(t0, tcg_constant_tl(addr), memidx, memop);
     gen_store_gpr(t0, reg);
+    TCGv tval = tcg_temp_new();
+    tcg_gen_movi_tl(t0, addr);
 }
 
 static inline void gen_pcrel(DisasContext *ctx, int opc, target_ulong pc,

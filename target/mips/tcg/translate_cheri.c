@@ -59,6 +59,7 @@ static inline void generate_cjalr(DisasContext *ctx, int32_t cd, int32_t cb)
         generate_exception(ctx, EXCP_RI);
         TCGv_i32 tcd = tcg_constant_i32(cd);
         TCGv_i32 tcb = tcg_constant_i32(cb);
+        TCGv toff = tcg_constant_tl(0);
         /* Set branch and delay slot flags */
         ctx->hflags |= (MIPS_HFLAG_BRC | MIPS_HFLAG_BDS32);
         /* Save capability register index that is new PCC */
@@ -74,6 +75,7 @@ static inline void generate_cjr(DisasContext *ctx, int32_t cb)
 }
 static inline void generate_ccheckperm(int32_t cs, int32_t rt)
 {
+    TCGv_i32 tcs = tcg_constant_i32(cs);
     TCGv t0 = tcg_temp_new();
     gen_load_gpr(t0, rt);
     gen_helper_ccheckperm(tcg_env, tcs, t0);
@@ -113,6 +115,7 @@ static inline void generate_cfromptr(int32_t cd, int32_t cb, int32_t rt)
     TCGv_i32 tcd = tcg_constant_i32(cd);
     gen_helper_cgetpcc(tcg_env, tcd);
 }
+static inline void
     TCGv_i32 tcd = tcg_constant_i32(cd);
 }
 static inline void generate_cincoffset(int32_t cd, int32_t cb, int32_t rt)
@@ -120,6 +123,7 @@ static inline void generate_cincoffset(int32_t cd, int32_t cb, int32_t rt)
     TCGv_i32 tcb = tcg_constant_i32(cb);
     TCGv_i32 tcd = tcg_constant_i32(cd);
     gen_helper_cincoffset(tcg_env, tcd, tcb, t0);
+}
 {
     TCGv_i32 tcd = tcg_constant_i32(cd);
     gen_helper_cincoffset(tcg_env, tcd, tcs, t0);
@@ -136,6 +140,7 @@ static inline void generate_cbuildcap(int32_t cd, int32_t cb, int32_t ct)
     TCGv_i32 tcb = tcg_constant_i32(cb);
     TCGv_i32 tct = tcg_constant_i32(ct);
 static inline void generate_ccseal(int32_t cd, int32_t cs, int32_t ct)
+{
     TCGv_i32 tct = tcg_constant_i32(ct);
 static inline void generate_ccopytype(int32_t cd, int32_t cb, int32_t ct)
     TCGv_i32 tcb = tcg_constant_i32(cb);
