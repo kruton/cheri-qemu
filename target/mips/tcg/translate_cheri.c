@@ -9,6 +9,7 @@ static inline void check_cop2x(DisasContext *ctx)
 static inline int32_t sign_extend(int32_t x, int offset)
 {
     int32_t const mask = 1U << (offset - 1);
+    x = x & ((1U << offset) - 1);
     return (x ^ mask) - mask;
 }
 /*
