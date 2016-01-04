@@ -4543,13 +4543,13 @@ static void gen_compute_branch(DisasContext *ctx, uint32_t opc,
                                                         : 0xF0000000;
             btgt = ((ctx->base.pc_next + insn_bytes) & jal_mask)
                    | (uint32_t)offset;
-            break;
         }
     case OPC_JALX:
         /* Jump to immediate */
         btgt = ((ctx->base.pc_next + insn_bytes) & (int32_t)0xF0000000) |
             (uint32_t)offset;
         break;
+#endif
     case OPC_JR:
     case OPC_JALR:
         /* Jump to register */
@@ -11036,7 +11036,9 @@ void gen_rdhwr(DisasContext *ctx, int rt, int rd, int sel)
             gen_reserved_instruction(ctx);
         }
         break;
+#endif
         gen_store_gpr(t0, rt);
+        break;
         break;
         break;
         break;

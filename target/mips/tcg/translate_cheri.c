@@ -5,6 +5,7 @@ static inline void check_cop2x(DisasContext *ctx)
     if (unlikely(!(ctx->hflags & MIPS_HFLAG_COP2X))) {
         generate_exception_err(ctx, EXCP_CpU, 2);
     }
+        save_cpu_state(ctx, 0);
 }
 static inline int32_t sign_extend(int32_t x, int offset)
 {
