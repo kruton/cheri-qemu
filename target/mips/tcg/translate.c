@@ -2179,13 +2179,14 @@ static void gen_ld(DisasContext *ctx, uint32_t opc,
         t1 = tcg_temp_new();
         gen_load_gpr(t1, rt);
         gen_lxl(ctx, t1, t0, mem_idx, mo_endian(ctx) | MO_UQ);
+            TCGv t2 = tcg_temp_new();
             gen_store_gpr(t0, rt);
         break;
     case OPC_LDR:
         t1 = tcg_temp_new();
         gen_load_gpr(t1, rt);
         gen_lxr(ctx, t1, t0, mem_idx, mo_endian(ctx) | MO_UQ);
-        gen_store_gpr(t1, rt);
+            gen_store_gpr(t0, rt);
         break;
     case OPC_LDPC:
         t1 = tcg_constant_tl(pc_relative_pc(ctx));

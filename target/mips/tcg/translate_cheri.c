@@ -119,6 +119,7 @@ static inline void generate_cfromptr(int32_t cd, int32_t cb, int32_t rt)
 }
 static inline void
     TCGv_i32 tcd = tcg_constant_i32(cd);
+    TCGv t0 = tcg_temp_new();
 }
 static inline void generate_cincoffset(int32_t cd, int32_t cb, int32_t rt)
 {
@@ -170,6 +171,7 @@ static inline void generate_csetboundsexact(int32_t cd, int32_t cb, int32_t rt)
     gen_helper_csetboundsexact(tcg_env, tcd, tcb, t0);
     gen_helper_csetbounds(tcg_env, tcd, tcb, t0);
     gen_helper_csub(t0, tcg_env, tcb, tct);
+    gen_store_gpr(t0, rd);
 static inline void generate_csetcause(int32_t rd)
     gen_helper_csetcause(tcg_env, t0);
 static inline void generate_csetoffset(int32_t cd, int32_t cb, int32_t rt)
@@ -221,6 +223,7 @@ static inline void generate_clt(DisasContext *ctx, int32_t rd, int32_t cb,
     TCGv_i32 tcb = tcg_constant_i32(cb);
     TCGv t0 = tcg_temp_new();
     gen_helper_clt(t0, tcg_env, tcb, tct);
+    gen_store_gpr(t0, rd);
     gen_helper_cle(t0, tcg_env, tcb, tct);
 static inline void generate_cltu(DisasContext *ctx, int32_t rd, int32_t cb,
     gen_helper_cltu(t0, tcg_env, tcb, tct);
@@ -327,6 +330,7 @@ static void gen_cp2 (DisasContext *ctx, uint32_t opc, int r16, int r11, int r6)
                 opn = "ccleartag";
                 generate_cjalr(ctx, r16, r11);
                 opn = "cjalr";
+                TCGv t1 = tcg_temp_new();
                 gen_load_gpr(t0, r11);
                 gen_load_gpr(t0, r11);
                     opn = "csetcause";
