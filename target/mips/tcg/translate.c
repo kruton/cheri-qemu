@@ -4483,6 +4483,7 @@ static void gen_compute_branch(DisasContext *ctx, uint32_t opc,
     TCGv t0 = tcg_temp_new();
     TCGv t1 = tcg_temp_new();
 
+#if defined(TARGET_CHERI)
     if (ctx->hflags & MIPS_HFLAG_BMASK) {
 #ifdef MIPS_DEBUG_DISAS
         LOG_DISAS("Branch in delay / forbidden slot at PC 0x%016"
@@ -4563,6 +4564,8 @@ static void gen_compute_branch(DisasContext *ctx, uint32_t opc,
             goto out;
         }
         gen_load_gpr(btarget, rs);
+#ifdef TARGET_CHERI
+#endif /* TARGET_CHERI */
         break;
     default:
         MIPS_INVAL("branch/jump");
@@ -4730,6 +4733,7 @@ static void gen_compute_branch(DisasContext *ctx, uint32_t opc,
     if (insn_bytes == 2) {
         ctx->hflags |= MIPS_HFLAG_B16;
     }
+#ifdef TARGET_CHERI
 }
 
 
@@ -5626,6 +5630,7 @@ static void gen_mfc0(DisasContext *ctx, TCGv arg, int reg, int sel)
     case CP0_REGISTER_14:
         switch (sel) {
         case CP0_REG14__EPC:
+#ifdef TARGET_CHERI
             tcg_gen_ld_tl(arg, tcg_env, offsetof(CPUMIPSState, CP0_EPC));
             tcg_gen_ext32s_tl(arg, arg);
             register_name = "EPC";
@@ -5653,8 +5658,10 @@ static void gen_mfc0(DisasContext *ctx, TCGv arg, int reg, int sel)
             tcg_gen_ext32s_tl(arg, arg);
             register_name = "CMGCRBase";
             break;
+#ifdef TARGET_CHERI
             break;
             break;
+#endif /* TARGET_CHERI */
         default:
             goto cp0_unimplemented;
        }
@@ -5936,6 +5943,7 @@ static void gen_mfc0(DisasContext *ctx, TCGv arg, int reg, int sel)
     case CP0_REGISTER_30:
         switch (sel) {
         case CP0_REG30__ERROREPC:
+#ifdef TARGET_CHERI
             tcg_gen_ld_tl(arg, tcg_env, offsetof(CPUMIPSState, CP0_ErrorEPC));
             tcg_gen_ext32s_tl(arg, arg);
             register_name = "ErrorEPC";
@@ -6362,6 +6370,7 @@ static void gen_mtc0(DisasContext *ctx, TCGv arg, int reg, int sel)
         switch (sel) {
         case CP0_REG14__EPC:
             tcg_gen_st_tl(arg, tcg_env, offsetof(CPUMIPSState, CP0_EPC));
+#ifdef TARGET_CHERI
             register_name = "EPC";
             break;
         default:
@@ -6683,6 +6692,7 @@ static void gen_mtc0(DisasContext *ctx, TCGv arg, int reg, int sel)
         switch (sel) {
         case CP0_REG30__ERROREPC:
             tcg_gen_st_tl(arg, tcg_env, offsetof(CPUMIPSState, CP0_ErrorEPC));
+#ifdef TARGET_CHERI
             register_name = "ErrorEPC";
             break;
         default:
@@ -7046,6 +7056,7 @@ static void gen_dmfc0(DisasContext *ctx, TCGv arg, int reg, int sel)
             ctx->base.is_jmp = DISAS_EXIT;
             register_name = "Count";
             break;
+#ifdef TARGET_CHERI
             break;
         default:
             goto cp0_unimplemented;
@@ -7110,6 +7121,7 @@ static void gen_dmfc0(DisasContext *ctx, TCGv arg, int reg, int sel)
     case CP0_REGISTER_14:
         switch (sel) {
         case CP0_REG14__EPC:
+#ifdef TARGET_CHERI
             tcg_gen_ld_tl(arg, tcg_env, offsetof(CPUMIPSState, CP0_EPC));
             register_name = "EPC";
             break;
@@ -7414,6 +7426,7 @@ static void gen_dmfc0(DisasContext *ctx, TCGv arg, int reg, int sel)
     case CP0_REGISTER_30:
         switch (sel) {
         case CP0_REG30__ERROREPC:
+#ifdef TARGET_CHERI
             tcg_gen_ld_tl(arg, tcg_env, offsetof(CPUMIPSState, CP0_ErrorEPC));
             register_name = "ErrorEPC";
             break;
@@ -7755,6 +7768,7 @@ static void gen_dmtc0(DisasContext *ctx, TCGv arg, int reg, int sel)
             gen_helper_mtc0_count(tcg_env, arg);
             register_name = "Count";
             break;
+#ifdef TARGET_CHERI
             break;
         default:
             goto cp0_unimplemented;
@@ -7842,6 +7856,7 @@ static void gen_dmtc0(DisasContext *ctx, TCGv arg, int reg, int sel)
         switch (sel) {
         case CP0_REG14__EPC:
             tcg_gen_st_tl(arg, tcg_env, offsetof(CPUMIPSState, CP0_EPC));
+#ifdef TARGET_CHERI
             register_name = "EPC";
             break;
         default:
@@ -8150,6 +8165,7 @@ static void gen_dmtc0(DisasContext *ctx, TCGv arg, int reg, int sel)
         switch (sel) {
         case CP0_REG30__ERROREPC:
             tcg_gen_st_tl(arg, tcg_env, offsetof(CPUMIPSState, CP0_ErrorEPC));
+#ifdef TARGET_CHERI
             register_name = "ErrorEPC";
             break;
         default:
@@ -11116,8 +11132,10 @@ static void gen_branch(DisasContext *ctx, int insn_bytes)
             }
             tcg_gen_lookup_and_goto_ptr();
             break;
+#ifdef TARGET_CHERI
                 save_cpu_state(ctx, 0);
             break;
+#endif /* TARGET_CHERI */
         default:
             LOG_DISAS("unknown branch 0x%x\n", proc_hflags);
             gen_reserved_instruction(ctx);
@@ -14395,6 +14413,7 @@ static void decode_opc_special3(CPUMIPSState *env, DisasContext *ctx)
         break;
 #endif
     case OPC_RDHWR:
+#ifdef TARGET_CHERI
         gen_rdhwr(ctx, rt, rd, extract32(ctx->opcode, 6, 3));
         break;
     case OPC_FORK:
@@ -15036,6 +15055,7 @@ static bool decode_opc_legacy(CPUMIPSState *env, DisasContext *ctx)
         }
         break;
     case OPC_CP2:
+#if defined(TARGET_CHERI)
         gen_cp2(ctx, ctx->opcode, rt, rd, sa);
         break;
         check_insn(ctx, ASE_LMMI);
@@ -15447,6 +15467,7 @@ void mips_tcg_init(void)
 
         fpu_f64[i] = tcg_global_mem_new_i64(tcg_env, off, fregnames[i]);
     }
+#ifdef TARGET_CHERI
     msa_translate_init();
     cpu_PC = tcg_global_mem_new(tcg_env,
                                 offsetof(CPUMIPSState, active_tc.PC), "PC");
