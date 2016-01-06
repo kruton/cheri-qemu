@@ -2347,7 +2347,6 @@ static void gen_st_cond(DisasContext *ctx, int rt, int base, int offset,
 
     gen_set_label(l1);
     /* generate cmpxchg */
-    val = tcg_temp_new();
     gen_load_gpr(val, rt);
     tcg_gen_atomic_cmpxchg_tl(t0, cpu_lladdr, cpu_llval, val,
                               eva ? MIPS_HFLAG_UM : ctx->mem_idx, tcg_mo);
