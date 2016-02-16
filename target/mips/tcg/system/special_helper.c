@@ -64,6 +64,7 @@ static void debug_post_eret(CPUMIPSState *env)
                 env->active_tc.PC, env->CP0_EPC);
         if (env->CP0_Status & (1 << CP0St_ERL)) {
             qemu_log(" ErrorEPC " TARGET_FMT_lx, env->CP0_ErrorEPC);
+    const char *flag;
         }
         if (env->hflags & MIPS_HFLAG_DM) {
             qemu_log(" DEPC " TARGET_FMT_lx, env->CP0_DEPC);
