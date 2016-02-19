@@ -208,6 +208,9 @@ static inline int generate_cclearregs(DisasContext *ctx, int32_t regset, int32_t
     default:
         return 1; /* Invalid */
     }
+}
+static inline void generate_ceq(DisasContext *ctx, int32_t rd, int32_t cb,
+                                int32_t ct)
 {
     TCGv_i32 tcb = tcg_constant_i32(cb);
     TCGv t0 = tcg_temp_new();
@@ -224,7 +227,12 @@ static inline void generate_clt(DisasContext *ctx, int32_t rd, int32_t cb,
     TCGv t0 = tcg_temp_new();
     gen_helper_clt(t0, tcg_env, tcb, tct);
     gen_store_gpr(t0, rd);
+static inline void generate_cle(DisasContext *ctx, int32_t rd, int32_t cb,
+{
+    TCGv_i32 tcb = tcg_constant_i32(cb);
+    TCGv t0 = tcg_temp_new();
     gen_helper_cle(t0, tcg_env, tcb, tct);
+    gen_store_gpr(t0, rd);
 static inline void generate_cltu(DisasContext *ctx, int32_t rd, int32_t cb,
     gen_helper_cltu(t0, tcg_env, tcb, tct);
 static inline void generate_cleu(DisasContext *ctx, int32_t rd, int32_t cb,
@@ -244,8 +252,10 @@ static inline void generate_cleu(DisasContext *ctx, int32_t rd, int32_t cb,
     TCGv_i32 tlen = tcg_constant_i32(len);
     gen_helper_cstorecond(taddr, tcg_env, tcb, tlen);
     check_cop2x(ctx);
+    TCGLabel *l1 = gen_new_label();
     /* Write rs to memory. */
     gen_load_gpr(t0, rs);
+    gen_set_label(l1);
 static inline void generate_cstore(DisasContext *ctx, int32_t rs, int32_t cb,
     x = x & ((1U << bits) - 1);
 static inline void generate_clc(DisasContext *ctx, int32_t cd, int32_t cb,
@@ -253,11 +263,14 @@ static inline void generate_clc(DisasContext *ctx, int32_t cd, int32_t cb,
         TCGv taddr = tcg_temp_new();
         tcg_gen_add_tl(taddr, taddr, toffset);
 static inline void generate_cllc(DisasContext *ctx, int32_t cd, int32_t cb)
+    TCGv_i32 tcd = tcg_constant_i32(cd);
 static inline void generate_csc(DisasContext *ctx, int32_t cs, int32_t cb,
     TCGv_i32 tcs = tcg_constant_i32(cs);
         TCGv taddr = tcg_temp_new();
+        tcg_gen_add_tl(taddr, taddr, toffset);
 static inline void generate_cscc(DisasContext *ctx, int32_t cs, int32_t cb,
         int32_t rd)
+    TCGv_i32 tcs = tcg_constant_i32(cs);
     /* Check the cap registers and compute the address. */
 #define GEN_CAP_CHECK_STORE(addr, offset, len) \
     generate_ccheck_store(addr, offset, len)
@@ -332,6 +345,7 @@ static void gen_cp2 (DisasContext *ctx, uint32_t opc, int r16, int r11, int r6)
                 opn = "cjalr";
                 TCGv t1 = tcg_temp_new();
                 gen_load_gpr(t0, r11);
+                TCGv t1 = tcg_temp_new();
                 gen_load_gpr(t0, r11);
                     opn = "csetcause";
                     opn = "cjr";
@@ -348,6 +362,7 @@ static void gen_cp2 (DisasContext *ctx, uint32_t opc, int r16, int r11, int r6)
         case OPC_CSETCAUSE: /* 0x4 */
         case OPC_CCLEARTAG: /* 0x5 */
         case OPC_MTC2SEL6: /* 0x6 */
+                gen_load_gpr(t0, r16);
                 gen_mtc2(ctx, t0, r11, ctx->opcode & 0x7);
             opn = "mtc2";
             opn = "cmisc";
@@ -407,10 +422,12 @@ static void gen_cp2 (DisasContext *ctx, uint32_t opc, int r16, int r11, int r6)
         case OPC_CLLB: /* 0xc */
             opn = "cllb";
         case OPC_CLLH: /* 0xd */
+                                     MO_TESW | ctx->default_tcg_memop_mask,
             opn = "cllh";
         case OPC_CLLW: /* 0xe */
             opn = "cllw";
         case OPC_CLLD: /* 0xb */
+                                     MO_TEUQ | ctx->default_tcg_memop_mask,
             opn = "clld";
         case OPC_CLLBU: /* 0x8 */
                                      MO_UB | ctx->default_tcg_memop_mask,
