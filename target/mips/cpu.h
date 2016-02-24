@@ -1174,6 +1174,7 @@ typedef struct CPUArchState {
     uint32_t CP0_TCStatus_rw_bitmask; /* Read/write bits in CP0_TCStatus */
     uint64_t insn_flags; /* Supported instruction set */
 
+     * See section 3.9.2 (Table 3.3) of the CHERI Architecture Reference v7.
     /* Fields up to this point are cleared by a CPU reset */
     struct {} end_reset_fields;
 
