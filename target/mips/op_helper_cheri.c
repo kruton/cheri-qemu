@@ -1,3 +1,9 @@
+#endif
+#else
+{
+}
+static inline bool
+is_cap_sealed(const cap_register_t *cp)
     else
         return (target_ulong)0;
     if (!csp->cr_tag) {
