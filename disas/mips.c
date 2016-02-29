@@ -121,6 +121,8 @@ see <http://www.gnu.org/licenses/>.  */
 #define OP_SH_IMMEDIATE		0
 #define OP_MASK_DELTA		0xffff
 #define OP_SH_DELTA		0
+#define OP_MASK_CDELTA          0x7ff
+#define OP_SH_CDELTA            0
 #define OP_MASK_DELTA_R6        0x1ff
 #define OP_SH_DELTA_R6          7
 #define OP_MASK_FUNCT		0x3f
@@ -436,6 +438,7 @@ struct mips_opcode
    "+o"  9 bits immediate/displacement (shift = 7)
    "+o1" 18 bits immediate/displacement (shift = 0)
    "+o2" 19 bits immediate/displacement (shift = 0)
+   "+o3" 11 bits signed immediate/displacement (shift = 0, CHERI only)
 
    Other:
    "()" parens surrounding optional value
@@ -1298,12 +1301,10 @@ const struct mips_opcode mips_builtin_opcodes[] =
 {"ccheckperm", "+w,m",	0x49600000, 0xffe0f83f, 0,			0, I1},
 {"cchecktype", "+w,+b", 0x49600001, 0xffe007ff, 0,			0, I1},
 {"ctoptr",   "t,+b,+v", 0x49800000, 0xffe0003f, 0,			0, I1},
-{"csc",   "+x,d,+o(+w)",0xf8000000, 0xfc000000, 0,			0, I1},
-{"clc",   "+x,d,+o(+w)",0xd8000000, 0xfc000000, 0,			0, I1},
 {"cscr",  "+x,d(+w)",	0xf8000000, 0xfc0007ff, 0,			0, I1},
 {"clcr",  "+x,d(+w)",	0xd8000000, 0xfc0007ff, 0,			0, I1},
-{"csci",  "+x,+o(+w)",	0xf8000000, 0xfc00f800, 0,			0, I1},
-{"clci",  "+x,+o(+w)",	0xd8000000, 0xfc00f800, 0,			0, I1},
+{"csci",  "+x,+o7(+w)", 0xf8000000, 0xfc00f800, 0,			0, I1},
+{"clci",  "+x,+o7(+w)", 0xd8000000, 0xfc00f800, 0,			0, I1},
 
 {"clbu",  "v,d,+O(+w)", 0xc8000000, 0xfc000007, 0,			0, I1},
 {"clhu",  "v,d,+O(+w)", 0xc8000001, 0xfc000007, 0,			0, I1},
@@ -4561,6 +4562,12 @@ print_insn_args (const char *d,
                     delta = l & ((1 << 19) - 1);
                     if (delta & 0x40000) {
                         delta |= ~0x3ffff;
+                    }
+                    break;
+                    d++;
+                    delta = ((l >> OP_SH_CDELTA) & OP_MASK_CDELTA);
+                    if (delta > (OP_MASK_CDELTA >> 1)) {
+                        delta -= (OP_MASK_CDELTA + 1);
                     }
                     break;
                 default:
