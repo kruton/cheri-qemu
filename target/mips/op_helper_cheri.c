@@ -6,6 +6,7 @@ static inline bool
 is_cap_sealed(const cap_register_t *cp)
     else
         return (target_ulong)0;
+        return (target_ulong)0;
     if (!csp->cr_tag) {
     } else if (!cap_has_perms(csp, CAP_PERM_EXECUTE)) {
         do_raise_c0_exception(env, EXCP_AdEL, addr);
@@ -19,3 +20,4 @@ is_cap_sealed(const cap_register_t *cp)
         snprintf(name, sizeof(name), "REG %02d", i);
                         cpu_fprintf);
     cheri_dump_creg(&env->active_tc.CHWR.EPCC,       "HWREG 31 (EPCC)", "", f, cpu_fprintf);
+    } else if (!cbp->cr_tag) {
