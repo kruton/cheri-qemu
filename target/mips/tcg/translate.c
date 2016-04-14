@@ -981,6 +981,7 @@ enum {
 #if defined(TARGET_CHERI)
 #define MASK_CAP3(op)       (MASK_CP2(op) | ((op) & 0x7))
 #define MASK_CAP4(op)       (MASK_CP2(op) | ((op) & 0xf))
+#define MASK_CAP6(op)       (MASK_CP2(op) | ((op) & 0x3f))
 enum {
     OPC_CGET        = OPC_CP2 | (0x00 << 21),
     OPC_CSETBOUNDS  = OPC_CP2 | (0x01 << 21),
@@ -1008,6 +1009,8 @@ enum {
     OPC_CGETTAG         = OPC_CGET | (0x05),
     OPC_CGETSEALED      = OPC_CGET | (0x06),
     OPC_CGETPCC         = OPC_CGET | (0x07),
+    OPC_CSETBOUNDSEXACT = OPC_CGET | (0x09),
+    OPC_CSUB            = OPC_CGET | (0x0a),
     OPC_CANDPERM    = OPC_CMISC | (0x0),
     OPC_CSETCAUSE   = OPC_CMISC | (0x4),
     OPC_CCLEARTAG   = OPC_CMISC | (0x5),

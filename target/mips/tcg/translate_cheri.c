@@ -305,23 +305,34 @@ cp2_unimplemented:
 static void gen_cp2 (DisasContext *ctx, uint32_t opc, int r16, int r11, int r6)
     const char *opn = "cp2inst";
     switch (MASK_CP2(opc)) {
+        switch(MASK_CAP6(opc)) {
+        case OPC_CGETPERM:          /* 0x00 */
             opn = "cgetperm";
             break;
+        case OPC_CGETTYPE:          /* 0x01 */
             opn = "cgettype";
             break;
+        case OPC_CGETBASE:          /* 0x02 */
             opn = "cgetbase";
             break;
+        case OPC_CGETLEN:           /* 0x03 */
             opn = "cgetlen";
             break;
+        case OPC_CGETCAUSE:         /* 0x04 */
             opn = "cgetcause";
             break;
+        case OPC_CGETTAG:           /* 0x05 */
             opn = "cgettag";
             break;
         case OPC_CGETSEALED:        /* 0x06 */
             opn = "cgetsealed";
             break;
+        case OPC_CGETPCC:           /* 0x07 */
             opn = "cgetpcc";
             break;
+                                    /* 0x08 */
+        case OPC_CSETBOUNDSEXACT:   /* 0x09 */
+        case OPC_CSUB:              /* 0x0a */
             opn = "cseal";
             opn = "cunseal";
             opn = "candperm";
@@ -332,11 +343,13 @@ static void gen_cp2 (DisasContext *ctx, uint32_t opc, int r16, int r11, int r6)
             opn = "ceq";
             opn = "cne";
             opn = "clt";
+        case OPC_CLE_NI: /* 0x17 */
             opn = "cle";
             opn = "cltu";
             opn = "cleu";
             generate_cexeq(ctx, r16, r11, r6);
             opn = "cexeq";
+            case OPC_CGETSEALED_NI: /* 0x05 << 6 */
                 opn = "cgetoffset";
                 opn = "ccheckperm";
                 opn = "cchecktype";
@@ -382,6 +395,7 @@ static void gen_cp2 (DisasContext *ctx, uint32_t opc, int r16, int r11, int r6)
         opn = "cbts";
         generate_cbts(ctx, r16, (int16_t)(ctx->opcode));
     case OPC_CCHECK: /* 0x0b */
+        switch(MASK_CAP3(opc)) {
         case OPC_CCHECKPERM: /* 0x0 */
         case OPC_CCHECKTYPE: /* 0x1 */
             opn = "ccheck";
