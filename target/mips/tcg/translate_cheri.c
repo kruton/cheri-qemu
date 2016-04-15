@@ -125,11 +125,14 @@ static inline void generate_cincoffset(int32_t cd, int32_t cb, int32_t rt)
 {
     TCGv_i32 tcb = tcg_constant_i32(cb);
     TCGv_i32 tcd = tcg_constant_i32(cd);
+    TCGv t0 = tcg_temp_new();
+    gen_load_gpr(t0, rt);
     gen_helper_cincoffset(tcg_env, tcd, tcb, t0);
 }
 {
     TCGv_i32 tcd = tcg_constant_i32(cd);
     gen_helper_cincoffset(tcg_env, tcd, tcs, t0);
+}
 static inline void generate_cmove(int32_t cd, int32_t cs)
 {
     TCGv_i32 tcd = tcg_constant_i32(cd);
@@ -137,6 +140,7 @@ static inline void generate_cmovz(int32_t cd, int32_t cs, int32_t rs)
 {
     TCGv_i32 tcd = tcg_constant_i32(cd);
 {
+    TCGv_i32 tcd = tcg_constant_i32(cd);
 static inline void generate_cbuildcap(int32_t cd, int32_t cb, int32_t ct)
 {
     TCGv_i32 tcd = tcg_constant_i32(cd);
@@ -146,6 +150,7 @@ static inline void generate_ccseal(int32_t cd, int32_t cs, int32_t ct)
 {
     TCGv_i32 tct = tcg_constant_i32(ct);
 static inline void generate_ccopytype(int32_t cd, int32_t cb, int32_t ct)
+{
     TCGv_i32 tcb = tcg_constant_i32(cb);
     TCGv_i32 tct = tcg_constant_i32(ct);
     TCGv_i32 tcb = tcg_constant_i32(cb);
@@ -168,7 +173,9 @@ static inline void generate_csetaddr(int32_t cd, int32_t cb, int32_t rt)
     TCGv t1 = tcg_temp_new();
     gen_store_gpr(t1, rd);
 static inline void generate_csetboundsexact(int32_t cd, int32_t cb, int32_t rt)
+    TCGv_i32 tcb = tcg_constant_i32(cb);
     gen_helper_csetboundsexact(tcg_env, tcd, tcb, t0);
+static inline void generate_csetbounds_imm(int32_t cd, int32_t cb, int32_t length)
     gen_helper_csetbounds(tcg_env, tcd, tcb, t0);
     gen_helper_csub(t0, tcg_env, tcb, tct);
     gen_store_gpr(t0, rd);
@@ -319,6 +326,7 @@ static void gen_cp2 (DisasContext *ctx, uint32_t opc, int r16, int r11, int r6)
             opn = "cgetlen";
             break;
         case OPC_CGETCAUSE:         /* 0x04 */
+            check_cop2x(ctx);
             opn = "cgetcause";
             break;
         case OPC_CGETTAG:           /* 0x05 */
@@ -332,6 +340,9 @@ static void gen_cp2 (DisasContext *ctx, uint32_t opc, int r16, int r11, int r6)
             break;
                                     /* 0x08 */
         case OPC_CSETBOUNDSEXACT:   /* 0x09 */
+            generate_csetboundsexact(r16, r11, r6);
+            opn = "csetboundsexact";
+            break;
         case OPC_CSUB:              /* 0x0a */
             opn = "cseal";
             opn = "cunseal";
