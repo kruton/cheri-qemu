@@ -2,13 +2,21 @@
 #else
 {
 }
+}
 static inline bool
 is_cap_sealed(const cap_register_t *cp)
+{
+    switch(size) {
+    default:
     else
         return (target_ulong)0;
         return (target_ulong)0;
     if (!csp->cr_tag) {
     } else if (!cap_has_perms(csp, CAP_PERM_EXECUTE)) {
+        break;
+    case CP2HWR_KCC:
+    case CP2HWR_KDC:
+    case CP2HWR_EPCC:
         do_raise_c0_exception(env, EXCP_AdEL, addr);
     } else if (!cap_has_perms(cbp, CAP_PERM_STORE)) {
         // cheri_tag_invalidate(env, addr, size);
