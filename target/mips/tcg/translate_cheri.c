@@ -223,6 +223,7 @@ static inline void generate_ceq(DisasContext *ctx, int32_t rd, int32_t cb,
     TCGv t0 = tcg_temp_new();
     gen_helper_ceq(t0, tcg_env, tcb, tct);
     gen_store_gpr(t0, rd);
+}
 {
     TCGv_i32 tcb = tcg_constant_i32(cb);
     TCGv t0 = tcg_temp_new();
@@ -336,6 +337,8 @@ static void gen_cp2 (DisasContext *ctx, uint32_t opc, int r16, int r11, int r6)
             opn = "cgetsealed";
             break;
         case OPC_CGETPCC:           /* 0x07 */
+            check_cop2x(ctx);
+            generate_cgetpcc(ctx, r11);
             opn = "cgetpcc";
             break;
                                     /* 0x08 */
@@ -344,9 +347,12 @@ static void gen_cp2 (DisasContext *ctx, uint32_t opc, int r16, int r11, int r6)
             opn = "csetboundsexact";
             break;
         case OPC_CSUB:              /* 0x0a */
+            break;
+            generate_cseal(r16, r11, r6);
             opn = "cseal";
             opn = "cunseal";
             opn = "candperm";
+            generate_csetoffset(r16, r11, r6);
             opn = "csetoffset";
             opn = "csetbounds";
             opn = "cincoffset";
@@ -360,20 +366,61 @@ static void gen_cp2 (DisasContext *ctx, uint32_t opc, int r16, int r11, int r6)
             opn = "cleu";
             generate_cexeq(ctx, r16, r11, r6);
             opn = "cexeq";
+        /* Two-operand cap instructions. */
+        case OPC_C2OPERAND_NI:         /* 0x3f */
+            switch(MASK_CAP7(opc)) {
+            case OPC_CGETPERM_NI:   /* 0x00 << 6 */
+                opn = "cgetperm";
+            case OPC_CGETTYPE_NI:   /* 0x01 << 6 */
+                opn = "cgettype";
+            case OPC_CGETBASE_NI:   /* 0x02 << 6 */
+                opn = "cgetbase";
+            case OPC_CGETLEN_NI:    /* 0x03 << 6 */
+                opn = "cgetlen";
+            case OPC_CGETTAG_NI:    /* 0x04 << 6 */
+                opn = "cgettag";
             case OPC_CGETSEALED_NI: /* 0x05 << 6 */
+                opn = "cgetsealed";
+            case OPC_CGETOFFSET_NI: /* 0x06 << 6 */
                 opn = "cgetoffset";
+            case OPC_CGETPCCSETOFF_NI: /* 0x07 << 6 */
+                opn = "cgetpccsetoffset";
+            case OPC_CCHECKPERM_NI:    /* 0x08 << 6 */
+                generate_ccheckperm(r16, r11);
                 opn = "ccheckperm";
+            case OPC_CCHECKTYPE_NI:    /* 0x09 << 6 */
+                generate_cchecktype(r16, r11);
                 opn = "cchecktype";
+            case OPC_CMOVE_NI:      /* 0x0a << 6 */
+                generate_cmove(r16, r11);
+                opn = "cmove";
+            case OPC_CCLEARTAG_NI:  /* 0x0b << 6 */
+                generate_ccleartag(r16, r11);
                 opn = "ccleartag";
+            case OPC_CJALR_NI:      /* 0x0c << 6 */
                 generate_cjalr(ctx, r16, r11);
                 opn = "cjalr";
                 TCGv t1 = tcg_temp_new();
                 gen_load_gpr(t0, r11);
                 TCGv t1 = tcg_temp_new();
                 gen_load_gpr(t0, r11);
+            /* One-operand cap instructions. */
+            case OPC_C1OPERAND_NI:     /* 0x1f << 6 */
+                switch(MASK_CAP8(opc)) {
+                case OPC_CGETPCC_NI:    /* 0x00 << 11 */
+                    opn = "cgetpcc";
+                case OPC_CGETCAUSE_NI:  /* 0x01 << 11 */
+                    opn = "cgetcause";
+                case OPC_CSETCAUSE_NI:  /* 0x02 << 11 */
+                    generate_csetcause(r16);
                     opn = "csetcause";
+                case OPC_CJR_NI:        /* 0x03 << 11 */
+                    generate_cjr(ctx, r16);
                     opn = "cjr";
+                default:
+                    opn = "c1operand";
                     goto invalid;
+                opn = "c2operand";
                 goto invalid;
             opn = "cget";
             goto invalid;
@@ -384,7 +431,10 @@ static void gen_cp2 (DisasContext *ctx, uint32_t opc, int r16, int r11, int r6)
         switch(MASK_CAP3(opc)) {
         case OPC_CANDPERM: /* 0x0 */
         case OPC_CSETCAUSE: /* 0x4 */
+            generate_csetcause(r6);
+            opn = "csetcause";
         case OPC_CCLEARTAG: /* 0x5 */
+            opn = "ccleartag";
         case OPC_MTC2SEL6: /* 0x6 */
                 gen_load_gpr(t0, r16);
                 gen_mtc2(ctx, t0, r11, ctx->opcode & 0x7);
@@ -397,8 +447,11 @@ static void gen_cp2 (DisasContext *ctx, uint32_t opc, int r16, int r11, int r6)
             goto invalid;
     case OPC_CRETURN: /* 0x06 */
     case OPC_CJALR: /* 0x07 */
+        generate_cjalr(ctx, r16, r11);
+        opn = "cjalr";
     case OPC_CJR: /* 0x08 */
         generate_cjr(ctx, r11);
+        opn = "cjr";
     case OPC_CBTU: /* 0x09 */
         opn = "cbtu";
         generate_cbtu(ctx, r16, (int16_t)(ctx->opcode));
@@ -408,7 +461,10 @@ static void gen_cp2 (DisasContext *ctx, uint32_t opc, int r16, int r11, int r6)
     case OPC_CCHECK: /* 0x0b */
         switch(MASK_CAP3(opc)) {
         case OPC_CCHECKPERM: /* 0x0 */
+            generate_ccheckperm(r16, r6);
+            opn = "ccheckperm";
         case OPC_CCHECKTYPE: /* 0x1 */
+            opn = "cchecktype";
             opn = "ccheck";
             goto invalid;
     case OPC_CTOPTR: /* 0x0c */
@@ -416,6 +472,7 @@ static void gen_cp2 (DisasContext *ctx, uint32_t opc, int r16, int r11, int r6)
         case OPC_CINCOFFSET: /* 0x0 */
         case OPC_CSETOFFSET: /* 0x1 */
         case OPC_CGETOFFSET: /* 0x2 */
+            opn = "cgetoffset";
             opn = "coffset";
             goto invalid;
     case OPC_CPTRCMP: /* 0x0e */
@@ -430,6 +487,7 @@ static void gen_cp2 (DisasContext *ctx, uint32_t opc, int r16, int r11, int r6)
             goto invalid;
     case OPC_CCLEARREGS: /* 0x0f */
         opn = "cclearregs";
+            goto invalid;
     case OPC_CLL:   /* 0x10 */
         switch(MASK_CAP4(opc)) {
         case OPC_CSCB: /* 0x0 */

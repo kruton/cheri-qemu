@@ -982,6 +982,9 @@ enum {
 #define MASK_CAP3(op)       (MASK_CP2(op) | ((op) & 0x7))
 #define MASK_CAP4(op)       (MASK_CP2(op) | ((op) & 0xf))
 #define MASK_CAP6(op)       (MASK_CP2(op) | ((op) & 0x3f))
+#define MASK_CAP7(op)       (MASK_CP2(op) | ((op) & (0x1f << 6)) |  (0x3f))
+#define MASK_CAP8(op)       (MASK_CP2(op) | ((op) & (0x1f << 11)) | \
+        (0x1f << 6) |  (0x3f))
 enum {
     OPC_CGET        = OPC_CP2 | (0x00 << 21),
     OPC_CSETBOUNDS  = OPC_CP2 | (0x01 << 21),
@@ -1049,11 +1052,34 @@ enum {
     OPC_CLH         = OPC_CLOAD | (0x5),
     OPC_CLW         = OPC_CLOAD | (0x6),
     OPC_CLD         = OPC_CLOAD | (0x7),
+};
 /* Store Via Capability Register */
+enum {
     OPC_CSB         = OPC_CSTORE | (0x0),
     OPC_CSH         = OPC_CSTORE | (0x1),
     OPC_CSW         = OPC_CSTORE | (0x2),
     OPC_CSD         = OPC_CSTORE | (0x3),
+/* Version 1.17 and 1.22 ISA encodings (*_NI) to replace above. */
+    OPC_C2OPERAND_NI    = OPC_CAP_NI | (0x3f),
+    OPC_C1OPERAND_NI    = OPC_C2OPERAND_NI | (0x1f << 6),
+    OPC_CGETPCC_NI      = OPC_C1OPERAND_NI | (0x00 << 11),
+    OPC_CGETCAUSE_NI    = OPC_C1OPERAND_NI | (0x01 << 11),
+    OPC_CSETCAUSE_NI    = OPC_C1OPERAND_NI | (0x02 << 11),
+    OPC_CJR_NI          = OPC_C1OPERAND_NI | (0x03 << 11),
+    /* Two Operand Instructions */
+    OPC_CGETPERM_NI     = OPC_C2OPERAND_NI | (0x00 << 6),
+    OPC_CGETTYPE_NI     = OPC_C2OPERAND_NI | (0x01 << 6),
+    OPC_CGETBASE_NI     = OPC_C2OPERAND_NI | (0x02 << 6),
+    OPC_CGETLEN_NI      = OPC_C2OPERAND_NI | (0x03 << 6),
+    OPC_CGETTAG_NI      = OPC_C2OPERAND_NI | (0x04 << 6),
+    OPC_CGETSEALED_NI   = OPC_C2OPERAND_NI | (0x05 << 6),
+    OPC_CGETOFFSET_NI   = OPC_C2OPERAND_NI | (0x06 << 6),
+    OPC_CGETPCCSETOFF_NI = OPC_C2OPERAND_NI | (0x07 << 6),
+    OPC_CCHECKPERM_NI   = OPC_C2OPERAND_NI | (0x08 << 6),
+    OPC_CCHECKTYPE_NI   = OPC_C2OPERAND_NI | (0x09 << 6),
+    OPC_CMOVE_NI        = OPC_C2OPERAND_NI | (0x0a << 6),
+    OPC_CCLEARTAG_NI    = OPC_C2OPERAND_NI | (0x0b << 6),
+    OPC_CJALR_NI        = OPC_C2OPERAND_NI | (0x0c << 6),
 #endif /* TARGET_CHERI */
 #define MASK_LMMI(op)    (MASK_OP_MAJOR(op) | (op & (0x1F << 21)) | (op & 0x1F))
 
