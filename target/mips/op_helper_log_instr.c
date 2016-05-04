@@ -1,6 +1,10 @@
 #endif
 {
 }
+{
+}
+            break;
+        default:
 #else
 static void simple_dump_state(CPUMIPSState *env, FILE *f,
                               fprintf_function cpu_fprintf)
