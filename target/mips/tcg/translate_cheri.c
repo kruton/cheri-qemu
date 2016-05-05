@@ -131,14 +131,17 @@ static inline void generate_cincoffset(int32_t cd, int32_t cb, int32_t rt)
 }
 {
     TCGv_i32 tcd = tcg_constant_i32(cd);
+    TCGv t0 = tcg_temp_new();
     gen_helper_cincoffset(tcg_env, tcd, tcs, t0);
 }
 static inline void generate_cmove(int32_t cd, int32_t cs)
 {
     TCGv_i32 tcd = tcg_constant_i32(cd);
+}
 static inline void generate_cmovz(int32_t cd, int32_t cs, int32_t rs)
 {
     TCGv_i32 tcd = tcg_constant_i32(cd);
+    gen_load_gpr(t0, rs);
 {
     TCGv_i32 tcd = tcg_constant_i32(cd);
 static inline void generate_cbuildcap(int32_t cd, int32_t cb, int32_t ct)
@@ -148,11 +151,13 @@ static inline void generate_cbuildcap(int32_t cd, int32_t cb, int32_t ct)
     TCGv_i32 tct = tcg_constant_i32(ct);
 static inline void generate_ccseal(int32_t cd, int32_t cs, int32_t ct)
 {
+    TCGv_i32 tcd = tcg_constant_i32(cd);
     TCGv_i32 tct = tcg_constant_i32(ct);
 static inline void generate_ccopytype(int32_t cd, int32_t cb, int32_t ct)
 {
     TCGv_i32 tcb = tcg_constant_i32(cb);
     TCGv_i32 tct = tcg_constant_i32(ct);
+{
     TCGv_i32 tcb = tcg_constant_i32(cb);
     TCGv_i32 tct = tcg_constant_i32(ct);
     gen_store_gpr(t0, rd);
@@ -408,6 +413,7 @@ static void gen_cp2 (DisasContext *ctx, uint32_t opc, int r16, int r11, int r6)
             case OPC_C1OPERAND_NI:     /* 0x1f << 6 */
                 switch(MASK_CAP8(opc)) {
                 case OPC_CGETPCC_NI:    /* 0x00 << 11 */
+                    generate_cgetpcc(ctx, r16);
                     opn = "cgetpcc";
                 case OPC_CGETCAUSE_NI:  /* 0x01 << 11 */
                     opn = "cgetcause";
@@ -471,6 +477,7 @@ static void gen_cp2 (DisasContext *ctx, uint32_t opc, int r16, int r11, int r6)
     case OPC_COFFSET: /* 0x0d */
         case OPC_CINCOFFSET: /* 0x0 */
         case OPC_CSETOFFSET: /* 0x1 */
+            generate_csetoffset(r16, r11, r6);
         case OPC_CGETOFFSET: /* 0x2 */
             opn = "cgetoffset";
             opn = "coffset";
