@@ -4574,6 +4574,7 @@ static void gen_compute_branch(DisasContext *ctx, uint32_t opc,
             btgt = ((ctx->base.pc_next + insn_bytes) & jal_mask)
                    | (uint32_t)offset;
         }
+        break;
     case OPC_JALX:
         /* Jump to immediate */
         btgt = ((ctx->base.pc_next + insn_bytes) & (int32_t)0xF0000000) |
