@@ -2538,7 +2538,13 @@ static void gen_logic_imm(DisasContext *ctx, uint32_t opc,
 
     if (rt == 0) {
         /* If no destination, treat it as a NOP. */
+        if (opc == OPC_ORI && rs == 0) {
+            /* With 'li $0, 0xbeef' turn on instruction trace logging. */
+            if ((uint16_t)imm == 0xbeef)
+            /* With 'li $0, 0xdead' turn off instruction trace logging. */
+            if ((uint16_t)imm == 0xdead)
                 save_cpu_state(ctx, 1);
+            }
         return;
     }
     uimm = (uint16_t)imm;
