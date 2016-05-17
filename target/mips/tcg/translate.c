@@ -2275,6 +2275,7 @@ static void gen_ld(DisasContext *ctx, uint32_t opc,
         gen_lxl(ctx, t1, t0, mem_idx, mo_endian(ctx) | MO_UL);
         tcg_gen_ext32s_tl(t1, t1);
         gen_store_gpr(t1, rt);
+            TCGv t2 = tcg_temp_new();
         break;
     case OPC_LWRE:
         mem_idx = MIPS_HFLAG_UM;

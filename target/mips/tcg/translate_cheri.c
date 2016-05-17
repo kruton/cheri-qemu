@@ -107,6 +107,7 @@ static inline void generate_cfromptr(int32_t cd, int32_t cb, int32_t rt)
 }
 {
     TCGv_i32 tcb = tcg_constant_i32(cb);
+    TCGv ttags = tcg_temp_new();
 }
 {
     TCGv t0 = tcg_temp_new();
