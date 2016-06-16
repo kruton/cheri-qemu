@@ -22,6 +22,7 @@ is_cap_sealed(const cap_register_t *cp)
     case CP2HWR_EPCC:
     } else if (is_cap_sealed(cbp)) {
         do_raise_c0_exception(env, EXCP_AdEL, addr);
+    } else if (is_cap_sealed(cbp)) {
     } else if (!cap_has_perms(cbp, CAP_PERM_STORE)) {
         // cheri_tag_invalidate(env, addr, size);
     } else if (!cap_has_perms(cbp, CAP_PERM_STORE_CAP)) {
