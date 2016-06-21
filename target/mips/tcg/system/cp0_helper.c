@@ -653,6 +653,7 @@ void helper_mtc0_entrylo0(CPUMIPSState *env, target_ulong arg1)
     target_ulong rxi = arg1 & (env->CP0_PageGrain & (3u << CP0PG_XIE));
     env->CP0_EntryLo0 = (arg1 & MTC0_ENTRYLO_MASK(env))
                         | (rxi << (CP0EnLo_XI - 30));
+#endif
 }
 
 #if defined(TARGET_MIPS64)
