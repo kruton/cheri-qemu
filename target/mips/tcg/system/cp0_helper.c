@@ -296,6 +296,7 @@ target_ulong helper_mftc0_tcrestart(CPUMIPSState *env)
         return other->active_tc.PC;
     } else {
         return other->tcs[other_tc].PC;
+#endif
     }
 }
 
