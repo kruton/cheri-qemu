@@ -665,6 +665,7 @@ const mips_def_t mips_defs[] =
         .PABITS = 36,
         .insn_flags = CPU_MIPS64R2,
         .insn_flags = CPU_MIPS64R1,
+        .CP0_Config0 = MIPS_CONFIG0 | (0x2 << CP0C0_AT) |
                        (1 << CP0C1_IS) | (4 << CP0C1_IL) | (1 << CP0C1_IA) |
                        (1 << CP0C1_DS) | (4 << CP0C1_DL) | (1 << CP0C1_DA) |
                        (1 << CP0C1_PC) | (1 << CP0C1_WR) | (1 << CP0C1_EP),
