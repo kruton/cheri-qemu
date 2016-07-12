@@ -31,6 +31,8 @@
 #include "exec/target_page.h"
 
  */
+/*3*/   {"EntryLo1"},     {0},              {0},              {0},
+/*8*/   {"BadVAddr"},     {"BadInstr"},     {"BadInstrP"},    {0},
 
 /* SMP helpers.  */
 static bool mips_vpe_is_wfi(MIPSCPU *c)

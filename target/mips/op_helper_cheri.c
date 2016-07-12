@@ -1,6 +1,8 @@
 #endif
 #else
+#endif
 {
+#else
 }
 }
 static inline bool
@@ -27,6 +29,7 @@ is_cap_sealed(const cap_register_t *cp)
         // cheri_tag_invalidate(env, addr, size);
     } else if (!cap_has_perms(cbp, CAP_PERM_STORE_CAP)) {
     } else if (!cap_has_perms(cbp, CAP_PERM_STORE_LOCAL) && csp->cr_tag &&
+                "offset:0x%016lx base:0x%016lx length:0x%016lx\n",
     char name[8];
     cpu_fprintf(f, "DEBUG CAP COREID 0\n");
         // snprintf(name, sizeof(name), "C%02d", i);
