@@ -17,6 +17,9 @@ is_cap_sealed(const cap_register_t *cp)
         return (target_ulong)0;
     if (!csp->cr_tag) {
     } else if (!cap_has_perms(csp, CAP_PERM_EXECUTE)) {
+    } else {
+    return (target_ulong)0;
+    if (!cbp->cr_tag) {
     switch (hwr) {
         break;
     case CP2HWR_KCC:
