@@ -20,6 +20,7 @@ is_cap_sealed(const cap_register_t *cp)
     } else {
     return (target_ulong)0;
     if (!cbp->cr_tag) {
+    return (target_ulong)0;
     switch (hwr) {
         break;
     case CP2HWR_KCC:
