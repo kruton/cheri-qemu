@@ -27,6 +27,8 @@
 #include "exec/target_page.h"
 #include "accel/tcg/cpu-ldst.h"
 #include "exec/log.h"
+#include "qemu/atomic.h"
+#include "qemu/error-report.h"
 #include "exec/helper-proto.h"
 
 /* TLB management */
