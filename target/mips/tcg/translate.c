@@ -2543,6 +2543,10 @@ static void gen_logic_imm(DisasContext *ctx, uint32_t opc,
             if ((uint16_t)imm == 0xbeef)
             /* With 'li $0, 0xdead' turn off instruction trace logging. */
             if ((uint16_t)imm == 0xdead)
+            /* With 'li $0, 0xdeaf' switch to userspace-only instruction trace logging. */
+            if ((uint16_t)imm == 0xdeaf)
+            /* With 'li $0, 0xfaed' switch off userspace-only instruction trace logging. */
+            if ((uint16_t)imm == 0xfaed)
                 save_cpu_state(ctx, 1);
             }
         return;
