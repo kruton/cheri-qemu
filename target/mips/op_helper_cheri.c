@@ -26,6 +26,7 @@ is_cap_sealed(const cap_register_t *cp)
     case CP2HWR_KCC:
     case CP2HWR_KDC:
     case CP2HWR_EPCC:
+    *cdp = *csp;
     } else if (is_cap_sealed(cbp)) {
         do_raise_c0_exception(env, EXCP_AdEL, addr);
     } else if (is_cap_sealed(cbp)) {
