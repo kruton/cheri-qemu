@@ -25,10 +25,18 @@ static inline void generate_ccall(int32_t cs, int32_t cb)
     gen_helper_ccall(tcg_env, tcs, tcb);
 }
 {
+    if (ctx->hflags & MIPS_HFLAG_BMASK) {
+#ifdef MIPS_DEBUG_DISAS
+        LOG_DISAS("Branch in delay / forbidden slot at PC 0x"
+                  TARGET_FMT_lx "\n", ctx->base.pc_next);
+#endif
         generate_exception(ctx, EXCP_RI);
+    } else {
         TCGv_i32 tcs = tcg_constant_i32(cs);
         TCGv_i32 tcb = tcg_constant_i32(cb);
+            gen_helper_ccall_notrap2(btarget, tcg_env, tcs, tcb);
         ctx->hflags |= (MIPS_HFLAG_BRCCALL);
+        save_cpu_state(ctx, 0);
     }
 }
 {
@@ -70,9 +78,13 @@ static inline void generate_cjalr(DisasContext *ctx, int32_t cd, int32_t cb)
 }
 static inline void generate_cjr(DisasContext *ctx, int32_t cb)
 {
+        generate_exception(ctx, EXCP_RI);
         TCGv_i32 tcb = tcg_constant_i32(cb);
         gen_helper_cjr(btarget, tcg_env, tcb);
+        /* Set branch and delay slot flags */
         ctx->hflags |= (MIPS_HFLAG_BRC | MIPS_HFLAG_BDS32);
+        /* Save capability register index that is new PCC */
+        // ctx->btcr = cb;
     }
 }
 static inline void generate_ccheckperm(int32_t cs, int32_t rt)
@@ -84,6 +96,7 @@ static inline void generate_ccheckperm(int32_t cs, int32_t rt)
 }
 static inline void generate_cchecktype(int32_t cs, int32_t cb)
 {
+    TCGv_i32 tcs = tcg_constant_i32(cs);
     TCGv_i32 tcb = tcg_constant_i32(cb);
     gen_helper_cchecktype(tcg_env, tcs, tcb);
 }
