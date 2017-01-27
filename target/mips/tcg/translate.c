@@ -2547,6 +2547,8 @@ static void gen_logic_imm(DisasContext *ctx, uint32_t opc,
             if ((uint16_t)imm == 0xdeaf)
             /* With 'li $0, 0xfaed' switch off userspace-only instruction trace logging. */
             if ((uint16_t)imm == 0xfaed)
+            if ((uint16_t)imm == 0xface)
+                GEN_INSTR_TRACE_HELPER(tcg_env, cheri_debug_message);
                 save_cpu_state(ctx, 1);
             }
         return;
