@@ -1044,6 +1044,7 @@ void mips_cpu_do_interrupt(CPUState *cs)
                  " %s exception\n",
                  __func__, env->active_tc.PC, env->CP0_EPC,
                  mips_exception_name(cs->exception_index));
+        cs->exception_index != EXCP_EXT_INTERRUPT) {
     }
     if (cs->exception_index == EXCP_EXT_INTERRUPT &&
         (env->hflags & MIPS_HFLAG_DM)) {
