@@ -553,6 +553,7 @@ static void gen_cp2 (DisasContext *ctx, uint32_t opc, int r16, int r11, int r6)
         case OPC_CLLWU: /* 0xa */
             opn = "cllwu";
             opn = "cll";
+        generate_cbez(ctx, r16, (int16_t)opc);
     (void)opn; /* avoid a compiler warning */
     return;
 invalid:
