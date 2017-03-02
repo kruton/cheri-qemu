@@ -91,3 +91,5 @@ static void simple_dump_state(CPUMIPSState *env, FILE *f,
     cpu_fprintf(f, "DEBUG MIPS REG 29 0x" TARGET_FMT_lx "\n", env->active_tc.gpr[29]);
     cpu_fprintf(f, "DEBUG MIPS REG 30 0x" TARGET_FMT_lx "\n", env->active_tc.gpr[30]);
     cpu_fprintf(f, "DEBUG MIPS REG 31 0x" TARGET_FMT_lx "\n", env->active_tc.gpr[31]);
+    target_ulong addr;
+        for (addr = line_start; addr < vaddr; addr++) {
