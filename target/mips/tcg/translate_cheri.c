@@ -46,7 +46,13 @@ static inline void generate_ccall(int32_t cs, int32_t cb)
     gen_load_gpr(t0, rt);
 }
 {
+    if (ctx->hflags & MIPS_HFLAG_BMASK) {
+#ifdef MIPS_DEBUG_DISAS
+        LOG_DISAS("Branch in delay / forbidden slot at PC 0x"
+                TARGET_FMT_lx "\n", ctx->base.pc_next);
+#endif
         generate_exception(ctx, EXCP_RI);
+    } else {
         TCGv_i32 tcb = tcg_constant_i32(cb);
         TCGv_i32 toffset = tcg_constant_i32(offset);
         ctx->btarget = ctx->base.pc_next + 4 * offset + 4;
@@ -115,6 +121,7 @@ static inline void generate_cfromptr(int32_t cd, int32_t cb, int32_t rt)
     gen_helper_cfromptr(tcg_env, tcd, tcb, t0);
 }
 {
+    TCGv_i32 tcs = tcg_constant_i32(cs);
     TCGv t0 = tcg_temp_new();
     gen_store_gpr(t0, rd);
 }
