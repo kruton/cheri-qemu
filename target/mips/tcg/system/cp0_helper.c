@@ -847,6 +847,7 @@ void helper_mtc0_entrylo1(CPUMIPSState *env, target_ulong arg1)
                         | (rxi << (CP0EnLo_L - 30));
 #else
                         | (rxi << (CP0EnLo_XI - 30));
+#endif
 }
 
 #if defined(TARGET_MIPS64)
