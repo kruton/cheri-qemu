@@ -32,6 +32,7 @@ is_cap_sealed(const cap_register_t *cp)
         do_raise_c0_exception(env, EXCP_AdEL, addr);
     } else if (is_cap_sealed(cbp)) {
     } else if (!cap_has_perms(cbp, CAP_PERM_STORE)) {
+        do_raise_c0_exception(env, EXCP_AdES, addr);
         // cheri_tag_invalidate(env, addr, size);
     } else if (!cap_has_perms(cbp, CAP_PERM_STORE_CAP)) {
     } else if (!cap_has_perms(cbp, CAP_PERM_STORE_LOCAL) && csp->cr_tag &&
