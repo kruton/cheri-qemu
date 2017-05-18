@@ -630,6 +630,7 @@ const mips_def_t mips_defs[] =
     {
         .name = "5Kf",
 #if defined(TARGET_CHERI)
+        /* cpu vendor = 0x0f, cpu impl = 0x04, cpu rev = 0x01 */
 #else /* ! TARGET_CHERI */
         .CP0_PRid = 0x00018100,
 #endif /* ! TARGET_CHERI */
