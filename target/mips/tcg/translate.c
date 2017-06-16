@@ -11095,12 +11095,25 @@ void gen_rdhwr(DisasContext *ctx, int rt, int rd, int sel)
         }
         break;
 #endif
+#if defined(TARGET_CHERI)
+    /*
+     * Fake registers to keep libstatcounters from triggering segfaultr
+     */
+        gen_store_gpr(t0, rt);
+        break;
         gen_store_gpr(t0, rt);
         break;
         break;
+        gen_helper_rdhwr_statcounters_reset(t0, tcg_env);
         break;
+    case 11:
         break;
-        break;
+    case 8:
+    case 9:
+    case 10:
+    case 12:
+    case 13:
+    case 14:
         break;
 #endif
     default:            /* Invalid */
