@@ -150,6 +150,7 @@ static inline void generate_cincoffset(int32_t cd, int32_t cb, int32_t rt)
     gen_load_gpr(t0, rt);
     gen_helper_cincoffset(tcg_env, tcd, tcb, t0);
 }
+static inline void generate_cincoffset_imm(int32_t cd, int32_t cs, int32_t increment)
 {
     TCGv_i32 tcd = tcg_constant_i32(cd);
     TCGv t0 = tcg_temp_new();
@@ -168,6 +169,8 @@ static inline void generate_cmovz(int32_t cd, int32_t cs, int32_t rs)
 static inline void generate_cmovn(int32_t cd, int32_t cs, int32_t rs)
 {
     TCGv_i32 tcd = tcg_constant_i32(cd);
+    TCGv t0 = tcg_temp_new();
+}
 static inline void generate_cbuildcap(int32_t cd, int32_t cb, int32_t ct)
 {
     TCGv_i32 tcd = tcg_constant_i32(cd);
@@ -189,6 +192,7 @@ static inline void generate_ccopytype(int32_t cd, int32_t cb, int32_t ct)
 static inline void generate_creturn(void)
 {
 static inline void generate_cseal(int32_t cd, int32_t cb, int32_t ct)
+{
     TCGv_i32 tcb = tcg_constant_i32(cb);
     TCGv_i32 tct = tcg_constant_i32(ct);
     gen_helper_cseal(tcg_env, tcd, tcb, tct);
@@ -210,9 +214,12 @@ static inline void generate_csetboundsexact(int32_t cd, int32_t cb, int32_t rt)
 static inline void generate_csetbounds_imm(int32_t cd, int32_t cb, int32_t length)
     TCGv_i32 tcb = tcg_constant_i32(cb);
     gen_helper_csetbounds(tcg_env, tcd, tcb, t0);
+    TCGv_i32 tcb = tcg_constant_i32(cb);
+    TCGv_i32 tct = tcg_constant_i32(ct);
     gen_helper_csub(t0, tcg_env, tcb, tct);
     gen_store_gpr(t0, rd);
 static inline void generate_csetcause(int32_t rd)
+    gen_load_gpr(t0, rd);
     gen_helper_csetcause(tcg_env, t0);
 static inline void generate_csetoffset(int32_t cd, int32_t cb, int32_t rt)
     gen_helper_csetoffset(tcg_env, tcd, tcb, t0);
@@ -382,6 +389,7 @@ static void gen_cp2 (DisasContext *ctx, uint32_t opc, int r16, int r11, int r6)
             opn = "csetboundsexact";
             break;
         case OPC_CSUB:              /* 0x0a */
+            check_cop2x(ctx);
             generate_csub(ctx, r16, r11, r6);
             opn = "csub";
             break;
@@ -389,6 +397,7 @@ static void gen_cp2 (DisasContext *ctx, uint32_t opc, int r16, int r11, int r6)
             opn = "cseal";
             break;
             opn = "cunseal";
+            break;
             opn = "candperm";
             generate_csetoffset(r16, r11, r6);
             opn = "csetoffset";
@@ -404,6 +413,8 @@ static void gen_cp2 (DisasContext *ctx, uint32_t opc, int r16, int r11, int r6)
             opn = "cleu";
             generate_cexeq(ctx, r16, r11, r6);
             opn = "cexeq";
+            generate_cnexeq(ctx, r16, r11, r6);
+            opn = "cnexeq";
         /* Two-operand cap instructions. */
         case OPC_C2OPERAND_NI:         /* 0x3f */
             switch(MASK_CAP7(opc)) {
@@ -459,6 +470,7 @@ static void gen_cp2 (DisasContext *ctx, uint32_t opc, int r16, int r11, int r6)
                 default:
                     opn = "c1operand";
                     goto invalid;
+            default:
                 opn = "c2operand";
                 goto invalid;
             opn = "cget";
@@ -523,6 +535,8 @@ static void gen_cp2 (DisasContext *ctx, uint32_t opc, int r16, int r11, int r6)
         case OPC_CLTU: /* 0x4 */
         case OPC_CLEU: /* 0x5 */
         case OPC_CEXEQ: /* 0x6 */
+        case OPC_CNEXEQ: /* 0x7 */
+        default: /* Can't happen, because all possible values are allocated */
             opn = "cptrcmp";
             goto invalid;
     case OPC_CCLEARREGS: /* 0x0f */
