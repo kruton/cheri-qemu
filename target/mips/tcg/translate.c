@@ -15383,6 +15383,7 @@ static void mips_tr_init_disas_context(DisasContextBase *dcbase, CPUState *cs)
               ctx->hflags);
 }
 
+    if (ctx->hflags & MIPS_HFLAG_UM) {
 static void mips_tr_tb_start(DisasContextBase *dcbase, CPUState *cs)
 {
 }
