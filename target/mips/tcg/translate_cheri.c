@@ -393,28 +393,56 @@ static void gen_cp2 (DisasContext *ctx, uint32_t opc, int r16, int r11, int r6)
             generate_csub(ctx, r16, r11, r6);
             opn = "csub";
             break;
+        case OPC_CSEAL_NI: /* 0x0b */
+            check_cop2x(ctx);
             generate_cseal(r16, r11, r6);
             opn = "cseal";
             break;
+        case OPC_CUNSEAL_NI: /* 0x0c */
+            generate_cunseal(r16, r11, r6);
             opn = "cunseal";
             break;
+        case OPC_CANDPERM_NI: /* 0x0d */
             opn = "candperm";
+            break;
+        case OPC_CSETOFFSET_NI: /* 0x0f */
             generate_csetoffset(r16, r11, r6);
             opn = "csetoffset";
+        case OPC_CSETBOUNDS_NI: /* 0x10 */
+            generate_csetbounds(r16, r11, r6);
             opn = "csetbounds";
+        case OPC_CINCOFFSET_NI: /* 0x11 */
+            generate_cincoffset(r16, r11, r6);
             opn = "cincoffset";
+        case OPC_CTOPTR_NI: /* 0x12 */
             opn = "ctoptr";
+        case OPC_CFROMPTR_NI: /* 0x13 */
+            generate_cfromptr(r16, r11, r6);
+            opn = "cfromptr";
+        case OPC_CEQ_NI: /* 0x14 */
             opn = "ceq";
+        case OPC_CNE_NI: /* 0x15 */
             opn = "cne";
+        case OPC_CLT_NI: /* 0x16 */
             opn = "clt";
         case OPC_CLE_NI: /* 0x17 */
             opn = "cle";
+        case OPC_CLTU_NI: /* 0x18 */
+            generate_cltu(ctx, r16, r11, r6);
             opn = "cltu";
+        case OPC_CLEU_NI: /* 0x19 */
+            generate_cleu(ctx, r16, r11, r6);
             opn = "cleu";
+        case OPC_CEXEQ_NI: /* 0x1a */
             generate_cexeq(ctx, r16, r11, r6);
             opn = "cexeq";
+        case OPC_CMOVZ_NI: /* 0x1b */
+            opn = "cmovz";
+        case OPC_CMOVN_NI: /* 0x1c */
+            opn = "cmovn";
             generate_cnexeq(ctx, r16, r11, r6);
             opn = "cnexeq";
+            generate_candaddr(r16, r11, r6);
         /* Two-operand cap instructions. */
         case OPC_C2OPERAND_NI:         /* 0x3f */
             switch(MASK_CAP7(opc)) {
@@ -477,11 +505,16 @@ static void gen_cp2 (DisasContext *ctx, uint32_t opc, int r16, int r11, int r6)
             opn = "cget";
             goto invalid;
     case OPC_CSETBOUNDS: /* 0x01 */
+        opn = "csetbounds";
     case OPC_CSEAL:  /* 0x02 */
+        generate_cseal(r16, r11, r6);
+        opn = "cseal";
     case OPC_CUNSEAL: /* 0x03 */
+        opn = "cunseal";
     case OPC_CMISC: /* 0x04 */
         switch(MASK_CAP3(opc)) {
         case OPC_CANDPERM: /* 0x0 */
+            opn = "candperm";
         case OPC_CSETCAUSE: /* 0x4 */
             generate_csetcause(r6);
             opn = "csetcause";
@@ -520,22 +553,33 @@ static void gen_cp2 (DisasContext *ctx, uint32_t opc, int r16, int r11, int r6)
             opn = "ccheck";
             goto invalid;
     case OPC_CTOPTR: /* 0x0c */
+        opn = "ctoptr";
     case OPC_COFFSET: /* 0x0d */
         case OPC_CINCOFFSET: /* 0x0 */
+            opn = "cincoffset";
         case OPC_CSETOFFSET: /* 0x1 */
             generate_csetoffset(r16, r11, r6);
+            opn = "csetoffset";
         case OPC_CGETOFFSET: /* 0x2 */
             opn = "cgetoffset";
             opn = "coffset";
             goto invalid;
     case OPC_CPTRCMP: /* 0x0e */
         case OPC_CEQ:  /* 0x0 */
+            opn = "ceq";
         case OPC_CNE:  /* 0x1 */
+            opn = "cne";
         case OPC_CLT:  /* 0x2 */
+            opn = "clt";
         case OPC_CLE:  /* 0x3 */
+            opn = "cle";
         case OPC_CLTU: /* 0x4 */
+            opn = "cltu";
         case OPC_CLEU: /* 0x5 */
+            opn = "cleu";
         case OPC_CEXEQ: /* 0x6 */
+            generate_cexeq(ctx, r16, r11, r6);
+            opn = "cexeq";
         case OPC_CNEXEQ: /* 0x7 */
         default: /* Can't happen, because all possible values are allocated */
             opn = "cptrcmp";
@@ -575,6 +619,7 @@ static void gen_cp2 (DisasContext *ctx, uint32_t opc, int r16, int r11, int r6)
         case OPC_CLLWU: /* 0xa */
             opn = "cllwu";
             opn = "cll";
+            goto invalid;
         generate_cbez(ctx, r16, (int16_t)opc);
     (void)opn; /* avoid a compiler warning */
     return;
