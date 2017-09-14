@@ -449,6 +449,7 @@ static void gen_cp2 (DisasContext *ctx, uint32_t opc, int r16, int r11, int r6)
             case OPC_CJALR_NI:      /* 0x0c << 6 */
                 generate_cjalr(ctx, r16, r11);
                 opn = "cjalr";
+            case OPC_CRAP_NI:   /* 0x10 << 6 */
                 TCGv t1 = tcg_temp_new();
                 gen_load_gpr(t0, r11);
                 TCGv t1 = tcg_temp_new();

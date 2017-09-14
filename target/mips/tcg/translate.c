@@ -1060,9 +1060,17 @@ enum {
     OPC_CSH         = OPC_CSTORE | (0x1),
     OPC_CSW         = OPC_CSTORE | (0x2),
     OPC_CSD         = OPC_CSTORE | (0x3),
+};
 /* Version 1.17 and 1.22 ISA encodings (*_NI) to replace above. */
+enum {
+    /* Common new ISA encoding blocks */
+    /* non-immediate capability instructions */
+    OPC_CAP_NI          = OPC_CP2 | (0x00 << 21),
+    /* 2-operand capability instructions */
     OPC_C2OPERAND_NI    = OPC_CAP_NI | (0x3f),
+    /* 1-operand capability instructions */
     OPC_C1OPERAND_NI    = OPC_C2OPERAND_NI | (0x1f << 6),
+    /* One operand instructions */
     OPC_CGETPCC_NI      = OPC_C1OPERAND_NI | (0x00 << 11),
     OPC_CGETCAUSE_NI    = OPC_C1OPERAND_NI | (0x01 << 11),
     OPC_CSETCAUSE_NI    = OPC_C1OPERAND_NI | (0x02 << 11),
@@ -1081,6 +1089,14 @@ enum {
     OPC_CMOVE_NI        = OPC_C2OPERAND_NI | (0x0a << 6),
     OPC_CCLEARTAG_NI    = OPC_C2OPERAND_NI | (0x0b << 6),
     OPC_CJALR_NI        = OPC_C2OPERAND_NI | (0x0c << 6),
+    OPC_CREADHWR_NI     = OPC_C2OPERAND_NI | (0x0d << 6),
+    OPC_CGETADDR_NI     = OPC_C2OPERAND_NI | (0x0f << 6),
+    OPC_CRAP_NI         = OPC_C2OPERAND_NI | (0x10 << 6),
+    OPC_CGETFLAGS_NI    = OPC_C2OPERAND_NI | (0x12 << 6),
+    OPC_CGETPCCINCOFF_NI = OPC_C2OPERAND_NI | (0x13 << 6),
+    OPC_CLOADTAGS_NI    = OPC_C2OPERAND_NI | (0x1e << 6),
+};
+enum {
 #endif /* TARGET_CHERI */
 #define MASK_LMMI(op)    (MASK_OP_MAJOR(op) | (op & (0x1F << 21)) | (op & 0x1F))
 
