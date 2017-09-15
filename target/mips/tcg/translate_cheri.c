@@ -153,6 +153,7 @@ static inline void generate_cincoffset(int32_t cd, int32_t cb, int32_t rt)
 static inline void generate_cincoffset_imm(int32_t cd, int32_t cs, int32_t increment)
 {
     TCGv_i32 tcd = tcg_constant_i32(cd);
+    TCGv_i32 tcs = tcg_constant_i32(cs);
     TCGv t0 = tcg_temp_new();
     gen_helper_cincoffset(tcg_env, tcd, tcs, t0);
 }
@@ -176,15 +177,19 @@ static inline void generate_cbuildcap(int32_t cd, int32_t cb, int32_t ct)
     TCGv_i32 tcd = tcg_constant_i32(cd);
     TCGv_i32 tcb = tcg_constant_i32(cb);
     TCGv_i32 tct = tcg_constant_i32(ct);
+}
 static inline void generate_ccseal(int32_t cd, int32_t cs, int32_t ct)
 {
     TCGv_i32 tcd = tcg_constant_i32(cd);
     TCGv_i32 tct = tcg_constant_i32(ct);
+    gen_helper_ccseal(tcg_env, tcd, tcs, tct);
 static inline void generate_ccopytype(int32_t cd, int32_t cb, int32_t ct)
 {
+    TCGv_i32 tcd = tcg_constant_i32(cd);
     TCGv_i32 tcb = tcg_constant_i32(cb);
     TCGv_i32 tct = tcg_constant_i32(ct);
 {
+    TCGv t0 = tcg_temp_new();
     TCGv_i32 tcb = tcg_constant_i32(cb);
     TCGv_i32 tct = tcg_constant_i32(ct);
     gen_helper_ctestsubset(t0, tcg_env, tcb, tct);
@@ -197,6 +202,7 @@ static inline void generate_cseal(int32_t cd, int32_t cb, int32_t ct)
     TCGv_i32 tct = tcg_constant_i32(ct);
     gen_helper_cseal(tcg_env, tcd, tcb, tct);
 static inline void generate_csetbounds(int32_t cd, int32_t cb, int32_t rt)
+{
     TCGv_i32 tcb = tcg_constant_i32(cb);
     gen_helper_csetbounds(tcg_env, tcd, tcb, t0);
 static inline void generate_candaddr(int32_t cd, int32_t cb, int32_t rt)
@@ -213,6 +219,7 @@ static inline void generate_csetboundsexact(int32_t cd, int32_t cb, int32_t rt)
     gen_helper_csetboundsexact(tcg_env, tcd, tcb, t0);
 static inline void generate_csetbounds_imm(int32_t cd, int32_t cb, int32_t length)
     TCGv_i32 tcb = tcg_constant_i32(cb);
+    tcg_gen_movi_tl(t0, length);
     gen_helper_csetbounds(tcg_env, tcd, tcb, t0);
     TCGv_i32 tcb = tcg_constant_i32(cb);
     TCGv_i32 tct = tcg_constant_i32(ct);
@@ -244,6 +251,7 @@ static inline int generate_cclearregs(DisasContext *ctx, int32_t regset, int32_t
         }
         break;
     case 1: /* ClearHi */
+        tcg_gen_movi_tl(t0, 0);
         for(i = 16; i < 32; i++) {
         }
         break;
@@ -261,6 +269,7 @@ static inline void generate_ceq(DisasContext *ctx, int32_t rd, int32_t cb,
                                 int32_t ct)
 {
     TCGv_i32 tcb = tcg_constant_i32(cb);
+    TCGv_i32 tct = tcg_constant_i32(ct);
     TCGv t0 = tcg_temp_new();
     gen_helper_ceq(t0, tcg_env, tcb, tct);
     gen_store_gpr(t0, rd);
@@ -270,6 +279,7 @@ static inline void generate_ceq(DisasContext *ctx, int32_t rd, int32_t cb,
     TCGv t0 = tcg_temp_new();
     gen_helper_cne(t0, tcg_env, tcb, tct);
     gen_store_gpr(t0, rd);
+}
 static inline void generate_clt(DisasContext *ctx, int32_t rd, int32_t cb,
 {
     TCGv_i32 tcb = tcg_constant_i32(cb);
@@ -283,6 +293,9 @@ static inline void generate_cle(DisasContext *ctx, int32_t rd, int32_t cb,
     gen_helper_cle(t0, tcg_env, tcb, tct);
     gen_store_gpr(t0, rd);
 static inline void generate_cltu(DisasContext *ctx, int32_t rd, int32_t cb,
+{
+    TCGv_i32 tcb = tcg_constant_i32(cb);
+    TCGv t0 = tcg_temp_new();
     gen_helper_cltu(t0, tcg_env, tcb, tct);
 static inline void generate_cleu(DisasContext *ctx, int32_t rd, int32_t cb,
     gen_helper_cleu(t0, tcg_env, tcb, tct);
@@ -399,6 +412,7 @@ static void gen_cp2 (DisasContext *ctx, uint32_t opc, int r16, int r11, int r6)
             opn = "cseal";
             break;
         case OPC_CUNSEAL_NI: /* 0x0c */
+            check_cop2x(ctx);
             generate_cunseal(r16, r11, r6);
             opn = "cunseal";
             break;
@@ -621,6 +635,10 @@ static void gen_cp2 (DisasContext *ctx, uint32_t opc, int r16, int r11, int r6)
             opn = "cll";
             goto invalid;
         generate_cbez(ctx, r16, (int16_t)opc);
+        generate_cincoffset_imm(r16, r11, (opc & 0x7ff));
+        opn = "cincoffsetimmediate";
+        generate_csetbounds_imm(r16, r11, (opc & 0x7ff));
+        opn = "csetboundsimmediate";
     (void)opn; /* avoid a compiler warning */
     return;
 invalid:
