@@ -15067,6 +15067,7 @@ static bool decode_opc_legacy(CPUMIPSState *env, DisasContext *ctx)
             case OPC_CLW:
                 break;
             case OPC_CLD:
+                break;
             default:
                 MIPS_INVAL("cl");
                 generate_exception (ctx, EXCP_RI);
@@ -15075,6 +15076,7 @@ static bool decode_opc_legacy(CPUMIPSState *env, DisasContext *ctx)
     case OPC_CLOADC:    /* Load Capability Register */
         check_cop2x(ctx);
         generate_clc(ctx, rs, rt, rd, ctx->opcode & 0x7ff, false);
+        check_cop2x(ctx);
     case OPC_CSTORE:    /* Store Via Capability Register */
         {
             uint32_t opc = ctx->opcode;

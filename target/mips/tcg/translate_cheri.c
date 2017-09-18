@@ -160,17 +160,21 @@ static inline void generate_cincoffset_imm(int32_t cd, int32_t cs, int32_t incre
 static inline void generate_cmove(int32_t cd, int32_t cs)
 {
     TCGv_i32 tcd = tcg_constant_i32(cd);
+    TCGv_i32 tcs = tcg_constant_i32(cs);
 }
 static inline void generate_cmovz(int32_t cd, int32_t cs, int32_t rs)
 {
     TCGv_i32 tcd = tcg_constant_i32(cd);
     TCGv t0 = tcg_temp_new();
     gen_load_gpr(t0, rs);
+    gen_helper_cmovz(tcg_env, tcd, tcs, t0);
 }
 static inline void generate_cmovn(int32_t cd, int32_t cs, int32_t rs)
 {
     TCGv_i32 tcd = tcg_constant_i32(cd);
     TCGv t0 = tcg_temp_new();
+    gen_load_gpr(t0, rs);
+    gen_helper_cmovn(tcg_env, tcd, tcs, t0);
 }
 static inline void generate_cbuildcap(int32_t cd, int32_t cb, int32_t ct)
 {
@@ -183,6 +187,7 @@ static inline void generate_ccseal(int32_t cd, int32_t cs, int32_t ct)
     TCGv_i32 tcd = tcg_constant_i32(cd);
     TCGv_i32 tct = tcg_constant_i32(ct);
     gen_helper_ccseal(tcg_env, tcd, tcs, tct);
+}
 static inline void generate_ccopytype(int32_t cd, int32_t cb, int32_t ct)
 {
     TCGv_i32 tcd = tcg_constant_i32(cd);
@@ -198,14 +203,17 @@ static inline void generate_creturn(void)
 {
 static inline void generate_cseal(int32_t cd, int32_t cb, int32_t ct)
 {
+    TCGv_i32 tcd = tcg_constant_i32(cd);
     TCGv_i32 tcb = tcg_constant_i32(cb);
     TCGv_i32 tct = tcg_constant_i32(ct);
     gen_helper_cseal(tcg_env, tcd, tcb, tct);
 static inline void generate_csetbounds(int32_t cd, int32_t cb, int32_t rt)
 {
     TCGv_i32 tcb = tcg_constant_i32(cb);
+    TCGv t0 = tcg_temp_new();
     gen_helper_csetbounds(tcg_env, tcd, tcb, t0);
 static inline void generate_candaddr(int32_t cd, int32_t cb, int32_t rt)
+{
     TCGv_i32 tcb = tcg_constant_i32(cb);
     gen_helper_candaddr(tcg_env, tcd, tcb, t0);
 static inline void generate_csetaddr(int32_t cd, int32_t cb, int32_t rt)
@@ -420,6 +428,7 @@ static void gen_cp2 (DisasContext *ctx, uint32_t opc, int r16, int r11, int r6)
             opn = "candperm";
             break;
         case OPC_CSETOFFSET_NI: /* 0x0f */
+            check_cop2x(ctx);
             generate_csetoffset(r16, r11, r6);
             opn = "csetoffset";
         case OPC_CSETBOUNDS_NI: /* 0x10 */
@@ -451,8 +460,10 @@ static void gen_cp2 (DisasContext *ctx, uint32_t opc, int r16, int r11, int r6)
             generate_cexeq(ctx, r16, r11, r6);
             opn = "cexeq";
         case OPC_CMOVZ_NI: /* 0x1b */
+            generate_cmovz(r16, r11, r6);
             opn = "cmovz";
         case OPC_CMOVN_NI: /* 0x1c */
+            generate_cmovn(r16, r11, r6);
             opn = "cmovn";
             generate_cnexeq(ctx, r16, r11, r6);
             opn = "cnexeq";
@@ -639,6 +650,7 @@ static void gen_cp2 (DisasContext *ctx, uint32_t opc, int r16, int r11, int r6)
         opn = "cincoffsetimmediate";
         generate_csetbounds_imm(r16, r11, (opc & 0x7ff));
         opn = "csetboundsimmediate";
+        goto invalid;
     (void)opn; /* avoid a compiler warning */
     return;
 invalid:
