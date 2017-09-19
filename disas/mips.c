@@ -1301,6 +1301,9 @@ const struct mips_opcode mips_builtin_opcodes[] =
 {"csetcause", "t",	    0x480017ff, 0xffe0ffff, 0,			0, I1},
 {"cjr",    "+w",	    0x48001fff, 0xffe0ffff, 0,			0, I1},
 
+{"csetboundsimm", "+w,+b,+o9",   0x4a800000, 0xffe00000, 0, 0, I1},
+{"cincoffsetimm", "+w,+b,+o3",   0x4a600000, 0xffe00000, 0, 0, I1},
+{"creturn", "",               0x48a007ff, 0xffffffff, 0, 0, I1},
 {"cgetperm", "t,+b", 	0x48000000, 0xffe007ff, 0,			0, I1},
 {"cgettype", "t,+b",	0x48000001, 0xffe007ff, 0,			0, I1},
 {"cgetbase", "t,+b",	0x48000002, 0xffe007ff, 0,			0, I1},
@@ -1313,7 +1316,6 @@ const struct mips_opcode mips_builtin_opcodes[] =
 {"cgetoffset", "t,+b",	0x49a00002, 0xffe007ff, 0,			0, I1},
 {"candperm", "+w,+b,m", 0x48800000, 0xffe0003f, 0,			0, I1},
 {"cincbase", "+w,+b,m", 0x48800002, 0xffe0003f, 0,			0, I1},
-{"csetlen",  "+w,+b,m", 0x48800003, 0xffe0003f, 0,			0, I1},
 {"csetbounds", "+w,+b,m",0x48200000, 0xffe0003f,0,			0, I1},
 {"csetcause", "m",	0x48800004, 0xfffff83f, 0,			0, I1},
 {"csetdefault", "+b",	0x49a00000, 0xffff07ff, 0,			0, I1},
