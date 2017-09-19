@@ -1104,6 +1104,8 @@ enum {
     OPC_CSETBOUNDS_NI   = OPC_CAP_NI | (0x08),
     /* OPC_SETBOUNDSEXACT_NI = OPC_CAP_NI | (0x09), unchanged OPC_SETBOUNDSEXACT */
     OPC_CBUILDCAP_NI    = OPC_CAP_NI | (0x1d),
+    OPC_CCOPYTYPE_NI    = OPC_CAP_NI | (0x1e),
+    OPC_CTESTSUBSET_NI  = OPC_CAP_NI | (0x20),
 };
 enum {
     OPC_CRETURN_NI       = OPC_CP2 | (0x05 << 21 | 0x7ff)

@@ -294,6 +294,7 @@ static inline void generate_ceq(DisasContext *ctx, int32_t rd, int32_t cb,
 }
 {
     TCGv_i32 tcb = tcg_constant_i32(cb);
+    TCGv_i32 tct = tcg_constant_i32(ct);
     TCGv t0 = tcg_temp_new();
     gen_helper_cne(t0, tcg_env, tcb, tct);
     gen_store_gpr(t0, rd);
@@ -315,8 +316,12 @@ static inline void generate_cltu(DisasContext *ctx, int32_t rd, int32_t cb,
     TCGv_i32 tcb = tcg_constant_i32(cb);
     TCGv t0 = tcg_temp_new();
     gen_helper_cltu(t0, tcg_env, tcb, tct);
+    gen_store_gpr(t0, rd);
 static inline void generate_cleu(DisasContext *ctx, int32_t rd, int32_t cb,
+    TCGv_i32 tcb = tcg_constant_i32(cb);
+    TCGv t0 = tcg_temp_new();
     gen_helper_cleu(t0, tcg_env, tcb, tct);
+    gen_helper_cseqx(t0, tcg_env, tcb, tct);
     tcg_gen_xori_i64(t0, t0, 1);
     x = x & ((1U << 8) - 1);
     return (x ^ mask) - mask;
@@ -486,6 +491,7 @@ static void gen_cp2 (DisasContext *ctx, uint32_t opc, int r16, int r11, int r6)
             opn = "ctestsubset";
             generate_cnexeq(ctx, r16, r11, r6);
             opn = "cnexeq";
+            generate_csetaddr(r16, r11, r6);
             generate_candaddr(r16, r11, r6);
         /* Two-operand cap instructions. */
         case OPC_C2OPERAND_NI:         /* 0x3f */
