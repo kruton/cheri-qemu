@@ -1105,6 +1105,7 @@ enum {
     /* OPC_SETBOUNDSEXACT_NI = OPC_CAP_NI | (0x09), unchanged OPC_SETBOUNDSEXACT */
 };
 enum {
+    OPC_CRETURN_NI       = OPC_CP2 | (0x05 << 21 | 0x7ff)
 #endif /* TARGET_CHERI */
 #define MASK_LMMI(op)    (MASK_OP_MAJOR(op) | (op & (0x1F << 21)) | (op & 0x1F))
 

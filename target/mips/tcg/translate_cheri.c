@@ -427,11 +427,13 @@ static void gen_cp2 (DisasContext *ctx, uint32_t opc, int r16, int r11, int r6)
         case OPC_CANDPERM_NI: /* 0x0d */
             opn = "candperm";
             break;
+            break;
         case OPC_CSETOFFSET_NI: /* 0x0f */
             check_cop2x(ctx);
             generate_csetoffset(r16, r11, r6);
             opn = "csetoffset";
         case OPC_CSETBOUNDS_NI: /* 0x10 */
+            check_cop2x(ctx);
             generate_csetbounds(r16, r11, r6);
             opn = "csetbounds";
         case OPC_CINCOFFSET_NI: /* 0x11 */
@@ -465,6 +467,13 @@ static void gen_cp2 (DisasContext *ctx, uint32_t opc, int r16, int r11, int r6)
         case OPC_CMOVN_NI: /* 0x1c */
             generate_cmovn(r16, r11, r6);
             opn = "cmovn";
+            generate_cbuildcap(r16, r11, r6);
+            opn = "cbuildcap";
+            generate_ccopytype(r16, r11, r6);
+            opn = "ccopytype";
+        case OPC_CTESTSUBSET_NI: /* 0x20 */
+            generate_ctestsubset(ctx, r16, r11, r6);
+            opn = "ctestsubset";
             generate_cnexeq(ctx, r16, r11, r6);
             opn = "cnexeq";
             generate_candaddr(r16, r11, r6);
@@ -606,6 +615,8 @@ static void gen_cp2 (DisasContext *ctx, uint32_t opc, int r16, int r11, int r6)
             generate_cexeq(ctx, r16, r11, r6);
             opn = "cexeq";
         case OPC_CNEXEQ: /* 0x7 */
+            generate_cnexeq(ctx, r16, r11, r6);
+            opn = "cnexeq";
         default: /* Can't happen, because all possible values are allocated */
             opn = "cptrcmp";
             goto invalid;
