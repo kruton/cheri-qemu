@@ -165,6 +165,7 @@ static inline void generate_cmove(int32_t cd, int32_t cs)
 static inline void generate_cmovz(int32_t cd, int32_t cs, int32_t rs)
 {
     TCGv_i32 tcd = tcg_constant_i32(cd);
+    TCGv_i32 tcs = tcg_constant_i32(cs);
     TCGv t0 = tcg_temp_new();
     gen_load_gpr(t0, rs);
     gen_helper_cmovz(tcg_env, tcd, tcs, t0);
@@ -202,6 +203,7 @@ static inline void generate_ccopytype(int32_t cd, int32_t cb, int32_t ct)
     TCGv_i32 tct = tcg_constant_i32(ct);
     gen_helper_ctestsubset(t0, tcg_env, tcb, tct);
     gen_store_gpr(t0, rd);
+}
 static inline void generate_creturn(void)
 {
 static inline void generate_cseal(int32_t cd, int32_t cb, int32_t ct)
@@ -225,6 +227,7 @@ static inline void generate_csetaddr(int32_t cd, int32_t cb, int32_t rt)
 {
     TCGv_i32 tcb = tcg_constant_i32(cb);
     gen_helper_csetaddr(tcg_env, tcd, tcb, t0);
+{
     TCGv_i32 tcb = tcg_constant_i32(cb);
     TCGv t1 = tcg_temp_new();
     gen_store_gpr(t1, rd);
@@ -235,6 +238,7 @@ static inline void generate_csetbounds_imm(int32_t cd, int32_t cb, int32_t lengt
     TCGv_i32 tcb = tcg_constant_i32(cb);
     tcg_gen_movi_tl(t0, length);
     gen_helper_csetbounds(tcg_env, tcd, tcb, t0);
+static inline void generate_csub(DisasContext *ctx, int32_t rd, int32_t cb,
     TCGv_i32 tcb = tcg_constant_i32(cb);
     TCGv_i32 tct = tcg_constant_i32(ct);
     gen_helper_csub(t0, tcg_env, tcb, tct);
@@ -250,6 +254,7 @@ static inline void generate_csetoffset(int32_t cd, int32_t cb, int32_t rt)
     gen_helper_ctoptr(t0, tcg_env, tcb, tct);
     gen_store_gpr(t0, rd);
 static inline void generate_cunseal(int32_t cd, int32_t cb, int32_t ct)
+    TCGv_i32 tcb = tcg_constant_i32(cb);
     TCGv_i32 tct = tcg_constant_i32(ct);
 static inline int generate_cclearregs(DisasContext *ctx, int32_t regset, int32_t mask)
     int i;
@@ -676,6 +681,7 @@ static void gen_cp2 (DisasContext *ctx, uint32_t opc, int r16, int r11, int r6)
             opn = "cll";
             goto invalid;
         generate_cbez(ctx, r16, (int16_t)opc);
+        generate_cbnz(ctx, r16, (int16_t)opc);
         generate_cincoffset_imm(r16, r11, (opc & 0x7ff));
         opn = "cincoffsetimmediate";
         generate_csetbounds_imm(r16, r11, (opc & 0x7ff));

@@ -1109,6 +1109,7 @@ enum {
     OPC_CNEXEQ_NI       = OPC_CAP_NI | (0x21),
 };
 enum {
+    OPC_CBEZ_NI          = OPC_CP2 | (0x11 << 21),
     OPC_CRETURN_NI       = OPC_CP2 | (0x05 << 21 | 0x7ff)
 #endif /* TARGET_CHERI */
 #define MASK_LMMI(op)    (MASK_OP_MAJOR(op) | (op & (0x1F << 21)) | (op & 0x1F))
