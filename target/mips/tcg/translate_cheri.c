@@ -181,6 +181,7 @@ static inline void generate_cbuildcap(int32_t cd, int32_t cb, int32_t ct)
     TCGv_i32 tcd = tcg_constant_i32(cd);
     TCGv_i32 tcb = tcg_constant_i32(cb);
     TCGv_i32 tct = tcg_constant_i32(ct);
+    gen_helper_cbuildcap(tcg_env, tcd, tcb, tct);
 }
 static inline void generate_ccseal(int32_t cd, int32_t cs, int32_t ct)
 {
@@ -193,6 +194,7 @@ static inline void generate_ccopytype(int32_t cd, int32_t cb, int32_t ct)
     TCGv_i32 tcd = tcg_constant_i32(cd);
     TCGv_i32 tcb = tcg_constant_i32(cb);
     TCGv_i32 tct = tcg_constant_i32(ct);
+}
 {
     TCGv t0 = tcg_temp_new();
     TCGv_i32 tcb = tcg_constant_i32(cb);
@@ -210,6 +212,7 @@ static inline void generate_cseal(int32_t cd, int32_t cb, int32_t ct)
 static inline void generate_csetbounds(int32_t cd, int32_t cb, int32_t rt)
 {
     TCGv_i32 tcb = tcg_constant_i32(cb);
+    TCGv_i32 tcd = tcg_constant_i32(cd);
     TCGv t0 = tcg_temp_new();
     gen_helper_csetbounds(tcg_env, tcd, tcb, t0);
 static inline void generate_candaddr(int32_t cd, int32_t cb, int32_t rt)
@@ -217,6 +220,7 @@ static inline void generate_candaddr(int32_t cd, int32_t cb, int32_t rt)
     TCGv_i32 tcb = tcg_constant_i32(cb);
     gen_helper_candaddr(tcg_env, tcd, tcb, t0);
 static inline void generate_csetaddr(int32_t cd, int32_t cb, int32_t rt)
+{
     TCGv_i32 tcb = tcg_constant_i32(cb);
     gen_helper_csetaddr(tcg_env, tcd, tcb, t0);
     TCGv_i32 tcb = tcg_constant_i32(cb);
@@ -237,7 +241,9 @@ static inline void generate_csetcause(int32_t rd)
     gen_load_gpr(t0, rd);
     gen_helper_csetcause(tcg_env, t0);
 static inline void generate_csetoffset(int32_t cd, int32_t cb, int32_t rt)
+    TCGv_i32 tcb = tcg_constant_i32(cb);
     gen_helper_csetoffset(tcg_env, tcd, tcb, t0);
+    TCGv_i32 tct = tcg_constant_i32(ct);
     gen_helper_ctoptr(t0, tcg_env, tcb, tct);
     gen_store_gpr(t0, rd);
 static inline void generate_cunseal(int32_t cd, int32_t cb, int32_t ct)
@@ -544,6 +550,7 @@ static void gen_cp2 (DisasContext *ctx, uint32_t opc, int r16, int r11, int r6)
         generate_cseal(r16, r11, r6);
         opn = "cseal";
     case OPC_CUNSEAL: /* 0x03 */
+        generate_cunseal(r16, r11, r6);
         opn = "cunseal";
     case OPC_CMISC: /* 0x04 */
         switch(MASK_CAP3(opc)) {
