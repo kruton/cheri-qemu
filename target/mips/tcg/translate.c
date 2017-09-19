@@ -1090,15 +1090,21 @@ enum {
     OPC_CCLEARTAG_NI    = OPC_C2OPERAND_NI | (0x0b << 6),
     OPC_CJALR_NI        = OPC_C2OPERAND_NI | (0x0c << 6),
     OPC_CREADHWR_NI     = OPC_C2OPERAND_NI | (0x0d << 6),
+    OPC_CWRITEHWR_NI    = OPC_C2OPERAND_NI | (0x0e << 6),
     OPC_CGETADDR_NI     = OPC_C2OPERAND_NI | (0x0f << 6),
     OPC_CRAP_NI         = OPC_C2OPERAND_NI | (0x10 << 6),
+    OPC_CRAM_NI         = OPC_C2OPERAND_NI | (0x11 << 6),
     OPC_CGETFLAGS_NI    = OPC_C2OPERAND_NI | (0x12 << 6),
     OPC_CGETPCCINCOFF_NI = OPC_C2OPERAND_NI | (0x13 << 6),
+    OPC_CGETPCCSETADDR_NI = OPC_C2OPERAND_NI | (0x14 << 6),
     OPC_CLOADTAGS_NI    = OPC_C2OPERAND_NI | (0x1e << 6),
 };
 enum {
+    /* Three operand instructions 1.22 */
     OPC_CSETBOUNDS_NI   = OPC_CAP_NI | (0x08),
     /* OPC_SETBOUNDSEXACT_NI = OPC_CAP_NI | (0x09), unchanged OPC_SETBOUNDSEXACT */
+};
+enum {
 #endif /* TARGET_CHERI */
 #define MASK_LMMI(op)    (MASK_OP_MAJOR(op) | (op & (0x1F << 21)) | (op & 0x1F))
 
