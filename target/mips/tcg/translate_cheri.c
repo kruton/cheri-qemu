@@ -460,6 +460,7 @@ static void gen_cp2 (DisasContext *ctx, uint32_t opc, int r16, int r11, int r6)
             generate_cfromptr(r16, r11, r6);
             opn = "cfromptr";
         case OPC_CEQ_NI: /* 0x14 */
+            generate_ceq(ctx, r16, r11, r6);
             opn = "ceq";
         case OPC_CNE_NI: /* 0x15 */
             opn = "cne";
