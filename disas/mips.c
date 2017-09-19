@@ -1301,6 +1301,12 @@ const struct mips_opcode mips_builtin_opcodes[] =
 {"csetcause", "t",	    0x480017ff, 0xffe0ffff, 0,			0, I1},
 {"cjr",    "+w",	    0x48001fff, 0xffe0ffff, 0,			0, I1},
 
+{"cbuildcap",  "+w,+b,+v",  0x4800001d, 0xffe0003f, 0, 0, I1},
+{"ccopytype",  "+w,+b,+v",  0x4800001e, 0xffe0003f, 0, 0, I1},
+{"ctestsubset","+w,+b,+v",  0x48000020, 0xffe0003f, 0, 0, I1},
+{"cnexeq",     "t,+b,+v",   0x48000021, 0xffe0003f, 0, 0, I1},
+{"cbez",      "+w,i",   0x4a200000, 0xffe00000, 0, 0, I1},
+{"cbnz",      "+w,i",   0x4a400000, 0xffe00000, 0, 0, I1},
 {"csetboundsimm", "+w,+b,+o9",   0x4a800000, 0xffe00000, 0, 0, I1},
 {"cincoffsetimm", "+w,+b,+o3",   0x4a600000, 0xffe00000, 0, 0, I1},
 {"creturn", "",               0x48a007ff, 0xffffffff, 0, 0, I1},
