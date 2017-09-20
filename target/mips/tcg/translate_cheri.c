@@ -395,6 +395,7 @@ cp2_unimplemented:
 static void gen_cp2 (DisasContext *ctx, uint32_t opc, int r16, int r11, int r6)
     const char *opn = "cp2inst";
     switch (MASK_CP2(opc)) {
+    case OPC_CGET:  /* same as OPC_CAP_NI, 0x00 */
         switch(MASK_CAP6(opc)) {
         case OPC_CGETPERM:          /* 0x00 */
             opn = "cgetperm";
@@ -533,6 +534,7 @@ static void gen_cp2 (DisasContext *ctx, uint32_t opc, int r16, int r11, int r6)
             case OPC_CJALR_NI:      /* 0x0c << 6 */
                 generate_cjalr(ctx, r16, r11);
                 opn = "cjalr";
+                opn = "cgetaddr";
             case OPC_CRAP_NI:   /* 0x10 << 6 */
                 TCGv t1 = tcg_temp_new();
                 gen_load_gpr(t0, r11);
