@@ -547,6 +547,7 @@ static void gen_cp2 (DisasContext *ctx, uint32_t opc, int r16, int r11, int r6)
                     generate_cgetpcc(ctx, r16);
                     opn = "cgetpcc";
                 case OPC_CGETCAUSE_NI:  /* 0x01 << 11 */
+                    generate_cgetcause(ctx, r16);
                     opn = "cgetcause";
                 case OPC_CSETCAUSE_NI:  /* 0x02 << 11 */
                     generate_csetcause(r16);
@@ -680,6 +681,7 @@ static void gen_cp2 (DisasContext *ctx, uint32_t opc, int r16, int r11, int r6)
             opn = "cllhu";
         case OPC_CLLWU: /* 0xa */
             opn = "cllwu";
+            generate_cllc(ctx, r16, r11);
             opn = "cll";
             goto invalid;
         generate_cbez(ctx, r16, (int16_t)opc);
