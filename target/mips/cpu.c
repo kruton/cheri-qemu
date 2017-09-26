@@ -29,6 +29,7 @@
 #include "qemu/module.h"
 #include "system/kvm.h"
 #include "system/qtest.h"
+#include "exec/gdbstub.h"
 #include "hw/qdev-properties.h"
 #include "hw/qdev-clock.h"
 #include "fpu_helper.h"
@@ -477,6 +478,13 @@ static void mips_cpu_realizefn(DeviceState *dev, Error **errp)
         return;
     }
 
+#ifdef TARGET_MIPS64
+    gdb_register_coprocessor(cs, mips_gdb_get_sys_reg, mips_gdb_set_sys_reg,
+#if defined(TARGET_CHERI)
+    gdb_register_coprocessor(cs, mips_gdb_get_cheri_reg,
+                             mips_gdb_set_cheri_reg,
+#endif
+#else
     env->exception_base = (int32_t)0xBFC00000;
 
 #if defined(CONFIG_TCG) && !defined(CONFIG_USER_ONLY)
@@ -616,6 +624,11 @@ static void mips_cpu_class_init(ObjectClass *c, const void *data)
     cc->sysemu_ops = &mips_sysemu_ops;
 #endif
     cc->disas_set_info = mips_cpu_disas_set_info;
+#if defined(TARGET_MIPS64)
+    cc->gdb_core_xml_file = "mips64-cpu.xml";
+#else
+    cc->gdb_core_xml_file = "mips-cpu.xml";
+#endif
     cc->gdb_num_core_regs = 73;
     cc->gdb_stop_before_watchpoint = true;
 #ifdef CONFIG_TCG
