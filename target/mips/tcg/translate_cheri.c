@@ -155,6 +155,7 @@ static inline void generate_cincoffset_imm(int32_t cd, int32_t cs, int32_t incre
     TCGv_i32 tcd = tcg_constant_i32(cd);
     TCGv_i32 tcs = tcg_constant_i32(cs);
     TCGv t0 = tcg_temp_new();
+    tcg_gen_movi_tl(t0, sign_extend(increment, 11));
     gen_helper_cincoffset(tcg_env, tcd, tcs, t0);
 }
 static inline void generate_cmove(int32_t cd, int32_t cs)
