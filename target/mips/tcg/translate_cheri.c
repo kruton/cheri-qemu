@@ -610,6 +610,7 @@ static void gen_cp2 (DisasContext *ctx, uint32_t opc, int r16, int r11, int r6)
             generate_ccheckperm(r16, r6);
             opn = "ccheckperm";
         case OPC_CCHECKTYPE: /* 0x1 */
+            generate_cchecktype(r16, r11);
             opn = "cchecktype";
             opn = "ccheck";
             goto invalid;
