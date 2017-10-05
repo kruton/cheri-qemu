@@ -1110,6 +1110,7 @@ enum {
 };
 enum {
     OPC_CBEZ_NI          = OPC_CP2 | (0x11 << 21),
+    OPC_CBNZ_NI          = OPC_CP2 | (0x12 << 21),
     OPC_CRETURN_NI       = OPC_CP2 | (0x05 << 21 | 0x7ff)
 #endif /* TARGET_CHERI */
 #define MASK_LMMI(op)    (MASK_OP_MAJOR(op) | (op & (0x1F << 21)) | (op & 0x1F))
@@ -1432,6 +1433,7 @@ static inline void save_cpu_state(DisasContext *ctx, int do_save_pc)
         case MIPS_HFLAG_BR:
             break;
 #ifdef TARGET_CHERI
+        case MIPS_HFLAG_BRCCALL:
         case MIPS_HFLAG_BRC:
             break;
 #endif
@@ -1451,6 +1453,7 @@ static inline void restore_cpu_state(CPUMIPSState *env, DisasContext *ctx)
     case MIPS_HFLAG_BR:
         break;
 #ifdef TARGET_CHERI
+    case MIPS_HFLAG_BRCCALL:
     case MIPS_HFLAG_BRC:
         break;
 #endif
@@ -11220,6 +11223,11 @@ static void gen_branch(DisasContext *ctx, int insn_bytes)
             tcg_gen_lookup_and_goto_ptr();
             break;
 #ifdef TARGET_CHERI
+        case MIPS_HFLAG_BRCCALL:
+            /* unconditional branch to capability register from a ccall.
+             * Can fall through since otype and seal are not copied anyway.
+             */
+            /* fallthrough */
                 save_cpu_state(ctx, 0);
             break;
 #endif /* TARGET_CHERI */
@@ -15624,6 +15632,7 @@ void mips_restore_state_to_opc(CPUState *cs,
     switch (env->hflags & MIPS_HFLAG_BMASK_BASE) {
     case MIPS_HFLAG_BR:
 #ifdef TARGET_CHERI
+    case MIPS_HFLAG_BRCCALL:
     case MIPS_HFLAG_BRC:
 #endif
         break;

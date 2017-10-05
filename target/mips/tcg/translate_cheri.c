@@ -125,6 +125,7 @@ static inline void generate_cfromptr(int32_t cd, int32_t cb, int32_t rt)
     TCGv t0 = tcg_temp_new();
     gen_store_gpr(t0, rd);
 }
+static inline void generate_cloadtags(DisasContext *ctx, int32_t rd, int32_t cb)
 {
     TCGv_i32 tcb = tcg_constant_i32(cb);
     TCGv ttags = tcg_temp_new();
@@ -298,6 +299,7 @@ static inline void generate_ceq(DisasContext *ctx, int32_t rd, int32_t cb,
     gen_helper_ceq(t0, tcg_env, tcb, tct);
     gen_store_gpr(t0, rd);
 }
+static inline void generate_cne(DisasContext *ctx, int32_t rd, int32_t cb,
 {
     TCGv_i32 tcb = tcg_constant_i32(cb);
     TCGv_i32 tct = tcg_constant_i32(ct);
@@ -308,9 +310,11 @@ static inline void generate_ceq(DisasContext *ctx, int32_t rd, int32_t cb,
 static inline void generate_clt(DisasContext *ctx, int32_t rd, int32_t cb,
 {
     TCGv_i32 tcb = tcg_constant_i32(cb);
+    TCGv_i32 tct = tcg_constant_i32(ct);
     TCGv t0 = tcg_temp_new();
     gen_helper_clt(t0, tcg_env, tcb, tct);
     gen_store_gpr(t0, rd);
+}
 static inline void generate_cle(DisasContext *ctx, int32_t rd, int32_t cb,
 {
     TCGv_i32 tcb = tcg_constant_i32(cb);
@@ -324,9 +328,11 @@ static inline void generate_cltu(DisasContext *ctx, int32_t rd, int32_t cb,
     gen_helper_cltu(t0, tcg_env, tcb, tct);
     gen_store_gpr(t0, rd);
 static inline void generate_cleu(DisasContext *ctx, int32_t rd, int32_t cb,
+{
     TCGv_i32 tcb = tcg_constant_i32(cb);
     TCGv t0 = tcg_temp_new();
     gen_helper_cleu(t0, tcg_env, tcb, tct);
+    TCGv_i32 tcb = tcg_constant_i32(cb);
     gen_helper_cseqx(t0, tcg_env, tcb, tct);
     tcg_gen_xori_i64(t0, t0, 1);
     x = x & ((1U << 8) - 1);
@@ -342,6 +348,7 @@ static inline void generate_cleu(DisasContext *ctx, int32_t rd, int32_t cb,
  */
     TCGv_i32 tlen = tcg_constant_i32(len);
     gen_helper_cstorecond(taddr, tcg_env, tcb, tlen);
+static inline void generate_cstorecond_int(DisasContext *ctx, int32_t rs,
     check_cop2x(ctx);
     TCGLabel *l1 = gen_new_label();
     /* Write rs to memory. */
@@ -351,12 +358,15 @@ static inline void generate_cstore(DisasContext *ctx, int32_t rs, int32_t cb,
     x = x & ((1U << bits) - 1);
 static inline void generate_clc(DisasContext *ctx, int32_t cd, int32_t cb,
     TCGv_i32 tcd = tcg_constant_i32(cd);
+    } else {
         TCGv taddr = tcg_temp_new();
         tcg_gen_add_tl(taddr, taddr, toffset);
 static inline void generate_cllc(DisasContext *ctx, int32_t cd, int32_t cb)
     TCGv_i32 tcd = tcg_constant_i32(cd);
 static inline void generate_csc(DisasContext *ctx, int32_t cs, int32_t cb,
     TCGv_i32 tcs = tcg_constant_i32(cs);
+    /*
+     */
         TCGv taddr = tcg_temp_new();
         tcg_gen_add_tl(taddr, taddr, toffset);
 static inline void generate_cscc(DisasContext *ctx, int32_t cs, int32_t cb,
@@ -454,11 +464,13 @@ static void gen_cp2 (DisasContext *ctx, uint32_t opc, int r16, int r11, int r6)
             check_cop2x(ctx);
             generate_csetoffset(r16, r11, r6);
             opn = "csetoffset";
+            break;
         case OPC_CSETBOUNDS_NI: /* 0x10 */
             check_cop2x(ctx);
             generate_csetbounds(r16, r11, r6);
             opn = "csetbounds";
         case OPC_CINCOFFSET_NI: /* 0x11 */
+            check_cop2x(ctx);
             generate_cincoffset(r16, r11, r6);
             opn = "cincoffset";
         case OPC_CTOPTR_NI: /* 0x12 */
@@ -541,6 +553,7 @@ static void gen_cp2 (DisasContext *ctx, uint32_t opc, int r16, int r11, int r6)
                 gen_load_gpr(t0, r11);
                 TCGv t1 = tcg_temp_new();
                 gen_load_gpr(t0, r11);
+                generate_cloadtags(ctx, r16, r11);
             /* One-operand cap instructions. */
             case OPC_C1OPERAND_NI:     /* 0x1f << 6 */
                 switch(MASK_CAP8(opc)) {
@@ -562,6 +575,7 @@ static void gen_cp2 (DisasContext *ctx, uint32_t opc, int r16, int r11, int r6)
             default:
                 opn = "c2operand";
                 goto invalid;
+        default:
             opn = "cget";
             goto invalid;
     case OPC_CSETBOUNDS: /* 0x01 */
@@ -590,6 +604,8 @@ static void gen_cp2 (DisasContext *ctx, uint32_t opc, int r16, int r11, int r6)
             goto invalid;
     case OPC_CCALL: /* 0x05 */
             opn = "creturn";
+            generate_ccall(r16, r11);
+            opn = "ccall";
             opn = "ccall";
             goto invalid;
     case OPC_CRETURN: /* 0x06 */
