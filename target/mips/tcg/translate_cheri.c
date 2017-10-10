@@ -474,6 +474,7 @@ static void gen_cp2 (DisasContext *ctx, uint32_t opc, int r16, int r11, int r6)
             generate_cincoffset(r16, r11, r6);
             opn = "cincoffset";
         case OPC_CTOPTR_NI: /* 0x12 */
+            check_cop2x(ctx);
             opn = "ctoptr";
         case OPC_CFROMPTR_NI: /* 0x13 */
             generate_cfromptr(r16, r11, r6);
@@ -603,9 +604,12 @@ static void gen_cp2 (DisasContext *ctx, uint32_t opc, int r16, int r11, int r6)
             opn = "cmisc";
             goto invalid;
     case OPC_CCALL: /* 0x05 */
+        case CCALL_SELECTOR_CRETURN: /* 0x7ff */
             opn = "creturn";
+        case CCALL_SELECTOR_0: /* 0x000 */
             generate_ccall(r16, r11);
             opn = "ccall";
+        case CCALL_SELECTOR_1: /* 0x001 */
             opn = "ccall";
             goto invalid;
     case OPC_CRETURN: /* 0x06 */
