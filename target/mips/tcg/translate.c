@@ -5735,7 +5735,17 @@ static void gen_mfc0(DisasContext *ctx, TCGv arg, int reg, int sel)
             register_name = "CMGCRBase";
             break;
 #ifdef TARGET_CHERI
+        case 6:
+            /*
+             * See section 7.3.5 Core Identification (CPO Register 15,
+             * Select 6 of the BERI Hardware Reference.
+             */
+            gen_helper_mfc0_coreid(arg, tcg_env);
             break;
+        case 7:
+             * See section 7.3.6 Thread Identification (CPO Register 15,
+             * Select 7 of the BERI Hardware Reference.
+            tcg_gen_movi_tl(arg, 0); /* currently unimplemented */
             break;
 #endif /* TARGET_CHERI */
         default:
@@ -7222,11 +7232,19 @@ static void gen_dmfc0(DisasContext *ctx, TCGv arg, int reg, int sel)
             tcg_gen_ld_tl(arg, tcg_env, offsetof(CPUMIPSState, CP0_CMGCRBase));
             register_name = "CMGCRBase";
             break;
+        case 6:
             /*
+             * See section 7.3.5 Core Identification (CPO Register 15,
+             * Select 6 of the BERI Hardware Reference.
              */
+            gen_helper_mfc0_coreid(arg, tcg_env);
             break;
+        case 7:
             /*
+             * See section 7.3.6 Thread Identification (CPO Register 15,
+             * Select 7 of the BERI Hardware Reference.
              */
+            tcg_gen_movi_tl(arg, 0); /* currently unimplemented */
             break;
         default:
             goto cp0_unimplemented;
