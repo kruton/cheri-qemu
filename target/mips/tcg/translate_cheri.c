@@ -278,6 +278,8 @@ static inline int generate_cclearregs(DisasContext *ctx, int32_t regset, int32_t
     case 1: /* ClearHi */
         tcg_gen_movi_tl(t0, 0);
         for(i = 16; i < 32; i++) {
+            if (mask & 0x1)
+            mask = mask >> 1;
         }
         break;
     case 2: /* CClearLO */
@@ -285,6 +287,8 @@ static inline int generate_cclearregs(DisasContext *ctx, int32_t regset, int32_t
         gen_helper_cclearreg(tcg_env, tcr0);
         break;
     case 3: /* CClearHi */
+        tcr0 = tcg_constant_i32(mask << 16);
+        gen_helper_cclearreg(tcg_env, tcr0);
         break;
     default:
         return 1; /* Invalid */
@@ -321,6 +325,7 @@ static inline void generate_cle(DisasContext *ctx, int32_t rd, int32_t cb,
     TCGv t0 = tcg_temp_new();
     gen_helper_cle(t0, tcg_env, tcb, tct);
     gen_store_gpr(t0, rd);
+}
 static inline void generate_cltu(DisasContext *ctx, int32_t rd, int32_t cb,
 {
     TCGv_i32 tcb = tcg_constant_i32(cb);
