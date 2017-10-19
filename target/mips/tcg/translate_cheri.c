@@ -718,6 +718,7 @@ static void gen_cp2 (DisasContext *ctx, uint32_t opc, int r16, int r11, int r6)
         generate_csetbounds_imm(r16, r11, (opc & 0x7ff));
         opn = "csetboundsimmediate";
         goto invalid;
+    // FIXME: we can remove opn
     (void)opn; /* avoid a compiler warning */
     return;
 invalid:
