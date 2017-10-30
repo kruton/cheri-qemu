@@ -1105,6 +1105,7 @@ enum {
     /* OPC_SETBOUNDSEXACT_NI = OPC_CAP_NI | (0x09), unchanged OPC_SETBOUNDSEXACT */
     OPC_CBUILDCAP_NI    = OPC_CAP_NI | (0x1d),
     OPC_CCOPYTYPE_NI    = OPC_CAP_NI | (0x1e),
+    OPC_CCSEAL_NI       = OPC_CAP_NI | (0x1f),
     OPC_CTESTSUBSET_NI  = OPC_CAP_NI | (0x20),
     OPC_CNEXEQ_NI       = OPC_CAP_NI | (0x21),
 };
