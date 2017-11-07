@@ -226,6 +226,7 @@ static inline void generate_candaddr(int32_t cd, int32_t cb, int32_t rt)
 {
     TCGv_i32 tcb = tcg_constant_i32(cb);
     TCGv_i32 tcd = tcg_constant_i32(cd);
+    TCGv t0 = tcg_temp_new();
     gen_helper_candaddr(tcg_env, tcd, tcb, t0);
 static inline void generate_csetaddr(int32_t cd, int32_t cb, int32_t rt)
 {
@@ -343,6 +344,7 @@ static inline void generate_cleu(DisasContext *ctx, int32_t rd, int32_t cb,
     TCGv t0 = tcg_temp_new();
     gen_helper_cleu(t0, tcg_env, tcb, tct);
     TCGv_i32 tcb = tcg_constant_i32(cb);
+    TCGv t0 = tcg_temp_new();
     gen_helper_cseqx(t0, tcg_env, tcb, tct);
     tcg_gen_xori_i64(t0, t0, 1);
     x = x & ((1U << 8) - 1);
