@@ -1296,6 +1296,8 @@ const struct mips_opcode mips_builtin_opcodes[] =
 {"cmove", "+w,+b",      0x480002bf, 0xffe007ff, 0,                      0, I1},
 {"ccleartag", "+w,+b",	0x480002ff, 0xffe007ff, 0,			0, I1},
 {"cjalr",  "+w,+b",	    0x4800033f, 0xffe007ff, 0,			0, I1},
+{"creadhwr", "+w,G",	0x4800037f, 0xffe007ff, 0,			0, I1},
+{"cwritehwr", "+w,G",	0x480003bf, 0xffe007ff, 0,			0, I1},
 
 /* New ISA: one-operand instructions */
 {"cgetpcc", "+w",	    0x480007ff, 0xffe0ffff, 0,			0, I1},
