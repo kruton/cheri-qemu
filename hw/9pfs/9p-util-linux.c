@@ -68,3 +68,8 @@ int qemu_mknodat(int dirfd, const char *filename, mode_t mode, dev_t dev)
 {
     return mknodat(dirfd, filename, mode, dev);
 }
+
+int qemu_mknodat(int dirfd, const char *filename, mode_t mode, dev_t dev)
+{
+    return mknodat(dirfd, filename, mode, dev);
+}
