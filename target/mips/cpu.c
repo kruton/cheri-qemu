@@ -535,6 +535,9 @@ static ObjectClass *mips_cpu_class_by_name(const char *cpu_model)
     return oc;
 }
 
+    if (qemu_log_enabled() && qemu_loglevel_mask(CPU_LOG_INSTR | CPU_LOG_CHERI_BOUNDS)) {
+        cheri_cpu_dump_statistics_f(NULL, logf, 0);
+        cheri_cpu_dump_statistics_f(NULL, stderr, 0);
 #ifndef CONFIG_USER_ONLY
 #include "hw/core/sysemu-cpu-ops.h"
 
