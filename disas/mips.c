@@ -1298,8 +1298,10 @@ const struct mips_opcode mips_builtin_opcodes[] =
 {"cjalr", "+w,+b",		0x4800033f, 0xffe007ff, 0,			0, I1},
 {"creadhwr", "+w,G",	0x4800037f, 0xffe007ff, 0,			0, I1},
 {"cwritehwr", "+w,G",	0x480003bf, 0xffe007ff, 0,			0, I1},
+{"cgetaddr", "t,+b",	0x480003ff, 0xffe007ff, 0,			0, I1},
 {"cgetpccsetaddr", "+w,d", 0x4800053f, 0xffe007ff, 0,			0, I1},
 
+{"csealentry", "+w,+b",	0x4800077f, 0xffe007ff, 0,			0, I1},
 /* New ISA: one-operand instructions */
 {"cgetpcc", "+w",	    0x480007ff, 0xffe0ffff, 0,			0, I1},
 {"cgetcause", "t",	    0x48000fff, 0xffe0ffff, 0,			0, I1},
