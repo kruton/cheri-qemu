@@ -98,6 +98,11 @@ static target_ulong ccall_common(CPUArchState *env, uint32_t cs, uint32_t cb, ui
             cap_register_t idc = *cbp;
             // The capability register is loaded into PCC during delay slot
             env->active_tc.CapBranchTarget = *csp;
+            // XXXAR: clearing these fields is not strictly needed since they
+            // aren't copied from the CapBranchTarget to $pcc but it does make
+            // the LOG_INSTR output less confusing.
+            env->active_tc.CapBranchTarget.cr_sealed = 0;
+            env->active_tc.CapBranchTarget.cr_otype = 0;
             // Return the branch target address
     return (target_ulong)0;
 target_ulong CHERI_HELPER_IMPL(ccall_notrap(CPUArchState *env, uint32_t cs, uint32_t cb))
