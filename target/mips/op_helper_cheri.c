@@ -125,6 +125,8 @@ void helper_cmovn(CPUArchState *env, uint32_t cd, uint32_t cs, target_ulong rs)
      * CJR: Jump Capability Register
     if (!cbp->cr_tag) {
     } else if (!cap_has_perms(cbp, CAP_PERM_EXECUTE)) {
+    } else if (align_of(4, cap_get_cursor(cbp))) {
+        do_raise_c0_exception(env, EXCP_AdEL, cap_get_cursor(cbp));
         env->active_tc.CapBranchTarget = *cbp;
     return (target_ulong)0;
 static inline cap_register_t *
