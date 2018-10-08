@@ -74,13 +74,16 @@ static inline int align_of(int size, uint64_t addr)
     default:
         return 1;
     }
+}
     } else {
     const cap_register_t *cbp = get_readonly_capreg(env, cb);
     /*
      * CBEZ: Branch if NULL
+     */
         return (target_ulong)1;
     else
         return (target_ulong)0;
+    /*
      * CBEZ: Branch if not NULL.
         return (target_ulong)0;
     else
@@ -113,6 +116,7 @@ target_ulong CHERI_HELPER_IMPL(ccall_notrap(CPUArchState *env, uint32_t cs, uint
         if (mask & (0x1 << creg)) {
      * CGetCause: Move the Capability Exception Cause Register to a
      * General- Purpose Register
+    } else {
         return (target_ulong)env->CP2_CapCause;
      * CGetPCC: Move PCC to capability register
      * See Chapter 4 in CHERI Architecture manual.
@@ -206,6 +210,7 @@ target_ulong CHERI_HELPER_IMPL(cstorecond(CPUArchState *env, uint32_t cb, uint32
     return (target_ulong)addr;
     // CLLC traps on cbp == NULL so we use reg0 as $ddc to save encoding
         do_raise_c0_exception(env, EXCP_AdEL, addr);
+#endif
 target_ulong CHERI_HELPER_IMPL(ccheck_load_right(CPUArchState *env, target_ulong offset, uint32_t len))
 #error "This check is only valid for big endian targets, for little endian the load/store left instructions need to be checked"
     // For lwr/ldr we load all bytes if offset & 3/7 == 0 we load only the first byte, if all low bits are set we load the full amount
