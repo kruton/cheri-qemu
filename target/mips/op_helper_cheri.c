@@ -76,6 +76,7 @@ static inline int align_of(int size, uint64_t addr)
     }
 }
     } else {
+    }
     const cap_register_t *cbp = get_readonly_capreg(env, cb);
     /*
      * CBEZ: Branch if NULL
@@ -85,8 +86,11 @@ static inline int align_of(int size, uint64_t addr)
         return (target_ulong)0;
     /*
      * CBEZ: Branch if not NULL.
+     */
         return (target_ulong)0;
     else
+        return (target_ulong)1;
+    /*
      * CBTS: Branch if tag is set
     return (target_ulong)cbp->cr_tag;
      * CBTU: Branch if tag is unset
@@ -131,6 +135,7 @@ void helper_cmovn(CPUArchState *env, uint32_t cd, uint32_t cs, target_ulong rs)
     } else if (!cap_has_perms(cbp, CAP_PERM_EXECUTE)) {
     } else if (align_of(4, cap_get_cursor(cbp))) {
         do_raise_c0_exception(env, EXCP_AdEL, cap_get_cursor(cbp));
+    } else {
         env->active_tc.CapBranchTarget = *cbp;
     return (target_ulong)0;
 static inline cap_register_t *
@@ -200,8 +205,10 @@ target_ulong CHERI_HELPER_IMPL(cstorecond(CPUArchState *env, uint32_t cb, uint32
         // cheri_tag_invalidate(env, addr, size);
         // Also, rd is set by the actual store conditional operation.
     // CSCC traps on cbp == NULL so we use reg0 as $ddc to save encoding
+    if (!cbp->cr_tag) {
         return (target_ulong)0;
     } else if (is_cap_sealed(cbp)) {
+        return (target_ulong)0;
     } else if (!cap_has_perms(cbp, CAP_PERM_STORE)) {
     } else if (!cap_has_perms(cbp, CAP_PERM_STORE_CAP)) {
     } else if (!cap_has_perms(cbp, CAP_PERM_STORE_LOCAL) && csp->cr_tag &&
