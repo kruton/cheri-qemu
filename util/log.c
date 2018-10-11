@@ -492,6 +492,8 @@ const QEMULogItem qemu_log_items[] = {
       "show interrupts/exceptions in short format" },
     { CPU_LOG_EXEC, "exec",
       "show trace before each executed TB (lots of logs)" },
+    { CPU_LOG_GUEST_DEBUG_MSG, "guest_debug",
+      "CHERI only: Print guest debug messages" },
     { CPU_LOG_CHERI_BOUNDS, "bounds",
       "CHERI only: Log out-of-bounds capability creation" },
     { CPU_LOG_TB_CPU, "cpu",
