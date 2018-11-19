@@ -436,14 +436,15 @@ struct mips_opcode
    R6 immediates/displacements :
    (adding suffix to 'o' to avoid adding new characters)
    "+o"  9 bits immediate/displacement (shift = 7)
-   "+o1" 18 bits immediate/displacement (shift = 0)
-   "+o2" 19 bits immediate/displacement (shift = 0)
+   "+o1" 18 bits signed immediate/displacement (shift = 0)
+   "+o2" 19 bits signed immediate/displacement (shift = 0)
    "+o3" 11 bits signed immediate/displacement (shift = 0, CHERI only)
    "+o4" 11 bits signed immediate/displacement (shift = 1, CHERI only)
    "+o5" 11 bits signed immediate/displacement (shift = 2, CHERI only)
    "+o6" 11 bits signed immediate/displacement (shift = 3, CHERI only)
    "+o7" 11 bits signed immediate/displacement (shift = 4, CHERI only)
    "+o8" 16 bits signed immediate/displacement (shift = 4, CHERI only)
+   "+o9" 11 bits unsigned immediate/displacement (shift = 0, CHERI only)
 
    Other:
    "()" parens surrounding optional value
@@ -1308,6 +1309,7 @@ const struct mips_opcode mips_builtin_opcodes[] =
 {"csetcause", "t",	    0x480017ff, 0xffe0ffff, 0,			0, I1},
 {"cjr",    "+w",	    0x48001fff, 0xffe0ffff, 0,			0, I1},
 
+{"csetbounds", "+w,+b,m",   0x48000008, 0xffe0003f, 0, 0, I1},
 {"cbuildcap",  "+w,+b,+v",  0x4800001d, 0xffe0003f, 0, 0, I1},
 {"ccopytype",  "+w,+b,+v",  0x4800001e, 0xffe0003f, 0, 0, I1},
 {"ctestsubset","+w,+b,+v",  0x48000020, 0xffe0003f, 0, 0, I1},
@@ -4637,13 +4639,17 @@ print_insn_args (const char *d,
                     break;
                 case '7': /* CHERI 11 bit, shift 4 */
                     d++;
+                    delta = ((l >> OP_SH_CDELTA) & OP_MASK_CDELTA);
                     }
+                    break;
                 case '8': /* CHERI 16 bit, shift 4 */
+                    d++;
                     delta = ((l >> OP_SH_DELTA) & OP_MASK_DELTA);
                     if (delta > (OP_MASK_DELTA >> 1)) {
                         delta -= (OP_MASK_DELTA + 1);
                     delta = delta << 4;
                     break;
+                case '9': /* CHERI 11 bit unsigned, shift 0 */
                 default:
                     delta = (l >> OP_SH_DELTA_R6) & OP_MASK_DELTA_R6;
                     if (delta & 0x8000) {
