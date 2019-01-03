@@ -188,21 +188,37 @@ int mips_gdb_get_cheri_reg(CPUMIPSState *env, uint8_t *mem_buf, int n)
 	return gdb_get_capreg(mem_buf, &env->active_tc.C[n]);
     switch (n) {
     case 32:
-	return gdb_get_capreg(mem_buf, &env->active_tc.PCC);
+        return gdb_get_capreg(mem_buf, &env->active_tc.CHWR.DDC);
     case 33:
 	return gdb_get_regl(mem_buf, env->CP2_CapCause);
-    case 34: {
 	uint64_t cap_valid;
 	int i;
 
 	cap_valid = 0;
-	for (i = 0; i < 32; i++) {
 	    if (env->active_tc.C[i].cr_tag)
 		cap_valid |= ((uint64_t)1 << i);
 	}
 	if (env->active_tc.PCC.cr_tag)
 	    cap_valid |= ((uint64_t)1 << 32);
 	return gdb_get_regl(mem_buf, cap_valid);
+    case 34:
+        return gdb_get_capreg(mem_buf, &env->active_tc.CHWR.UserTlsCap);
+    case 35:
+        return gdb_get_capreg(mem_buf, &env->active_tc.CHWR.PrivTlsCap);
+    case 36:
+        return gdb_get_capreg(mem_buf, &env->active_tc.CHWR.KR1C);
+    case 37:
+        return gdb_get_capreg(mem_buf, &env->active_tc.CHWR.KR2C);
+    case 38:
+        return gdb_get_capreg(mem_buf, &env->active_tc.CHWR.KCC);
+    case 39:
+        return gdb_get_capreg(mem_buf, &env->active_tc.CHWR.KDC);
+    case 40:
+        return gdb_get_capreg(mem_buf, &env->active_tc.CHWR.EPCC);
+    case 41:
+        if (env->active_tc.CHWR.DDC.cr_tag)
+            cap_valid |= 1;
+        for (i = 1; i < 32; i++) {
     }
     }
 
