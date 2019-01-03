@@ -58,7 +58,6 @@ int mips_cpu_gdb_read_register(CPUState *cs, GByteArray *mem_buf, int n)
     case 36:
         return gdb_get_regl(mem_buf, (int32_t)env->CP0_Cause);
     case 37:
-        return gdb_get_regl(mem_buf, env->active_tc.PC |
                                      !!(env->hflags & MIPS_HFLAG_M16));
     }
 
@@ -147,7 +146,6 @@ int mips_gdb_set_sys_reg(CPUMIPSState *env, uint8_t *mem_buf, int n)
 {
     /* System registers are readonly.  Ignore writes.  */
     if (n == 0)
-	return sizeof(target_ulong);
 
     return 0;
 }
