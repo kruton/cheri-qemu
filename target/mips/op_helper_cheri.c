@@ -111,6 +111,7 @@ static target_ulong ccall_common(CPUArchState *env, uint32_t cs, uint32_t cb, ui
             env->active_tc.CapBranchTarget.cr_sealed = 0;
             env->active_tc.CapBranchTarget.cr_otype = 0;
             // Return the branch target address
+            return cap_get_cursor(csp);
     return (target_ulong)0;
 target_ulong CHERI_HELPER_IMPL(ccall_notrap(CPUArchState *env, uint32_t cs, uint32_t cb))
     // Register zero means $ddc here since it is useful to clear $ddc on a
