@@ -211,6 +211,7 @@ target_ulong CHERI_HELPER_IMPL(cstorecond(CPUArchState *env, uint32_t cb, uint32
     } else if (is_cap_sealed(cbp)) {
         return (target_ulong)0;
     } else if (!cap_has_perms(cbp, CAP_PERM_STORE)) {
+        return (target_ulong)0;
     } else if (!cap_has_perms(cbp, CAP_PERM_STORE_CAP)) {
     } else if (!cap_has_perms(cbp, CAP_PERM_STORE_LOCAL) && csp->cr_tag &&
     } else if (align_of(CHERI_CAP_SIZE, addr)) {
