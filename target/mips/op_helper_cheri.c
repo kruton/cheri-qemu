@@ -108,8 +108,6 @@ static target_ulong ccall_common(CPUArchState *env, uint32_t cs, uint32_t cb, ui
             // XXXAR: clearing these fields is not strictly needed since they
             // aren't copied from the CapBranchTarget to $pcc but it does make
             // the LOG_INSTR output less confusing.
-            env->active_tc.CapBranchTarget.cr_sealed = 0;
-            env->active_tc.CapBranchTarget.cr_otype = 0;
             // Return the branch target address
             return cap_get_cursor(csp);
     return (target_ulong)0;
@@ -138,6 +136,7 @@ void helper_cmovn(CPUArchState *env, uint32_t cd, uint32_t cs, target_ulong rs)
         do_raise_c0_exception(env, EXCP_AdEL, cap_get_cursor(cbp));
     } else {
         env->active_tc.CapBranchTarget = *cbp;
+            cap_unseal_entry(&env->active_tc.CapBranchTarget);
     return (target_ulong)0;
 static inline cap_register_t *
     cheri_debug_assert((int)hwr >= (int)CP2HWR_BASE_INDEX);
