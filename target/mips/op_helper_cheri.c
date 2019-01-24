@@ -140,6 +140,8 @@ void helper_cmovn(CPUArchState *env, uint32_t cd, uint32_t cs, target_ulong rs)
         env->active_tc.CapBranchTarget = *cbp;
     return (target_ulong)0;
 static inline cap_register_t *
+    cheri_debug_assert((int)hwr >= (int)CP2HWR_BASE_INDEX);
+    cheri_debug_assert((int)hwr < (int)(CP2HWR_BASE_INDEX + 32));
     switch (hwr) {
     case CP2HWR_DDC: /* always accessible */
         break;
