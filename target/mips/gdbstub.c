@@ -182,7 +182,6 @@ static int gdb_get_capreg(uint8_t *mem_buf, cap_register_t *cap)
 
 int mips_gdb_get_cheri_reg(CPUMIPSState *env, uint8_t *mem_buf, int n)
 {
-    if (n < 32)
 	return gdb_get_capreg(mem_buf, &env->active_tc.C[n]);
     switch (n) {
     case 32:
