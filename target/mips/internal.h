@@ -91,6 +91,7 @@ extern const char fregnames[32][4];
 extern const struct mips_def_t mips_defs[];
 extern const int mips_defs_number;
 
+#include "cheri_utils.h"
 int mips_cpu_gdb_read_register(CPUState *cpu, GByteArray *buf, int reg);
 int mips_cpu_gdb_write_register(CPUState *cpu, uint8_t *buf, int reg);
 
@@ -415,4 +416,17 @@ static inline void compute_hflags(CPUMIPSState *env)
     }
 }
 
+    }
+#ifdef TARGET_CHERI
+{
+static inline target_ulong get_CP0_EPC(CPUMIPSState *env)
+    return (uint64_t)cap_get_offset(&env->active_tc.CHWR.EPCC);
+#else
+    return env->CP0_EPC;
+#endif
+static inline target_ulong get_CP0_ErrorEPC(CPUMIPSState *env)
+    return (uint64_t)cap_get_offset(&env->active_tc.CHWR.ErrorEPCC);
+    return env->CP0_ErrorEPC;
+void set_CP0_EPC(CPUMIPSState *env, target_ulong value);
+void set_CP0_ErrorEPC(CPUMIPSState *env, target_ulong value);
 #endif
