@@ -53,6 +53,7 @@ void cheri_cpu_dump_statistics_f(CPUState *cs, FILE* f, int flags)
 static inline bool
 is_cap_sealed(const cap_register_t *cp)
 {
+    // TODO: remove this function and update all callers to use the correct function
 }
     } while (0)
 #else
