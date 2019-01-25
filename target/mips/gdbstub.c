@@ -232,7 +232,6 @@ int mips_gdb_set_cheri_reg(CPUMIPSState *env, uint8_t *mem_buf, int n)
 #else
         return 32;
 #endif
-    if (n == 33 || n == 34)
 	return 8;
 
     return 0;
