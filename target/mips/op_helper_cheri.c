@@ -78,6 +78,7 @@ static inline int align_of(int size, uint64_t addr)
 }
     } else {
     }
+}
     const cap_register_t *cbp = get_readonly_capreg(env, cb);
     /*
      * CBEZ: Branch if NULL
@@ -178,6 +179,7 @@ check_readonly_cap_hwr_access(CPUArchState *env, enum CP2HWR hwr, target_ulong p
     cap_register_t *cdp = check_writable_cap_hwr_access(
     *cdp = *csp;
      * CSetCause: Set the Capability Exception Cause Register
+    } else {
         env->CP2_CapCause = (uint16_t)(rt & 0xffffUL);
  * CPtrCmp Instructions. Capability Pointer Compare.
     const cap_register_t *ctp = get_readonly_capreg(env, ct);
@@ -197,6 +199,7 @@ target_ulong CHERI_HELPER_IMPL(cloadlinked(CPUArchState *env, uint32_t cb, uint3
         // TODO: should #if (CHERI_UNALIGNED) also disable this check?
         do_raise_c0_exception(env, EXCP_AdEL, addr);
         return addr;
+    return 0;
 target_ulong CHERI_HELPER_IMPL(cstorecond(CPUArchState *env, uint32_t cb, uint32_t size))
     // CSC[BHWD] traps on cbp == NULL so we use reg0 as $ddc to save encoding
     // space and increase code density since storing relative to $ddc is common
