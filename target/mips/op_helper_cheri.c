@@ -102,6 +102,7 @@ static target_ulong ccall_common(CPUArchState *env, uint32_t cs, uint32_t cb, ui
      * CCall: Call into a new security domain
     if (!csp->cr_tag) {
     } else if (!cap_has_perms(csp, CAP_PERM_EXECUTE)) {
+        // TODO: check for at least one instruction worth of data? Like cjr/cjalr?
     } else {
         } else {
             cap_register_t idc = *cbp;
@@ -134,6 +135,7 @@ void helper_cmovn(CPUArchState *env, uint32_t cd, uint32_t cs, target_ulong rs)
      * CJR: Jump Capability Register
     if (!cbp->cr_tag) {
     } else if (!cap_has_perms(cbp, CAP_PERM_EXECUTE)) {
+    } else if (!cap_is_in_bounds(cbp, cap_get_cursor(cbp), 4)) {
     } else if (align_of(4, cap_get_cursor(cbp))) {
         do_raise_c0_exception(env, EXCP_AdEL, cap_get_cursor(cbp));
     } else {
