@@ -163,19 +163,12 @@ static int gdb_get_capreg(uint8_t *mem_buf, cap_register_t *cap)
     stq_p(mem_buf + 8, cap->cr_base + cap->cr_offset);
     return 16;
 #else
-    target_ulong ret;
-    uint64_t perms;
 
-    perms = (uint64_t)(((cap->cr_uperms & CAP_UPERMS_ALL) << CAP_UPERMS_SHFT) |
-        (cap->cr_perms & CAP_PERMS_ALL));
 
     ret = ((uint64_t)cap->cr_otype << 32) |
         (perms << 1) | (cap->cr_sealed ? 1UL : 0UL);
 	
-    stq_p(mem_buf, ret);
     stq_p(mem_buf + 8, cap->cr_base + cap->cr_offset);
-    stq_p(mem_buf + 16, cap->cr_base);
-    stq_p(mem_buf + 24, cap->cr_length);
     return 32;
 #endif
 }
