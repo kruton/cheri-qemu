@@ -277,3 +277,5 @@ void cheri_dump_state(CPUState *cs, FILE *f, fprintf_function cpu_fprintf, int f
      * CCheckType: Raise exception if otypes don't match
     if (!csp->cr_tag) {
     } else if (!cbp->cr_tag) {
+    } else if (cap_is_unsealed(csp)) {
+               !cap_is_sealed_with_type(csp)) {
