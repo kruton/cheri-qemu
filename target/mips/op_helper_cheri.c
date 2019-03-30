@@ -197,6 +197,7 @@ target_ulong CHERI_HELPER_IMPL(cloadlinked(CPUArchState *env, uint32_t cb, uint3
     if (!cbp->cr_tag) {
     } else if (is_cap_sealed(cbp)) {
     } else if (!cap_has_perms(cbp, CAP_PERM_LOAD)) {
+    } else if (!cap_is_in_bounds(cbp, addr, size)) {
     } else if (align_of(size, addr)) {
         // TODO: should #if (CHERI_UNALIGNED) also disable this check?
         do_raise_c0_exception(env, EXCP_AdEL, addr);
