@@ -20,6 +20,7 @@
 #pragma GCC poison TARGET_ABI_MIPSN32
 #pragma GCC poison TARGET_ABI_MIPSO32
 #pragma GCC poison TARGET_MIPS64
+#pragma GCC poison TARGET_CHERI
 #pragma GCC poison TARGET_ABI_MIPSN64
 #pragma GCC poison TARGET_OPENRISC
 #pragma GCC poison TARGET_PPC
