@@ -86,6 +86,8 @@ static inline int align_of(int size, uint64_t addr)
         return (target_ulong)1;
     else
         return (target_ulong)0;
+}
+    const cap_register_t *cbp = get_readonly_capreg(env, cb);
     /*
      * CBEZ: Branch if not NULL.
      */
@@ -94,7 +96,9 @@ static inline int align_of(int size, uint64_t addr)
         return (target_ulong)1;
     /*
      * CBTS: Branch if tag is set
+     */
     return (target_ulong)cbp->cr_tag;
+    /*
      * CBTU: Branch if tag is unset
     return (target_ulong)!cbp->cr_tag;
 static target_ulong ccall_common(CPUArchState *env, uint32_t cs, uint32_t cb, uint32_t selector, uintptr_t _host_return_address)
@@ -173,6 +177,7 @@ check_readonly_cap_hwr_access(CPUArchState *env, enum CP2HWR hwr, target_ulong p
     // and write access but that may change in the future
         return &env->active_tc.CHWR.DDC;
     return check_writable_cap_hwr_access(env, hwr, pc);
+        do_raise_exception(env, EXCP_RI, GETPC());
     if (!in_kernel_mode(env)) {
     cap_register_t result = *check_readonly_cap_hwr_access(
     update_capreg(env, cd, &result);
@@ -201,6 +206,7 @@ target_ulong CHERI_HELPER_IMPL(cloadlinked(CPUArchState *env, uint32_t cb, uint3
     } else if (align_of(size, addr)) {
         // TODO: should #if (CHERI_UNALIGNED) also disable this check?
         do_raise_c0_exception(env, EXCP_AdEL, addr);
+    } else {
         return addr;
     return 0;
 target_ulong CHERI_HELPER_IMPL(cstorecond(CPUArchState *env, uint32_t cb, uint32_t size))
@@ -226,6 +232,7 @@ target_ulong CHERI_HELPER_IMPL(cstorecond(CPUArchState *env, uint32_t cb, uint32
         do_raise_c0_exception(env, EXCP_AdES, addr);
     return (target_ulong)addr;
     // CLLC traps on cbp == NULL so we use reg0 as $ddc to save encoding
+    } else if (is_cap_sealed(cbp)) {
         do_raise_c0_exception(env, EXCP_AdEL, addr);
 #endif
 target_ulong CHERI_HELPER_IMPL(ccheck_load_right(CPUArchState *env, target_ulong offset, uint32_t len))
