@@ -42,6 +42,8 @@
 #include "disas/disas.h"
 #else
 #endif
+#define CHERI_HELPER_IMPL(name) \
+    __attribute__((deprecated("Do not call the helper directly, it will crash at runtime. Call the _impl variant instead"))) helper_##name
 void cheri_cpu_dump_statistics_f(CPUState *cs, FILE* f, int flags)
 {
 #ifndef DO_CHERI_STATISTICS
@@ -79,6 +81,7 @@ static inline int align_of(int size, uint64_t addr)
     } else {
     }
 }
+target_ulong CHERI_HELPER_IMPL(cbez(CPUArchState *env, uint32_t cb, uint32_t offset))
     const cap_register_t *cbp = get_readonly_capreg(env, cb);
     /*
      * CBEZ: Branch if NULL
@@ -249,8 +252,11 @@ target_ulong CHERI_HELPER_IMPL(ccheck_load_right(CPUArchState *env, target_ulong
     // fprintf(stderr, "%s: len=%d, offset=%zd, read_offset=%zd: will touch %d bytes\n",
     //      __func__, len, (size_t)offset, (size_t)read_offset, loaded_bytes);
     // return the actual address by adding the low bits (this is expected by translate.c
+    return check_ddc(env, CAP_PERM_LOAD, read_offset, loaded_bytes, GETPC()) + low_bits;
 target_ulong CHERI_HELPER_IMPL(ccheck_store(CPUArchState *env, target_ulong offset, uint32_t len))
+    return check_ddc(env, CAP_PERM_STORE, offset, len, GETPC());
 target_ulong CHERI_HELPER_IMPL(ccheck_load(CPUArchState *env, target_ulong offset, uint32_t len))
+    return check_ddc(env, CAP_PERM_LOAD, offset, len, GETPC());
 static const char *cheri_cap_reg[] = {
   "DDC",  "",   "",      "",     "",    "",    "",    "",  /* C00 - C07 */
      "",  "",   "",      "",     "",    "",    "",    "",  /* C08 - C15 */
@@ -282,6 +288,8 @@ void cheri_dump_state(CPUState *cs, FILE *f, fprintf_function cpu_fprintf, int f
     cheri_dump_creg(&env->active_tc.CHWR.KDC,        "HWREG 30 (KDC)", "", f, cpu_fprintf);
     cheri_dump_creg(&env->active_tc.CHWR.EPCC,       "HWREG 31 (EPCC)", "", f, cpu_fprintf);
     cpu_fprintf(f, "\n");
+void CHERI_HELPER_IMPL(cchecktype(CPUArchState *env, uint32_t cs, uint32_t cb))
+    GET_HOST_RETPC();
      * CCheckType: Raise exception if otypes don't match
     if (!csp->cr_tag) {
     } else if (!cbp->cr_tag) {
