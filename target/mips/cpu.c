@@ -197,6 +197,7 @@ static void mips_cpu_reset_hold(Object *obj, ResetType type)
 
     memset(env, 0, offsetof(CPUMIPSState, end_reset_fields));
 
+#endif
     /* Reset registers to their default values */
     env->CP0_PRid = env->cpu_model->CP0_PRid;
     env->CP0_Config0 = deposit32(env->cpu_model->CP0_Config0,
@@ -535,6 +536,17 @@ static ObjectClass *mips_cpu_class_by_name(const char *cpu_model)
     return oc;
 }
 
+#if defined(TARGET_CHERI)
+static uint64_t start_ns = 0;
+static void dump_cpu_ips_on_exit(void) {
+    assert(start_ns != 0);
+    CPUState *cpu;
+    CPU_FOREACH(cpu) {
+        CPUMIPSState *env = cpu_env(cpu);
+        double duration_s = (get_clock() - start_ns) / 1000000000.0;
+            env->statcounters_icount_kernel + env->statcounters_icount_user;
+        }
+#if defined(DO_CHERI_STATISTICS)
     if (qemu_log_enabled() && qemu_loglevel_mask(CPU_LOG_INSTR | CPU_LOG_CHERI_BOUNDS)) {
         cheri_cpu_dump_statistics_f(NULL, logf, 0);
         cheri_cpu_dump_statistics_f(NULL, stderr, 0);
@@ -637,6 +649,8 @@ static void mips_cpu_class_init(ObjectClass *c, const void *data)
 #ifdef CONFIG_TCG
     cc->tcg_ops = &mips_tcg_ops;
 #endif /* CONFIG_TCG */
+    start_ns = get_clock();
+    atexit(dump_cpu_ips_on_exit);
 }
 
 static const TypeInfo mips_cpu_type_info = {
