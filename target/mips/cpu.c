@@ -546,6 +546,8 @@ static void dump_cpu_ips_on_exit(void) {
         double duration_s = (get_clock() - start_ns) / 1000000000.0;
             env->statcounters_icount_kernel + env->statcounters_icount_user;
         }
+                    (uintmax_t)env->statcounters_icount_kernel, duration_s,
+                    (double)(inst_total / duration_s) / 1000.0);
 #if defined(DO_CHERI_STATISTICS)
     if (qemu_log_enabled() && qemu_loglevel_mask(CPU_LOG_INSTR | CPU_LOG_CHERI_BOUNDS)) {
         cheri_cpu_dump_statistics_f(NULL, logf, 0);
