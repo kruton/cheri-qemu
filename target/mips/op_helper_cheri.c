@@ -40,7 +40,10 @@
 #error "This file should only be compiled for CHERI"
 #endif
 #include "disas/disas.h"
+#ifdef __clang__
+#pragma clang diagnostic error "-Wdeprecated-declarations"
 #else
+#pragma GCC diagnostic error "-Wdeprecated-declarations"
 #endif
 #define CHERI_HELPER_IMPL(name) \
     __attribute__((deprecated("Do not call the helper directly, it will crash at runtime. Call the _impl variant instead"))) helper_##name
@@ -59,6 +62,7 @@ is_cap_sealed(const cap_register_t *cp)
 }
     } while (0)
 #else
+#endif
 static inline int align_of(int size, uint64_t addr)
 {
     switch(size) {
@@ -121,6 +125,7 @@ static target_ulong ccall_common(CPUArchState *env, uint32_t cs, uint32_t cb, ui
             // Return the branch target address
             return cap_get_cursor(csp);
     return (target_ulong)0;
+void CHERI_HELPER_IMPL(ccall(CPUArchState *env, uint32_t cs, uint32_t cb))
 target_ulong CHERI_HELPER_IMPL(ccall_notrap(CPUArchState *env, uint32_t cs, uint32_t cb))
     // Register zero means $ddc here since it is useful to clear $ddc on a
     // sandbox switch whereas clearing $NULL is useless
@@ -288,6 +293,7 @@ void cheri_dump_state(CPUState *cs, FILE *f, fprintf_function cpu_fprintf, int f
     cheri_dump_creg(&env->active_tc.CHWR.KDC,        "HWREG 30 (KDC)", "", f, cpu_fprintf);
     cheri_dump_creg(&env->active_tc.CHWR.EPCC,       "HWREG 31 (EPCC)", "", f, cpu_fprintf);
     cpu_fprintf(f, "\n");
+void CHERI_HELPER_IMPL(mtc2_dumpcstate(CPUArchState *env, target_ulong arg1))
 void CHERI_HELPER_IMPL(cchecktype(CPUArchState *env, uint32_t cs, uint32_t cb))
     GET_HOST_RETPC();
      * CCheckType: Raise exception if otypes don't match
