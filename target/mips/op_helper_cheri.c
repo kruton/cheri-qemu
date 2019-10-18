@@ -86,6 +86,7 @@ static inline int align_of(int size, uint64_t addr)
     }
 }
 target_ulong CHERI_HELPER_IMPL(cbez(CPUArchState *env, uint32_t cb, uint32_t offset))
+{
     const cap_register_t *cbp = get_readonly_capreg(env, cb);
     /*
      * CBEZ: Branch if NULL
@@ -101,6 +102,7 @@ target_ulong CHERI_HELPER_IMPL(cbez(CPUArchState *env, uint32_t cb, uint32_t off
         return (target_ulong)0;
     else
         return (target_ulong)1;
+}
     /*
      * CBTS: Branch if tag is set
      */
@@ -200,10 +202,22 @@ check_readonly_cap_hwr_access(CPUArchState *env, enum CP2HWR hwr, target_ulong p
         env->CP2_CapCause = (uint16_t)(rt & 0xffffUL);
  * CPtrCmp Instructions. Capability Pointer Compare.
     const cap_register_t *ctp = get_readonly_capreg(env, ct);
+     * CEQ: Capability pointers equal (compares only the cursor)
+    return (target_ulong)(cap_get_cursor(cbp) == cap_get_cursor(ctp));
+     * CNE: Capability pointers not equal (compares only the cursor)
+  return (target_ulong)(cap_get_cursor(cbp) != cap_get_cursor(ctp));
      * CLT: Capability pointers less than (signed)
+    int64_t cursor1_signed = (int64_t)cap_get_cursor(cbp);
+    int64_t cursor2_signed = (int64_t)cap_get_cursor(ctp);
+    return (target_ulong)(cursor1_signed < cursor2_signed);
      * CLE: Capability pointers less than equal (signed)
+    return (target_ulong)(cursor1_signed <= cursor2_signed);
      * CLTU: Capability pointers less than (unsigned)
+    uint64_t cursor1_unsigned = cap_get_cursor(cbp);
+    uint64_t cursor2_unsigned = cap_get_cursor(ctp);
+    return (target_ulong)(cursor1_unsigned < cursor2_unsigned);
      * CLEU: Capability pointers less than equal (unsigned)
+    return (target_ulong)(cursor1_unsigned <= cursor2_unsigned);
 target_ulong CHERI_HELPER_IMPL(cloadlinked(CPUArchState *env, uint32_t cb, uint32_t size))
     // CLL[BHWD][U] traps on cbp == NULL so we use reg0 as $ddc to save encoding
     // space and increase code density since loading relative to $ddc is common
@@ -226,6 +240,7 @@ target_ulong CHERI_HELPER_IMPL(cstorecond(CPUArchState *env, uint32_t cb, uint32
     } else if (is_cap_sealed(cbp)) {
     } else if (!cap_has_perms(cbp, CAP_PERM_STORE)) {
         do_raise_c0_exception(env, EXCP_AdES, addr);
+    } else {
         // Can't do this here.  It might miss in the TLB.
         // cheri_tag_invalidate(env, addr, size);
         // Also, rd is set by the actual store conditional operation.
@@ -237,11 +252,13 @@ target_ulong CHERI_HELPER_IMPL(cstorecond(CPUArchState *env, uint32_t cb, uint32
     } else if (!cap_has_perms(cbp, CAP_PERM_STORE)) {
         return (target_ulong)0;
     } else if (!cap_has_perms(cbp, CAP_PERM_STORE_CAP)) {
+        return (target_ulong)0;
     } else if (!cap_has_perms(cbp, CAP_PERM_STORE_LOCAL) && csp->cr_tag &&
     } else if (align_of(CHERI_CAP_SIZE, addr)) {
         do_raise_c0_exception(env, EXCP_AdES, addr);
     return (target_ulong)addr;
     // CLLC traps on cbp == NULL so we use reg0 as $ddc to save encoding
+    if (!cbp->cr_tag) {
     } else if (is_cap_sealed(cbp)) {
         do_raise_c0_exception(env, EXCP_AdEL, addr);
 #endif
