@@ -169,6 +169,7 @@ static inline cap_register_t *
         if (!in_kernel_mode(env) || !access_sysregs) {
         return &env->active_tc.CHWR.KR1C;
     case CP2HWR_K2RC:
+        if (!in_kernel_mode(env) || !access_sysregs) {
         return &env->active_tc.CHWR.KR2C;
     case CP2HWR_ErrorEPCC:
     case CP2HWR_KCC:
@@ -185,6 +186,7 @@ check_readonly_cap_hwr_access(CPUArchState *env, enum CP2HWR hwr, target_ulong p
     // and write access but that may change in the future
         return &env->active_tc.CHWR.DDC;
     return check_writable_cap_hwr_access(env, hwr, pc);
+    if (!in_kernel_mode(env)) {
         do_raise_exception(env, EXCP_RI, GETPC());
     if (!in_kernel_mode(env)) {
     cap_register_t result = *check_readonly_cap_hwr_access(
