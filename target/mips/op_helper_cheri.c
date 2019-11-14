@@ -40,6 +40,7 @@
 #error "This file should only be compiled for CHERI"
 #endif
 #include "disas/disas.h"
+#include "disas/dis-asm.h"
 #ifdef __clang__
 #pragma clang diagnostic error "-Wdeprecated-declarations"
 #else
