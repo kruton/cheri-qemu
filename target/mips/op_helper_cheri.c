@@ -34,6 +34,7 @@
 #include "internal.h"
 #include "qemu/host-utils.h"
 #include "qemu/error-report.h"
+#include "qemu/qemu-print.h"
 #include "exec/cputlb.h"
 #include "exec/helper-proto.h"
 #ifndef TARGET_CHERI
@@ -55,6 +56,8 @@ void cheri_cpu_dump_statistics_f(CPUState *cs, FILE* f, int flags)
 #else
 #endif
 }
+void cheri_cpu_dump_statistics(CPUState *cs, int flags) {
+    cheri_cpu_dump_statistics_f(cs, NULL, flags);
 }
 static inline bool
 is_cap_sealed(const cap_register_t *cp)
