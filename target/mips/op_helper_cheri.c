@@ -54,6 +54,10 @@ void cheri_cpu_dump_statistics_f(CPUState *cs, FILE* f, int flags)
 #ifndef DO_CHERI_STATISTICS
     qemu_fprintf(f, "CPUSTATS DISABLED, RECOMPILE WITH -DDO_CHERI_STATISTICS\n");
 #else
+    dump_out_of_bounds_stats(f, &oob_info_cincoffset);
+    dump_out_of_bounds_stats(f, &oob_info_csetoffset);
+    dump_out_of_bounds_stats(f, &oob_info_cfromptr);
+    dump_out_of_bounds_stats(f, &oob_info_cgetpccsetoffset);
 #endif
 }
 void cheri_cpu_dump_statistics(CPUState *cs, int flags) {
