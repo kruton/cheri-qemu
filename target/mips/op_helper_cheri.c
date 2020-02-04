@@ -90,6 +90,16 @@ static inline int align_of(int size, uint64_t addr)
         return 1;
     }
 }
+static inline void update_ddc(CPUArchState *env, const cap_register_t* new_ddc) {
+    if (!cap_exactly_equal(&env->active_tc.CHWR.DDC, new_ddc)) {
+        // TODO: in the future we may want to move $ddc to the guest -> host addr
+        // translation. This would allow skipping $ddc checks for all pages that
+        // are fully covered by $ddc for the second load/store check
+        // (QEMU has separate TLBs for both cases already).
+        // If we implment this, we will have to flush the entire TLB whenever
+        // $ddc changes (or at least flush all pages affected by the $ddc chaged)
+        // XXX: tlb_flush(env_cpu(env));
+        env->active_tc.CHWR.DDC = *new_ddc;
     } else {
     }
 }
@@ -115,6 +125,7 @@ target_ulong CHERI_HELPER_IMPL(cbez(CPUArchState *env, uint32_t cb, uint32_t off
      * CBTS: Branch if tag is set
      */
     return (target_ulong)cbp->cr_tag;
+}
     /*
      * CBTU: Branch if tag is unset
     return (target_ulong)!cbp->cr_tag;
