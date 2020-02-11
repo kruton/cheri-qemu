@@ -40,6 +40,7 @@
 #ifndef TARGET_CHERI
 #error "This file should only be compiled for CHERI"
 #endif
+#include "cheri_tagmem.h"
 #include "disas/disas.h"
 #include "disas/dis-asm.h"
 #ifdef __clang__
