@@ -226,6 +226,13 @@ typedef TCGv_i64 TCGv_vaddr;
 # error "sizeof pointer is different from {4,8}"
 #endif /* __SIZEOF_POINTER__ */
 
+#ifdef TARGET_CHERI
+/* Use a different type to get compiler warnings */
+typedef struct TCGv_cap_checked_ptr_tl_d *TCGv_cap_checked_ptr;
+#else
+#define TCGv_cap_checked_ptr TCGv
+#endif
+
 /* call flags */
 /* Helper does not read globals (either directly or through an exception). It
    implies TCG_CALL_NO_WRITE_GLOBALS. */
@@ -527,6 +534,11 @@ static inline TCGTemp *tcgv_i128_temp(TCGv_i128 v)
 }
 
 static inline TCGTemp *tcgv_ptr_temp(TCGv_ptr v)
+{
+    return tcgv_i32_temp((TCGv_i32)v);
+}
+
+static inline TCGTemp *tcgv_cap_checked_ptr_temp(TCGv_cap_checked_ptr v)
 {
     return tcgv_i32_temp((TCGv_i32)v);
 }
