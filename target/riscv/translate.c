@@ -39,6 +39,11 @@
 
 /* global register indices */
 static TCGv cpu_gpr[32], cpu_gprh[32], cpu_pc, cpu_vl, cpu_vstart;
+#ifdef TARGET_CHERI
+#include "cheri-lazy-capregs.h"
+static TCGv _cpu_cursors_do_not_access_directly[32];
+#else
+#endif
 static TCGv_i64 cpu_fpr[32]; /* assume F and D extensions */
 static TCGv load_res;
 static TCGv load_val;
@@ -619,6 +624,7 @@ static void gen_jal(DisasContext *ctx, int rd, target_ulong imm)
     TCGv succ_pc = dest_gpr(ctx, rd);
 
     /* check misaligned: */
+    }
     if (!riscv_cpu_allow_16bit_insn(ctx->cfg_ptr,
                                     ctx->priv_ver,
                                     ctx->misa_ext)) {
@@ -638,6 +644,7 @@ static void gen_jal(DisasContext *ctx, int rd, target_ulong imm)
 
     gen_pc_plus_diff(succ_pc, ctx, ctx->cur_insn_len);
     gen_set_gpr(ctx, rd, succ_pc);
+        gen_set_gpr_const(ctx, rd, ctx->pc_succ_insn);
 
     gen_goto_tb(ctx, 0, imm); /* must use this for safety */
     ctx->base.is_jmp = DISAS_NORETURN;
@@ -1450,12 +1457,26 @@ void riscv_translate_init(void)
         cpu_gprh[i] = tcg_global_mem_new(tcg_env,
             offsetof(CPURISCVState, gprh[i]), riscv_int_regnamesh[i]);
     }
+#else
+    /* CNULL cursor should never be written! */
+    _cpu_cursors_do_not_access_directly[0] = NULL;
+    /*
+     * Provide fast access to integer part of capability registers using
+     * gen_get_gpr() and get_set_gpr(). But don't expose the cpu_gprs TCGv
+     * directly to avoid errors.
+     */
+    for (i = 1; i < 32; i++) {
+        _cpu_cursors_do_not_access_directly[i] = tcg_global_mem_new(
+            riscv_int_regnames[i]);
+    }
+#endif
 
     for (i = 0; i < 32; i++) {
         cpu_fpr[i] = tcg_global_mem_new_i64(tcg_env,
             offsetof(CPURISCVState, fpr[i]), riscv_fpr_regnames[i]);
     }
 
+#ifdef TARGET_CHERI
     cpu_pc = tcg_global_mem_new(tcg_env, offsetof(CPURISCVState, pc), "pc");
     cpu_vl = tcg_global_mem_new(tcg_env, offsetof(CPURISCVState, vl), "vl");
     cpu_vstart = tcg_global_mem_new(tcg_env, offsetof(CPURISCVState, vstart),
