@@ -1,6 +1,7 @@
  *
  *
  */
+#ifdef TARGET_CHERI
 #endif
 /*
  */
@@ -19,6 +20,7 @@
             break;
         default:
             break;
+#endif
 #else
 static void simple_dump_state(CPUMIPSState *env, FILE *f,
                               fprintf_function cpu_fprintf)
