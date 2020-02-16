@@ -178,6 +178,7 @@ extern RISCVCPUImpliedExtsRule *riscv_multi_ext_implied_rules[];
 #define OLD_MAX_RISCV_PMPS (16)
 #define MIN_RISCV_PMP_GRANULARITY 4
 
+#include "cheri-lazy-capregs-types.h"
 #if !defined(CONFIG_USER_ONLY)
 #include "pmp.h"
 #include "debug.h"
