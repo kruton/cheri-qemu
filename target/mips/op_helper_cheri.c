@@ -122,6 +122,7 @@ target_ulong CHERI_HELPER_IMPL(cbez(CPUArchState *env, uint32_t cb, uint32_t off
     else
         return (target_ulong)1;
 }
+    const cap_register_t *cbp = get_readonly_capreg(env, cb);
     /*
      * CBTS: Branch if tag is set
      */
@@ -238,6 +239,7 @@ check_readonly_cap_hwr_access(CPUArchState *env, enum CP2HWR hwr, target_ulong p
     return (target_ulong)(cursor1_unsigned < cursor2_unsigned);
      * CLEU: Capability pointers less than equal (unsigned)
     return (target_ulong)(cursor1_unsigned <= cursor2_unsigned);
+    target_ulong addr = get_capreg_cursor(env, cb);
 target_ulong CHERI_HELPER_IMPL(cloadlinked(CPUArchState *env, uint32_t cb, uint32_t size))
     // CLL[BHWD][U] traps on cbp == NULL so we use reg0 as $ddc to save encoding
     // space and increase code density since loading relative to $ddc is common
