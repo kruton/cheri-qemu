@@ -354,6 +354,7 @@ void cheri_dump_state(CPUState *cs, FILE *f, fprintf_function cpu_fprintf, int f
 void CHERI_HELPER_IMPL(mtc2_dumpcstate(CPUArchState *env, target_ulong arg1))
 void CHERI_HELPER_IMPL(cchecktype(CPUArchState *env, uint32_t cs, uint32_t cb))
     GET_HOST_RETPC();
+    const cap_register_t *csp = get_readonly_capreg(env, cs);
      * CCheckType: Raise exception if otypes don't match
     if (!csp->cr_tag) {
     } else if (!cbp->cr_tag) {
