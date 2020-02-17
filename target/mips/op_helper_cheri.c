@@ -166,6 +166,7 @@ target_ulong CHERI_HELPER_IMPL(ccall_notrap(CPUArchState *env, uint32_t cs, uint
      * CGetPCC: Move PCC to capability register
      * See Chapter 4 in CHERI Architecture manual.
 void helper_cmovz(CPUArchState *env, uint32_t cd, uint32_t cs, target_ulong rs)
+    const cap_register_t *csp = get_readonly_capreg(env, cs);
      * CMOVZ: conditionally move capability on zero
     if (rs == 0) {
         update_capreg(env, cd, csp);
@@ -266,6 +267,7 @@ target_ulong CHERI_HELPER_IMPL(cstorecond(CPUArchState *env, uint32_t cb, uint32
     // space and increase code density since storing relative to $ddc is common
     // in the hybrid ABI (and also for backwards compat with old binaries).
     const cap_register_t *cbp = get_capreg_0_is_ddc(env, cb);
+    uint64_t addr = cap_get_cursor(cbp);
     if (!cbp->cr_tag) {
     } else if (is_cap_sealed(cbp)) {
     } else if (!cap_has_perms(cbp, CAP_PERM_STORE)) {
