@@ -114,6 +114,7 @@ target_ulong CHERI_HELPER_IMPL(cbez(CPUArchState *env, uint32_t cb, uint32_t off
     else
         return (target_ulong)0;
 }
+{
     const cap_register_t *cbp = get_readonly_capreg(env, cb);
     /*
      * CBEZ: Branch if not NULL.
@@ -130,9 +131,12 @@ target_ulong CHERI_HELPER_IMPL(cbez(CPUArchState *env, uint32_t cb, uint32_t off
 }
     /*
      * CBTU: Branch if tag is unset
+     */
     return (target_ulong)!cbp->cr_tag;
+}
 static target_ulong ccall_common(CPUArchState *env, uint32_t cs, uint32_t cb, uint32_t selector, uintptr_t _host_return_address)
     const cap_register_t *csp = get_readonly_capreg(env, cs);
+    /*
      * CCall: Call into a new security domain
     if (!csp->cr_tag) {
     } else if (!cap_has_perms(csp, CAP_PERM_EXECUTE)) {
@@ -245,6 +249,7 @@ target_ulong CHERI_HELPER_IMPL(cloadlinked(CPUArchState *env, uint32_t cb, uint3
     // space and increase code density since loading relative to $ddc is common
     // in the hybrid ABI (and also for backwards compat with old binaries).
     const cap_register_t *cbp = get_capreg_0_is_ddc(env, cb);
+    uint64_t addr = cap_get_cursor(cbp);
     if (!cbp->cr_tag) {
     } else if (is_cap_sealed(cbp)) {
     } else if (!cap_has_perms(cbp, CAP_PERM_LOAD)) {
@@ -259,6 +264,8 @@ target_ulong CHERI_HELPER_IMPL(cloadlinked(CPUArchState *env, uint32_t cb, uint3
 target_ulong CHERI_HELPER_IMPL(cstorecond(CPUArchState *env, uint32_t cb, uint32_t size))
     // CSC[BHWD] traps on cbp == NULL so we use reg0 as $ddc to save encoding
     // space and increase code density since storing relative to $ddc is common
+    // in the hybrid ABI (and also for backwards compat with old binaries).
+    const cap_register_t *cbp = get_capreg_0_is_ddc(env, cb);
     if (!cbp->cr_tag) {
     } else if (is_cap_sealed(cbp)) {
     } else if (!cap_has_perms(cbp, CAP_PERM_STORE)) {
@@ -277,12 +284,17 @@ target_ulong CHERI_HELPER_IMPL(cstorecond(CPUArchState *env, uint32_t cb, uint32
     } else if (!cap_has_perms(cbp, CAP_PERM_STORE_CAP)) {
         return (target_ulong)0;
     } else if (!cap_has_perms(cbp, CAP_PERM_STORE_LOCAL) && csp->cr_tag &&
+        return (target_ulong)0;
+    } else if (!cap_is_in_bounds(cbp, addr, CHERI_CAP_SIZE)) {
     } else if (align_of(CHERI_CAP_SIZE, addr)) {
         do_raise_c0_exception(env, EXCP_AdES, addr);
     return (target_ulong)addr;
     // CLLC traps on cbp == NULL so we use reg0 as $ddc to save encoding
+    // space and increase code density since loading relative to $ddc is common
     if (!cbp->cr_tag) {
     } else if (is_cap_sealed(cbp)) {
+    } else if (!cap_has_perms(cbp, CAP_PERM_LOAD)) {
+    } else if (align_of(CHERI_CAP_SIZE, addr)) {
         do_raise_c0_exception(env, EXCP_AdEL, addr);
 #endif
 target_ulong CHERI_HELPER_IMPL(ccheck_load_right(CPUArchState *env, target_ulong offset, uint32_t len))
