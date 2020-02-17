@@ -1,5 +1,10 @@
+{
     }
+}
+static inline void sanity_check_capreg(GPCapRegs *gpcrs, unsigned regnum)
 #ifdef CONFIG_DEBUG_TCG
+        cheri_debug_assert(new_state == CREG_FULLY_DECOMPRESSED &&
+                           "NULL/scratch is always fully decompressed");
     sanity_check_capreg(gpcrs, regnum);
 #endif
     case CREG_INTEGER: {
@@ -7,3 +12,4 @@
         sanity_check_capreg(gpcrs, regnum);
                                  const cap_register_t *newval)
     case CREG_INTEGER:
+        cheri_debug_assert(result == 0);
