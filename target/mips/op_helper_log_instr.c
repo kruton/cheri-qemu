@@ -20,6 +20,7 @@
             break;
         default:
             break;
+    target_ulong pagemask, hi, lo0, lo1;
 #endif
 #else
 static void simple_dump_state(CPUMIPSState *env, FILE *f,
