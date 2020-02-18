@@ -420,6 +420,8 @@ static void gen_set_gpr(DisasContext *ctx, int reg_num, TCGv t)
         if (get_xl_max(ctx) == MXL_RV128) {
             tcg_gen_sari_tl(cpu_gprh[reg_num], cpu_gpr[reg_num], 63);
         }
+        gen_rvfi_dii_set_field_const_i8(INTEGER, rd_addr, reg_num);
+        gen_rvfi_dii_set_field_zext_tl(INTEGER, rd_wdata, t);
     }
 }
 
