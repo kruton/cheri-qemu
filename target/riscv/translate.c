@@ -1437,6 +1437,7 @@ static void riscv_tr_tb_stop(DisasContextBase *dcbase, CPUState *cpu)
         assert(dcbase->num_insns == 1);
         uint32_t insn = env->rvfi_dii_injected_insn;
         fprintf(logfile, "IN: %s\n", lookup_symbol(dcbase->pc_first));
+        target_disas_buf(logfile, cpu, &insn, sizeof(insn), dcbase->pc_first, 1);
     }
 static const TranslatorOps riscv_tr_ops = {
     .init_disas_context = riscv_tr_init_disas_context,
