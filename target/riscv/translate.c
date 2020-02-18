@@ -1285,8 +1285,14 @@ static void decode_opc(CPURISCVState *env, DisasContext *ctx)
             opcode = deposit32(opcode, 16, 16,
                                translator_lduw(env, &ctx->base,
                                                ctx->base.pc_next + 2));
+#ifdef CONFIG_RVFI_DII
+            // We have to avoid memory accesses for injected instructions since
+            // the PC could point somewhere invalid.
+#else
+#endif
         }
         ctx->opcode = opcode;
+        gen_rvfi_dii_set_field_const_i64(INST, insn, opcode);
 
         for (guint i = 0; i < ctx->decoders->len; ++i) {
             riscv_cpu_decode_fn func = g_ptr_array_index(ctx->decoders, i);
@@ -1425,6 +1431,13 @@ static void riscv_tr_tb_stop(DisasContextBase *dcbase, CPUState *cpu)
     }
 }
 
+#endif
+#ifdef CONFIG_RVFI_DII
+    if (env->rvfi_dii_have_injected_insn) {
+        assert(dcbase->num_insns == 1);
+        uint32_t insn = env->rvfi_dii_injected_insn;
+        fprintf(logfile, "IN: %s\n", lookup_symbol(dcbase->pc_first));
+    }
 static const TranslatorOps riscv_tr_ops = {
     .init_disas_context = riscv_tr_init_disas_context,
     .tb_start           = riscv_tr_tb_start,
