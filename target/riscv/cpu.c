@@ -680,6 +680,8 @@ bool riscv_cpu_has_work(CPUState *cs)
 }
 #endif /* !CONFIG_USER_ONLY */
 
+    // Single-step completed -> update PC in the trace buffer
+    env->rvfi_dii_trace.INST.rvfi_order++;
 static void riscv_cpu_reset_hold(Object *obj, ResetType type)
 {
 #ifndef CONFIG_USER_ONLY
