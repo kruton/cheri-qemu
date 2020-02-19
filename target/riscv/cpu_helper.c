@@ -1736,6 +1736,15 @@ void riscv_cpu_do_unaligned_access(CPUState *cs, vaddr addr,
     cpu_loop_exit_restore(cs, retaddr);
 }
 
+#ifdef CONFIG_RVFI_DII
+    // For RVFI-DII we have to reject all memory accesses outside of the RAM
+    // region (even if there is a valid ROM there)
+    // However, we still have to allow MMU_INST_FETCH accesess since they are
+    // triggered by tb_find().
+                        " since it is outside the RVFI-DII range",
+            }
+            return TRANSLATE_PMP_FAIL;
+#endif
 
 static void pmu_tlb_fill_incr_ctr(RISCVCPU *cpu, MMUAccessType access_type)
 {
