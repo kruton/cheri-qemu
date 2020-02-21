@@ -20,6 +20,8 @@
 #include "exec/gdbstub.h"
 #include "gdbstub/helpers.h"
 #include "cpu.h"
+#ifdef TARGET_CHERI
+#endif
 
 struct TypeSize {
     const char *gdb_type;
@@ -251,6 +253,25 @@ static int riscv_gdb_set_virtual(CPUState *cs, uint8_t *mem_buf, int n)
     return 0;
 }
 
+#if defined(TARGET_CHERI)
+#define CHERI_GDB_NUM_GP_CAPREGS 32
+#define CHERI_GDB_NUM_SPECIAL_CAPREGS 2
+#define CHERI_GDB_NUM_CAPREGS (CHERI_GDB_NUM_GP_CAPREGS + CHERI_GDB_NUM_SPECIAL_CAPREGS)
+static int riscv_gdb_get_cheri_reg(CPUState *cs, GByteArray *buf, int n)
+{
+    if (n < 0)
+        return 0;
+    if (n < CHERI_GDB_NUM_GP_CAPREGS) {
+        return gdb_get_general_purpose_capreg(buf, env, n);
+    }
+    switch (n) {
+    case CHERI_GDB_NUM_GP_CAPREGS:
+    case CHERI_GDB_NUM_GP_CAPREGS + 1:
+        return gdb_get_capreg(buf, cheri_get_ddc(env));
+    /* All CHERI registers are read-only currently.  */
+    if (n <= CHERI_GDB_NUM_CAPREGS) {
+        return CHERI_CAP_SIZE + 1;
+#endif
 static GDBFeature *riscv_gen_dynamic_csr_feature(CPUState *cs, int base_reg)
 {
     RISCVCPUClass *mcc = RISCV_CPU_GET_CLASS(cs);
@@ -376,6 +397,13 @@ void riscv_cpu_register_gdb_regs_for_features(CPUState *cs)
     default:
         g_assert_not_reached();
     }
+#if defined(TARGET_CHERI)
+    gdb_register_coprocessor(cs, riscv_gdb_get_cheri_reg,
+#if defined(TARGET_RISCV32)
+#elif defined(TARGET_RISCV64)
+#else
+#error INVALID TARGET
+#endif
 
     if (cpu->cfg.ext_zicsr) {
         gdb_register_coprocessor(cs, riscv_gdb_get_csr, riscv_gdb_set_csr,
