@@ -1,3 +1,7 @@
+#endif
  *
  * FIXME: rewrite using somethign more like the upcoming MTE changes (https://github.com/rth7680/qemu/commits/tgt-arm-mte-user)
+    assert(memory_region_is_ram(mr));
+    assert(memory_region_size(mr) == memory_size &&
+           "Incorrect tag mem size passed?");
         return NULL;
