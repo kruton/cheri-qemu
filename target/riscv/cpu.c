@@ -683,6 +683,15 @@ bool riscv_cpu_has_work(CPUState *cs)
     // Single-step completed -> update PC in the trace buffer
     env->rvfi_dii_trace.INST.rvfi_order++;
             env->rvfi_dii_trace.INST.rvfi_order = 0;
+            hwaddr system_ram_addr = cpu_get_phys_page_debug(cs, PC_ADDR(env));
+            void *ram_ptr = cpu_physical_memory_map(
+                system_ram_addr, &system_ram_size, /*is_write=*/true);
+            // FIXME: is it safe to do a munmap/mmap? We could also MAP_FIXED over
+            // the existing mapping. This should be faster since we rarely use more
+            // than one page.
+            memset(ram_ptr, 0, system_ram_size);
+            // Unmap: this should invalidate all caches for that regio.
+            cpu_physical_memory_unmap(ram_ptr, system_ram_size, /*is_write=*/true, system_ram_size);
 static void riscv_cpu_reset_hold(Object *obj, ResetType type)
 {
 #ifndef CONFIG_USER_ONLY
