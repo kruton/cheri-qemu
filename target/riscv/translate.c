@@ -879,11 +879,13 @@ static bool gen_logic_imm_fn(DisasContext *ctx, arg_i *a,
     func(dest, src1, a->imm);
 
     if (get_xl(ctx) == MXL_RV128) {
+#ifdef TARGET_CHERI
         TCGv src1h = get_gprh(ctx, a->rs1);
         TCGv desth = dest_gprh(ctx, a->rd);
 
         func(desth, src1h, -(a->imm < 0));
         gen_set_gpr128(ctx, a->rd, dest, desth);
+#endif
     } else {
         gen_set_gpr(ctx, a->rd, dest);
     }
