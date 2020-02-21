@@ -810,6 +810,7 @@ static void riscv_cpu_reset_hold(Object *obj, ResetType type)
         kvm_riscv_reset_vcpu(cpu);
     }
 #endif
+    set_max_perms_capability(env, &env->pcc, env->resetvec);
 }
 
 static void riscv_cpu_disas_set_info(CPUState *s, disassemble_info *info)
