@@ -692,6 +692,8 @@ bool riscv_cpu_has_work(CPUState *cs)
             memset(ram_ptr, 0, system_ram_size);
             // Unmap: this should invalidate all caches for that regio.
             cpu_physical_memory_unmap(ram_ptr, system_ram_size, /*is_write=*/true, system_ram_size);
+            // Flush the TCG state:
+            tb_flush(cs);
 static void riscv_cpu_reset_hold(Object *obj, ResetType type)
 {
 #ifndef CONFIG_USER_ONLY
