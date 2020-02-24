@@ -694,6 +694,8 @@ bool riscv_cpu_has_work(CPUState *cs)
             cpu_physical_memory_unmap(ram_ptr, system_ram_size, /*is_write=*/true, system_ram_size);
             // Flush the TCG state:
             tb_flush(cs);
+            // TestRIG expects all capability registers to be max perms
+            set_max_perms_capregs(env);
 static void riscv_cpu_reset_hold(Object *obj, ResetType type)
 {
 #ifndef CONFIG_USER_ONLY
