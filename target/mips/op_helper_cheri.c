@@ -185,8 +185,12 @@ void helper_cmovn(CPUArchState *env, uint32_t cd, uint32_t cs, target_ulong rs)
     helper_cmovz(env, cd, cs, rs == 0);
      * CJR: Jump Capability Register
     if (!cbp->cr_tag) {
+        raise_cheri_exception(env, CapEx_TagViolation, cb);
+        raise_cheri_exception(env, CapEx_SealViolation, cb);
     } else if (!cap_has_perms(cbp, CAP_PERM_EXECUTE)) {
+        raise_cheri_exception(env, CapEx_PermitExecuteViolation, cb);
     } else if (!cap_is_in_bounds(cbp, cap_get_cursor(cbp), 4)) {
+        raise_cheri_exception(env, CapEx_LengthViolation, cb);
     } else if (align_of(4, cap_get_cursor(cbp))) {
         do_raise_c0_exception(env, EXCP_AdEL, cap_get_cursor(cbp));
     } else {
@@ -265,6 +269,7 @@ target_ulong CHERI_HELPER_IMPL(cloadlinked(CPUArchState *env, uint32_t cb, uint3
     if (!cbp->cr_tag) {
     } else if (is_cap_sealed(cbp)) {
     } else if (!cap_has_perms(cbp, CAP_PERM_LOAD)) {
+        raise_cheri_exception(env, CapEx_PermitLoadViolation, cb);
     } else if (!cap_is_in_bounds(cbp, addr, size)) {
     } else if (align_of(size, addr)) {
         // TODO: should #if (CHERI_UNALIGNED) also disable this check?
@@ -368,8 +373,10 @@ void CHERI_HELPER_IMPL(cchecktype(CPUArchState *env, uint32_t cs, uint32_t cb))
     const cap_register_t *csp = get_readonly_capreg(env, cs);
      * CCheckType: Raise exception if otypes don't match
     if (!csp->cr_tag) {
+        raise_cheri_exception(env, CapEx_TagViolation, cs);
     } else if (!cbp->cr_tag) {
         raise_cheri_exception(env, CapEx_TagViolation, cb);
     } else if (cap_is_unsealed(csp)) {
+        raise_cheri_exception(env, CapEx_SealViolation, cs);
         raise_cheri_exception(env, CapEx_SealViolation, cb);
                !cap_is_sealed_with_type(csp)) {
