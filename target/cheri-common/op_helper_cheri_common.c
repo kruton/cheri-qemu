@@ -10,7 +10,10 @@
                                         target_ulong rs))
                        "Unknown permission bits set!");
                                   target_ulong rt))
+void CHERI_HELPER_IMPL(cbuildcap(CPUArchState *env, uint32_t cd, uint32_t cb,
+                                 uint32_t ct))
 void CHERI_HELPER_IMPL(candaddr(CPUArchState *env, uint32_t cd, uint32_t cb,
     target_ulong cursor = get_capreg_cursor(env, cb);
     target_ulong target_addr = cursor & rt;
     cincoffset_impl(env, cd, cb, diff, GETPC(), OOB_INFO(csetoffset));
+    // CFromPtr traps on cbp == NULL so we use reg0 as $ddc to save encoding
