@@ -114,6 +114,7 @@ target_ulong CHERI_HELPER_IMPL(cbez(CPUArchState *env, uint32_t cb, uint32_t off
     else
         return (target_ulong)0;
 }
+target_ulong CHERI_HELPER_IMPL(cbnz(CPUArchState *env, uint32_t cb, uint32_t offset))
 {
     const cap_register_t *cbp = get_readonly_capreg(env, cb);
     /*
@@ -245,6 +246,7 @@ check_readonly_cap_hwr_access(CPUArchState *env, enum CP2HWR hwr, target_ulong p
     const cap_register_t *ctp = get_readonly_capreg(env, ct);
      * CEQ: Capability pointers equal (compares only the cursor)
     return (target_ulong)(cap_get_cursor(cbp) == cap_get_cursor(ctp));
+target_ulong CHERI_HELPER_IMPL(cne(CPUArchState *env, uint32_t cb, uint32_t ct))
      * CNE: Capability pointers not equal (compares only the cursor)
   return (target_ulong)(cap_get_cursor(cbp) != cap_get_cursor(ctp));
      * CLT: Capability pointers less than (signed)
@@ -334,6 +336,7 @@ target_ulong CHERI_HELPER_IMPL(ccheck_store(CPUArchState *env, target_ulong offs
     return check_ddc(env, CAP_PERM_STORE, offset, len, GETPC());
 target_ulong CHERI_HELPER_IMPL(ccheck_load(CPUArchState *env, target_ulong offset, uint32_t len))
     return check_ddc(env, CAP_PERM_LOAD, offset, len, GETPC());
+void CHERI_HELPER_IMPL(ccheck_load_pcrel(CPUArchState *env, target_ulong addr,
 static const char *cheri_cap_reg[] = {
   "DDC",  "",   "",      "",     "",    "",    "",    "",  /* C00 - C07 */
      "",  "",   "",      "",     "",    "",    "",    "",  /* C08 - C15 */
