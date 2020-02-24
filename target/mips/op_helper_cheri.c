@@ -139,9 +139,20 @@ static target_ulong ccall_common(CPUArchState *env, uint32_t cs, uint32_t cb, ui
     /*
      * CCall: Call into a new security domain
     if (!csp->cr_tag) {
+        raise_cheri_exception(env, CapEx_TagViolation, cs);
+        raise_cheri_exception(env, CapEx_TagViolation, cb);
+        raise_cheri_exception(env, CapEx_SealViolation, cs);
+        raise_cheri_exception(env, CapEx_SealViolation, cb);
+        raise_cheri_exception(env, CapEx_TypeViolation, cs);
     } else if (!cap_has_perms(csp, CAP_PERM_EXECUTE)) {
+        raise_cheri_exception(env, CapEx_PermitExecuteViolation, cs);
+        raise_cheri_exception(env, CapEx_PermitExecuteViolation, cb);
         // TODO: check for at least one instruction worth of data? Like cjr/cjalr?
+        raise_cheri_exception(env, CapEx_LengthViolation, cs);
     } else {
+            raise_cheri_exception(env, CapEx_CallTrap, cs);
+            raise_cheri_exception(env, CapEx_PermitCCallViolation, cs);
+            raise_cheri_exception(env, CapEx_PermitCCallViolation, cb);
         } else {
             cap_register_t idc = *cbp;
             // The capability register is loaded into PCC during delay slot
@@ -358,5 +369,7 @@ void CHERI_HELPER_IMPL(cchecktype(CPUArchState *env, uint32_t cs, uint32_t cb))
      * CCheckType: Raise exception if otypes don't match
     if (!csp->cr_tag) {
     } else if (!cbp->cr_tag) {
+        raise_cheri_exception(env, CapEx_TagViolation, cb);
     } else if (cap_is_unsealed(csp)) {
+        raise_cheri_exception(env, CapEx_SealViolation, cb);
                !cap_is_sealed_with_type(csp)) {
