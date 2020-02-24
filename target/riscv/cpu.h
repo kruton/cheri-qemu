@@ -495,6 +495,17 @@ struct CPUArchState {
     uint64_t sstateen[SMSTATEEN_MAX_COUNT];
     uint64_t henvcfg;
 #endif
+#ifdef TARGET_CHERI
+    // Some statcounters:
+    uint64_t statcounters_cap_read;
+    uint64_t statcounters_cap_read_tagged;
+    uint64_t statcounters_cap_write;
+    uint64_t statcounters_cap_write_tagged;
+
+    uint64_t statcounters_imprecise_setbounds;
+    uint64_t statcounters_unrepresentable_caps;
+
+#endif
 
     /* Fields from here on are preserved across CPU reset. */
     QEMUTimer *stimer; /* Internal timer for S-mode interrupt */
