@@ -10,6 +10,9 @@ static inline void sanity_check_capreg(GPCapRegs *gpcrs, unsigned regnum)
     case CREG_INTEGER: {
         return result;
         sanity_check_capreg(gpcrs, regnum);
+#endif
+#if defined(TARGET_RISCV) && defined(CONFIG_RVFI_DII)
+    env->rvfi_dii_trace.INTEGER.rvfi_rd_wdata = cursor;
                                  const cap_register_t *newval)
     case CREG_INTEGER:
         cheri_debug_assert(result == 0);
