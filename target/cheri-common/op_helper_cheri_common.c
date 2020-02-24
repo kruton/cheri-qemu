@@ -6,3 +6,4 @@
                     "runtime. Call the _impl variant instead"))) helper_##name
 {
                                         target_ulong rs))
+                       "Unknown permission bits set!");
