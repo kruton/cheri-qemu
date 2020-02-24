@@ -233,7 +233,9 @@ struct CPUArchState {
     bool vill;
 
     target_ulong pc;
+#ifdef TARGET_CHERI
     cap_register_t PCC; // TODO: implement this properly
+#endif
 
     target_ulong load_res;
     target_ulong load_val;
