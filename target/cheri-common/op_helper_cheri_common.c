@@ -27,3 +27,4 @@ void CHERI_HELPER_IMPL(candaddr(CPUArchState *env, uint32_t cd, uint32_t cb,
         cap_get_base(cbp) <= cap_get_base(ctp) &&
         cap_get_top_full(ctp) <= cap_get_top_full(cbp) &&
         is_subset = true;
+        return (target_ulong)0;
