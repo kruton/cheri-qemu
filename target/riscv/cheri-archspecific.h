@@ -1,6 +1,15 @@
 {
+    env->badaddr = addr;
+}
+{
 }
                                                            uintptr_t retpc)
+static inline void G_NORETURN raise_unaligned_load_exception(
+    CPUArchState *env, target_ulong addr, uintptr_t retpc)
+    riscv_raise_exception(env, RISCV_EXCP_LOAD_ADDR_MIS, retpc);
+static inline void G_NORETURN raise_unaligned_store_exception(
+    // Note: RISCV_EXCP_STORE_AMO_ADDR_MIS means "Store/AMO address misaligned"
+    riscv_raise_exception(env, RISCV_EXCP_STORE_AMO_ADDR_MIS, retpc);
 static inline bool validate_jump_target(CPUArchState *env,
                                         const cap_register_t *cap,
     unsigned min_insn_size = riscv_has_ext(env, RVC) ? 2 : 4;
