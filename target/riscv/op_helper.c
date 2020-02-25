@@ -27,6 +27,9 @@
 #include "exec/helper-proto.h"
 #include "exec/tlb-flags.h"
 #include "trace.h"
+#ifdef TARGET_CHERI
+#include "cheri-helper-utils.h"
+#endif
 
 #ifndef CONFIG_USER_ONLY
 static inline MemOp mo_endian_env(CPURISCVState *env)
