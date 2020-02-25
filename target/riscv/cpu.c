@@ -449,6 +449,8 @@ static bool get_satp_mode_supported(RISCVCPU *cpu, uint16_t *supported)
     const bool *valid_vm = rv32 ? valid_vm_1_10_32 : valid_vm_1_10_64;
     int satp_mode = cpu->cfg.max_satp_mode;
 
+#ifdef TARGET_CHERI
+#endif
     if (satp_mode == -1) {
         return false;
     }
@@ -811,6 +813,10 @@ static void riscv_cpu_reset_hold(Object *obj, ResetType type)
     if (kvm_enabled()) {
         kvm_riscv_reset_vcpu(cpu);
     }
+#endif
+    // Also reset mepc/sepc to zero for predicatable behaviour
+    env->mepc = 0;
+    env->sepc = 0;
 #endif
     set_max_perms_capability(env, &env->pcc, env->resetvec);
 }
