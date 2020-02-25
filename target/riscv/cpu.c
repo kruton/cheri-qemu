@@ -686,6 +686,7 @@ bool riscv_cpu_has_work(CPUState *cs)
     env->rvfi_dii_trace.INST.rvfi_order++;
             env->rvfi_dii_trace.INST.rvfi_order = 0;
             hwaddr system_ram_addr = cpu_get_phys_page_debug(cs, PC_ADDR(env));
+            hwaddr system_ram_size = RVFI_DII_RAM_SIZE;
             void *ram_ptr = cpu_physical_memory_map(
                 system_ram_addr, &system_ram_size, /*is_write=*/true);
             // FIXME: is it safe to do a munmap/mmap? We could also MAP_FIXED over
