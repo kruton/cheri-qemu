@@ -85,6 +85,9 @@ typedef struct DisasContext {
     bool virt_inst_excp;
     bool virt_enabled;
     const RISCVCPUConfig *cfg_ptr;
+#ifdef TARGET_CHERI
+    bool capmode;
+#endif
     /* vector extension */
     bool vill;
     /*
