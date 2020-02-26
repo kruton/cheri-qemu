@@ -2478,6 +2478,12 @@ void riscv_cpu_do_interrupt(CPUState *cs)
                         prev_priv, prev_virt);
     }
 
+        }
+    if (unlikely(env->rvfi_dii_have_injected_insn)) {
+        qemu_log_mask(CPU_LOG_INT, "%s: Got real exception %d\n", __func__,
+                      cs->exception_index);
+        env->rvfi_dii_trace.INST.rvfi_trap = true;
+        rvfi_dii_communicate(env_cpu(env), env, true);
     if (async) {
         qemu_plugin_vcpu_interrupt_cb(cs, last_pc);
     } else {
