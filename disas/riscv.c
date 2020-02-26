@@ -820,6 +820,19 @@ typedef enum {
     rv_op_czero_eqz = 789,
     rv_op_czero_nez = 790,
     rv_op_fcvt_bf16_s = 791,
+    // Two operand
+    rv_op_cgetperm,
+    rv_op_cgettype,
+    rv_op_cgetbase,
+    rv_op_cgetlen,
+    rv_op_cgettag,
+    rv_op_cgetsealed,
+    rv_op_cgetoffset,
+    rv_op_cgetflags,
+    rv_op_cmove,
+    rv_op_ccleartag,
+    rv_op_cjalr,
+    rv_op_cgetaddr,
     rv_op_fcvt_s_bf16 = 792,
     rv_op_vfncvtbf16_f_f_w = 793,
     rv_op_vfwcvtbf16_f_f_v = 794,
@@ -995,6 +1008,12 @@ static const char rv_ireg_name_sym[32][5] = {
     "s8",   "s9",   "s10",  "s11",  "t3",   "t4",   "t5",   "t6",
 };
 
+static const char rv_creg_name_sym[32][6] = {
+    "cnull", "cra",   "csp",   "cgp",   "ctp",   "ct0",   "ct1",   "ct2",
+    "cs0",   "cs1",   "ca0",   "ca1",   "ca2",   "ca3",   "ca4",   "ca5",
+    "ca6",   "ca7",   "cs2",   "cs3",   "cs4",   "cs5",   "cs6",   "cs7",
+    "cs8",   "cs9",   "cs10",  "cs11",  "ct3",   "ct4",   "ct5",   "ct6",
+};
 static const char rv_freg_name_sym[32][5] = {
     "ft0",  "ft1",  "ft2",  "ft3",  "ft4",  "ft5",  "ft6",  "ft7",
     "fs0",  "fs1",  "fa0",  "fa1",  "fa2",  "fa3",  "fa4",  "fa5",
@@ -1009,6 +1028,7 @@ static const char rv_vreg_name_sym[32][4] = {
     "v24", "v25", "v26", "v27", "v28", "v29", "v30", "v31"
 };
 
+#define rv_fmt_cd_offset              "O\tC0,o"
 /* The FLI.[HSDQ] numeric constants (0.0 for symbolic constants).
  * The constants use the hex floating-point literal representation
  * that is printed when using the printf %a format specifier,
@@ -2088,6 +2108,22 @@ const rv_opcode_data rvi_opcode_data[] = {
     { "czero.eqz", rv_codec_r, rv_fmt_rd_rs1_rs2, NULL, 0, 0, 0 },
     { "czero.nez", rv_codec_r, rv_fmt_rd_rs1_rs2, NULL, 0, 0, 0 },
     { "fcvt.bf16.s", rv_codec_r_m, rv_fmt_rm_frd_frs1, NULL, 0, 0, 0 },
+    [rv_op_auipcc] = { "auipcc", rv_codec_u, rv_fmt_cd_offset, NULL, 0, 0, 0 },
+    [rv_op_clc] = { "clc", rv_codec_i, rv_fmt_cd_offset_cs1, NULL, 0, 0, 0 },
+    [rv_op_csc] = { "csc", rv_codec_s, rv_fmt_cs2_offset_cs1, NULL, 0, 0, 0 },
+    // Two operand
+    [rv_op_cgetperm] = { "cgetperm", rv_codec_r, rv_fmt_rd_cs1, NULL, 0, 0, 0 },
+    [rv_op_cgettype] = { "cgettype", rv_codec_r, rv_fmt_rd_cs1, NULL, 0, 0, 0 },
+    [rv_op_cgetbase] = { "cgetbase", rv_codec_r, rv_fmt_rd_cs1, NULL, 0, 0, 0 },
+    [rv_op_cgetlen] = { "cgetlen", rv_codec_r, rv_fmt_rd_cs1, NULL, 0, 0, 0 },
+    [rv_op_cgettag] = { "cgettag", rv_codec_r, rv_fmt_rd_cs1, NULL, 0, 0, 0 },
+    [rv_op_cgetsealed] = { "cgetsealed", rv_codec_r, rv_fmt_rd_cs1, NULL, 0, 0, 0 },
+    [rv_op_cgetoffset] = { "cgetoffset", rv_codec_r, rv_fmt_rd_cs1, NULL, 0, 0, 0 },
+    [rv_op_cgetflags] = { "cgetflags", rv_codec_r, rv_fmt_rd_cs1, NULL, 0, 0, 0 },
+    [rv_op_cmove] = { "cmove", rv_codec_r, rv_fmt_cd_cs1, NULL, 0, 0, 0 },
+    [rv_op_ccleartag] = { "ccleartag", rv_codec_r, rv_fmt_cd_cs1, NULL, 0, 0, 0 },
+    [rv_op_cjalr] = { "cjalr", rv_codec_r, rv_fmt_cd_cs1, NULL, 0, 0, 0 },
+    [rv_op_cgetaddr] = { "cgetaddr", rv_codec_r, rv_fmt_rd_cs1, NULL, 0, 0, 0 },
     { "fcvt.s.bf16", rv_codec_r_m, rv_fmt_rm_frd_frs1, NULL, 0, 0, 0 },
     { "vfncvtbf16.f.f.w", rv_codec_v_r, rv_fmt_vd_vs2_vm, NULL, 0, 0, 0 },
     { "vfwcvtbf16.f.f.v", rv_codec_v_r, rv_fmt_vd_vs2_vm, NULL, 0, 0, 0 },
@@ -2539,6 +2575,22 @@ static const char *csr_name(int csrno)
 /* decode opcode */
 
 static void decode_inst_opcode(rv_decode *dec, rv_isa isa)
+static rv_opcode decode_cheri_two_op(unsigned func) {
+    switch (func) {
+    case 0b00000: return rv_op_cgetperm;
+    case 0b00001: return rv_op_cgettype;
+    case 0b00010: return rv_op_cgetbase;
+    case 0b00011: return rv_op_cgetlen;
+    case 0b00100: return rv_op_cgettag;
+    case 0b00101: return rv_op_cgetsealed;
+    case 0b00110: return rv_op_cgetoffset;
+    case 0b00111: return rv_op_cgetflags;
+    case 0b01010: return rv_op_cmove;
+    case 0b01011: return rv_op_ccleartag;
+    case 0b01100: return rv_op_cjalr;
+    case 0b01111: return rv_op_cgetaddr;
+    default: return rv_op_illegal;
+    }
 {
     rv_inst inst = dec->inst;
     rv_opcode op = rv_op_illegal;
@@ -2934,6 +2986,9 @@ static void decode_inst_opcode(rv_decode *dec, rv_isa isa)
             case 5:
                 switch ((inst >> 27) & 0b11111) {
                 case 0b00000: op = rv_op_srli; break;
+                    switch ((inst >> 26) & 0b1) {
+                        break;
+                    }
                 case 0b00001:
                     switch ((inst >> 20) & 0b1111111) {
                     case 0b0001111: op = rv_op_unzip; break;
@@ -5144,6 +5199,19 @@ static GString *format_inst(size_t tab, rv_decode *dec)
         case '7':
             g_string_append_printf(buf, "%d", dec->rs1);
             break;
+        case 'C': {
+            fmt++;
+            switch (*fmt) {
+            case '0':
+                g_string_append(buf, rv_creg_name_sym[dec->rd]);
+                break;
+            case '1':
+                g_string_append(buf, rv_creg_name_sym[dec->rs1]);
+            case '2':
+                g_string_append(buf, rv_creg_name_sym[dec->rs2]);
+            default:
+                abort();
+            }
         case 'i':
             g_string_append_printf(buf, "%d", dec->imm);
             break;
