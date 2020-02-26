@@ -820,6 +820,17 @@ typedef enum {
     rv_op_czero_eqz = 789,
     rv_op_czero_nez = 790,
     rv_op_fcvt_bf16_s = 791,
+    rv_op_clb,
+    rv_op_clbu,
+    rv_op_clh,
+    rv_op_clhu,
+    rv_op_clw,
+    rv_op_clwu,
+    rv_op_cld,
+    rv_op_csb,
+    rv_op_csh,
+    rv_op_csw,
+    rv_op_csd,
     // Two operand
     rv_op_cgetperm,
     rv_op_cgettype,
@@ -1029,6 +1040,8 @@ static const char rv_vreg_name_sym[32][4] = {
 };
 
 #define rv_fmt_cd_offset              "O\tC0,o"
+#define rv_fmt_rd_offset_cs1          "O\t0,i(C1)"
+#define rv_fmt_rs2_offset_cs1         "O\t2,i(C1)"
 /* The FLI.[HSDQ] numeric constants (0.0 for symbolic constants).
  * The constants use the hex floating-point literal representation
  * that is printed when using the printf %a format specifier,
@@ -2124,6 +2137,18 @@ const rv_opcode_data rvi_opcode_data[] = {
     [rv_op_ccleartag] = { "ccleartag", rv_codec_r, rv_fmt_cd_cs1, NULL, 0, 0, 0 },
     [rv_op_cjalr] = { "cjalr", rv_codec_r, rv_fmt_cd_cs1, NULL, 0, 0, 0 },
     [rv_op_cgetaddr] = { "cgetaddr", rv_codec_r, rv_fmt_rd_cs1, NULL, 0, 0, 0 },
+    // capmode loads:
+    [rv_op_clb] = { "clb", rv_codec_i, rv_fmt_rd_offset_cs1, NULL, 0, 0, 0 },
+    [rv_op_clh] = { "clh", rv_codec_i, rv_fmt_rd_offset_cs1, NULL, 0, 0, 0 },
+    [rv_op_clw] = { "clw", rv_codec_i, rv_fmt_rd_offset_cs1, NULL, 0, 0, 0 },
+    [rv_op_cld] = { "cld", rv_codec_i, rv_fmt_rd_offset_cs1, NULL, 0, 0, 0 },
+    [rv_op_clbu] = { "clbu", rv_codec_i, rv_fmt_rd_offset_cs1, NULL, 0, 0, 0 },
+    [rv_op_clhu] = { "clhu", rv_codec_i, rv_fmt_rd_offset_cs1, NULL, 0, 0, 0 },
+    [rv_op_clwu] = { "clwu", rv_codec_i, rv_fmt_rd_offset_cs1, NULL, 0, 0, 0 },
+    [rv_op_csb] = { "sb", rv_codec_s, rv_fmt_rs2_offset_cs1, NULL, 0, 0, 0 },
+    [rv_op_csh] = { "sh", rv_codec_s, rv_fmt_rs2_offset_cs1, NULL, 0, 0, 0 },
+    [rv_op_csw] = { "sw", rv_codec_s, rv_fmt_rs2_offset_cs1, NULL, 0, 0, 0 },
+    [rv_op_csd] = { "sd", rv_codec_s, rv_fmt_rs2_offset_cs1, NULL, 0, 0, 0 },
     { "fcvt.s.bf16", rv_codec_r_m, rv_fmt_rm_frd_frs1, NULL, 0, 0, 0 },
     { "vfncvtbf16.f.f.w", rv_codec_v_r, rv_fmt_vd_vs2_vm, NULL, 0, 0, 0 },
     { "vfwcvtbf16.f.f.v", rv_codec_v_r, rv_fmt_vd_vs2_vm, NULL, 0, 0, 0 },
@@ -3045,11 +3070,17 @@ static rv_opcode decode_cheri_two_op(unsigned func) {
             break;
         case 8:
             switch ((inst >> 12) & 0b111) {
-            case 0: op = rv_op_sb; break;
-            case 1: op = rv_op_sh; break;
-            case 2: op = rv_op_sw; break;
             case 3: op = rv_op_sd; break;
             case 4: op = rv_op_sq; break;
+            case 0: op = (flags & RISCV_DIS_FLAG_CAPMODE) ? rv_op_csb : rv_op_sb; break;
+            case 1: op = (flags & RISCV_DIS_FLAG_CAPMODE) ? rv_op_csh : rv_op_sh; break;
+            case 2: op = (flags & RISCV_DIS_FLAG_CAPMODE) ? rv_op_csw : rv_op_sw; break;
+            case 3:
+                } else {
+                }
+                break;
+                if (flags & RISCV_DIS_FLAG_CHERI) {
+                    op = rv_op_sq;
             }
             break;
         case 9:
@@ -3141,11 +3172,16 @@ static rv_opcode decode_cheri_two_op(unsigned func) {
             case 20:
                 switch ((inst >> 20) & 0b11111) {
                 case 0: op = rv_op_lr_q; break;
+                        op = (flags & RISCV_DIS_FLAG_CAPMODE)
+                    } else {
+                    }
+                    break;
                 }
                 break;
             case 26: op = rv_op_sc_w; break;
             case 27: op = rv_op_sc_d; break;
             case 28: op = rv_op_sc_q; break;
+                    op = rv_op_sc_q;
             case 32: op = rv_op_amoxor_b; break;
             case 33: op = rv_op_amoxor_h; break;
             case 34: op = rv_op_amoxor_w; break;
