@@ -23,6 +23,7 @@
     target_ulong pagemask, hi, lo0, lo1;
 #endif
 #else
+        idx, (long)pagemask, (long)hi, (long)lo0, (long)lo1);
 static void simple_dump_state(CPUMIPSState *env, FILE *f,
                               fprintf_function cpu_fprintf)
 /* gxemul compat:
