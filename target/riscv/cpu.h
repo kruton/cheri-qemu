@@ -259,6 +259,16 @@ struct CPUArchState {
     uint32_t misa_ext_mask; /* max ext for this cpu */
     uint32_t xl;            /* current xlen */
 
+#ifdef TARGET_CHERI
+    // The cause field reports the cause of the last capability exception,
+    // following the encoding described in Table 3.9.2.
+    // See enum CheriCapExc in cheri-archspecific.h
+    // The cap idx field reports the index of the capability register that
+    // caused the last exception. When the most significant bit is set, the 5
+    // least significant bits are used to index the special purpose capability
+    // register file described in Table 5.3, otherwise, they index the
+    // general-purpose capability register file.
+#endif
     /* 128-bit helpers upper part return value */
     target_ulong retxh;
 

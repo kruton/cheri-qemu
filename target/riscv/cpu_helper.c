@@ -2283,6 +2283,13 @@ void riscv_cpu_do_interrupt(CPUState *cs)
         case RISCV_EXCP_SW_CHECK:
             tval = env->sw_check_code;
             break;
+#ifdef TARGET_CHERI
+        case RISCV_EXCP_CHERI:
+            tcg_debug_assert(env->cap_cause < 32);
+            tcg_debug_assert(env->cap_index < 64);
+            tval = env->cap_cause | env->cap_index << 5;
+            break;
+#endif
         default:
             break;
         }
