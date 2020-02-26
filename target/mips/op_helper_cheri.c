@@ -41,6 +41,8 @@
 #error "This file should only be compiled for CHERI"
 #endif
 #include "cheri_tagmem.h"
+#include "cheri-helper-utils.h"
+#include "cheri-lazy-capregs.h"
 #include "disas/disas.h"
 #include "disas/dis-asm.h"
 #ifdef __clang__
