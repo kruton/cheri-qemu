@@ -850,6 +850,11 @@ static void riscv_cpu_disas_set_info(CPUState *s, disassemble_info *info)
     default:
         g_assert_not_reached();
     }
+#ifdef TARGET_CHERI
+    info->flags |= RISCV_DIS_FLAG_CHERI;
+#endif
+        info->flags |= RISCV_DIS_FLAG_CAPMODE;
+    }
 }
 
 #ifndef CONFIG_USER_ONLY
