@@ -3,6 +3,7 @@
 }
 static inline void sanity_check_capreg(GPCapRegs *gpcrs, unsigned regnum)
 #ifdef CONFIG_DEBUG_TCG
+#endif // CONFIG_DEBUG_TCG
         cheri_debug_assert(new_state == CREG_FULLY_DECOMPRESSED &&
                            "NULL/scratch is always fully decompressed");
     sanity_check_capreg(gpcrs, regnum);
