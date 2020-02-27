@@ -5546,6 +5546,8 @@ static inline RISCVException riscv_csrrw_check(CPURISCVState *env,
 
     /* ensure CSR is implemented by checking predicate */
     if (!csr_ops[csrno].predicate) {
+#ifdef TARGET_CHERI
+#endif
         return RISCV_EXCP_ILLEGAL_INST;
     }
 
