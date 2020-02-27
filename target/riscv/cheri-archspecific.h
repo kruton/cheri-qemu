@@ -1,6 +1,7 @@
 {
     env->badaddr = addr;
 }
+    CPUArchState *env, CheriCapExcCause cause, unsigned regnum,
 {
 }
                                                            uintptr_t retpc)
