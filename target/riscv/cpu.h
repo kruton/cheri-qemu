@@ -706,7 +706,15 @@ G_NORETURN void riscv_raise_exception(CPURISCVState *env,
 
 target_ulong riscv_cpu_get_fflags(CPURISCVState *env);
 void riscv_cpu_set_fflags(CPURISCVState *env, target_ulong);
+}
+#ifdef TARGET_CHERI
+#endif
 
+ * Note: the pc does not have to be up-to-date, tb start is fine.
+ * We may miss a few dumps or print too many if -dfilter is on but
+ * that shouldn't really matter.
+static inline target_ulong cpu_get_recent_pc(CPURISCVState *env)
+    return env->pcc._cr_cursor;
 FIELD(TB_FLAGS, MEM_IDX, 0, 3)
 FIELD(TB_FLAGS, FS, 3, 2)
 /* Vector flags */
