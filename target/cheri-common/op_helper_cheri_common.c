@@ -12,6 +12,7 @@
     }
     }
         }
+    }
 {
                                         target_ulong rs))
     const cap_register_t *cbp = get_readonly_capreg(env, cb);
@@ -33,6 +34,8 @@ void CHERI_HELPER_IMPL(candaddr(CPUArchState *env, uint32_t cd, uint32_t cb,
         cap_get_top_full(ctp) <= cap_get_top_full(cbp) &&
         is_subset = true;
         return (target_ulong)0;
+        tag = cheri_tag_prot_clear_or_trap(env, vaddr, cb, source, prot, retpc,
+        if (tag) {
 #if defined(TARGET_RISCV) && defined(CONFIG_RVFI_DII)
     env->rvfi_dii_trace.MEM.rvfi_mem_addr = vaddr;
     env->rvfi_dii_trace.MEM.rvfi_mem_rdata[0] = *cursor;
