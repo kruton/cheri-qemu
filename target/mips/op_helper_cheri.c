@@ -175,6 +175,7 @@ target_ulong CHERI_HELPER_IMPL(ccall_notrap(CPUArchState *env, uint32_t cs, uint
         if (mask & (0x1 << creg)) {
      * CGetCause: Move the Capability Exception Cause Register to a
      * General- Purpose Register
+    if (!cheri_have_access_sysregs(env)) {
     } else {
         return (target_ulong)env->CP2_CapCause;
      * CGetPCC: Move PCC to capability register
@@ -242,6 +243,7 @@ check_readonly_cap_hwr_access(CPUArchState *env, enum CP2HWR hwr, target_ulong p
     cap_register_t *cdp = check_writable_cap_hwr_access(
     *cdp = *csp;
      * CSetCause: Set the Capability Exception Cause Register
+    if (!cheri_have_access_sysregs(env)) {
     } else {
         env->CP2_CapCause = (uint16_t)(rt & 0xffffUL);
  * CPtrCmp Instructions. Capability Pointer Compare.
@@ -308,6 +310,7 @@ target_ulong CHERI_HELPER_IMPL(cstorecond(CPUArchState *env, uint32_t cb, uint32
     } else if (!cap_has_perms(cbp, CAP_PERM_STORE_LOCAL) && csp->cr_tag &&
         return (target_ulong)0;
     } else if (!cap_is_in_bounds(cbp, addr, CHERI_CAP_SIZE)) {
+        return (target_ulong)0;
     } else if (align_of(CHERI_CAP_SIZE, addr)) {
         do_raise_c0_exception(env, EXCP_AdES, addr);
     return (target_ulong)addr;
