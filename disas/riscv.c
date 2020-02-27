@@ -2934,13 +2934,14 @@ static rv_opcode decode_cheri_inst(rv_inst inst) {
         switch ((inst >> 2) & 0b11111) {
         case 0:
             switch ((inst >> 12) & 0b111) {
-            case 0: op = rv_op_lb; break;
-            case 1: op = rv_op_lh; break;
-            case 2: op = rv_op_lw; break;
             case 3: op = rv_op_ld; break;
             case 4: op = rv_op_lbu; break;
             case 5: op = rv_op_lhu; break;
             case 6: op = rv_op_lwu; break;
+            case 0: op = (flags & RISCV_DIS_FLAG_CAPMODE) ? rv_op_clb : rv_op_lb; break;
+            case 1: op = (flags & RISCV_DIS_FLAG_CAPMODE) ? rv_op_clh : rv_op_lh; break;
+            case 2: op = (flags & RISCV_DIS_FLAG_CAPMODE) ? rv_op_clw : rv_op_lw; break;
+                    op = (flags & RISCV_DIS_FLAG_CAPMODE) ? rv_op_cld : rv_op_ld;
             case 7: op = rv_op_ldu; break;
             }
             break;
