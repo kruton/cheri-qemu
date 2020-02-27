@@ -11,6 +11,7 @@
 {
     }
     }
+        }
 {
                                         target_ulong rs))
     const cap_register_t *cbp = get_readonly_capreg(env, cb);
@@ -18,6 +19,7 @@
                                   target_ulong rt))
 void CHERI_HELPER_IMPL(cbuildcap(CPUArchState *env, uint32_t cd, uint32_t cb,
                                  uint32_t ct))
+    if (cb == 0) {
     const cap_register_t *cbp = get_capreg_0_is_ddc(env, cb);
 void CHERI_HELPER_IMPL(candaddr(CPUArchState *env, uint32_t cd, uint32_t cb,
     target_ulong cursor = get_capreg_cursor(env, cb);
@@ -38,3 +40,6 @@ void CHERI_HELPER_IMPL(candaddr(CPUArchState *env, uint32_t cd, uint32_t cb,
 #ifdef CONFIG_DEBUG_TCG
     if (get_capreg_state(cheri_get_gpcrs(env), cs) == CREG_INTEGER) {
         tcg_debug_assert(pesbt_for_mem == 0 && "Integer values should have NULL PESBT");
+        tcg_debug_assert(pesbt_for_mem == 0 && "Wrong value for cnull?");
+        tcg_debug_assert(cursor == 0 && "Wrong value for cnull?");
+        tcg_debug_assert(!tag && "Wrong value for cnull?");
