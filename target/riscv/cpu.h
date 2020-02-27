@@ -622,6 +622,8 @@ extern const char * const riscv_int_regnames[];
 extern const char * const riscv_int_regnamesh[];
 extern const char * const riscv_fpr_regnames[];
 extern const char * const riscv_rvv_regnames[];
+        tcg_gen_st_i64(arg, cpu_env, rvfi_dii_offset(type, field));            \
+        tcg_gen_##st_op(rvfi_tc, cpu_env, rvfi_dii_offset(type, field));       \
 
 const char *riscv_cpu_get_trap_name(target_ulong cause, bool async);
 int riscv_cpu_write_elf64_note(WriteCoreDumpFunction f, CPUState *cs,
