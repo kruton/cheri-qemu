@@ -5471,6 +5471,9 @@ static RISCVException write_mnstatus(CPURISCVState *env, int csrno,
     env->mnstatus = (env->mnstatus & MNSTATUS_NMIE) | (val & mask);
     return RISCV_EXCP_NONE;
 }
+static RISCVException stid(CPURISCVState *env, int csrno)
+{
+    }
 
 #endif
 
@@ -6117,10 +6120,15 @@ riscv_csr_operations csr_ops[CSR_TABLE_SIZE] = {
                           .min_priv_ver = PRIV_VERSION_1_12_0                },
 
     [CSR_MTVAL2]      = { "mtval2", dbltrp_hmode, read_mtval2, write_mtval2,
+#endif
                           .min_priv_ver = PRIV_VERSION_1_12_0                },
     [CSR_MTINST]      = { "mtinst",      hmode,   read_mtinst,   write_mtinst,
                           .min_priv_ver = PRIV_VERSION_1_12_0                },
 
+#ifdef TARGET_CHERI_RISCV_V9
+    [CSR_UCCSR]        = { "uccsr", umode, read_ccsr, write_ccsr },
+    [CSR_SCCSR]        = { "sccsr", smode, read_ccsr, write_ccsr },
+    [CSR_MCCSR]        = { "mccsr", any, read_ccsr, write_ccsr },
     /* Virtual Interrupts and Interrupt Priorities (H-extension with AIA) */
     [CSR_HVIEN]       = { "hvien",       aia_hmode, NULL, NULL, rmw_hvien },
     [CSR_HVICTL]      = { "hvictl",      aia_hmode, read_hvictl,
