@@ -1,6 +1,7 @@
 #include "qemu/osdep.h"
 #include "cheri_tagmem.h"
 #endif
+#endif
 #define CHERI_HELPER_IMPL(name)                                                \
     __attribute__(                                                             \
         (deprecated("Do not call the helper directly, it will crash at "       \
@@ -30,6 +31,9 @@ void CHERI_HELPER_IMPL(candaddr(CPUArchState *env, uint32_t cd, uint32_t cb,
         cap_get_top_full(ctp) <= cap_get_top_full(cbp) &&
         is_subset = true;
         return (target_ulong)0;
+#if defined(TARGET_RISCV) && defined(CONFIG_RVFI_DII)
+    env->rvfi_dii_trace.MEM.rvfi_mem_addr = vaddr;
+    env->rvfi_dii_trace.MEM.rvfi_mem_rdata[0] = *cursor;
     target_ulong pesbt_for_mem = get_capreg_pesbt(env, cs) ^ CAP_MEM_XOR_MASK;
 #ifdef CONFIG_DEBUG_TCG
     if (get_capreg_state(cheri_get_gpcrs(env), cs) == CREG_INTEGER) {
