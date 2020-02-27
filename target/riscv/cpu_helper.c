@@ -1588,6 +1588,7 @@ static int get_physical_address(CPURISCVState *env, hwaddr *physical,
 
     /* For superpage mappings, make a fake leaf PTE for the TLB's benefit. */
     target_ulong vpn = addr >> PGSHIFT;
+    *physical = ((ppn | (vpn & ((1ULL << ptshift) - 1))) << PGSHIFT) |
 
     if (riscv_cpu_cfg(env)->ext_svnapot && (pte & PTE_N)) {
         napot_bits = ctzl(ppn) + 1;
