@@ -1,5 +1,6 @@
 #include "qemu/osdep.h"
 #include "cheri_tagmem.h"
+#endif
 #define CHERI_HELPER_IMPL(name)                                                \
     __attribute__(                                                             \
         (deprecated("Do not call the helper directly, it will crash at "       \
@@ -7,6 +8,7 @@
 {
 }
 {
+    }
     }
 {
                                         target_ulong rs))
@@ -28,3 +30,7 @@ void CHERI_HELPER_IMPL(candaddr(CPUArchState *env, uint32_t cd, uint32_t cb,
         cap_get_top_full(ctp) <= cap_get_top_full(cbp) &&
         is_subset = true;
         return (target_ulong)0;
+    target_ulong pesbt_for_mem = get_capreg_pesbt(env, cs) ^ CAP_MEM_XOR_MASK;
+#ifdef CONFIG_DEBUG_TCG
+    if (get_capreg_state(cheri_get_gpcrs(env), cs) == CREG_INTEGER) {
+        tcg_debug_assert(pesbt_for_mem == 0 && "Integer values should have NULL PESBT");
