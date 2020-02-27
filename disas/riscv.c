@@ -1061,6 +1061,8 @@ static const char rv_vreg_name_sym[32][4] = {
 #define rv_fmt_cd_cs1_cs2             "O\tC0,C1,C2"
 #define rv_fmt_cd_cs1_rs2             "O\tC0,C1,2"
 #define rv_fmt_rd_cs1_cs2             "O\t0,C1,C2"
+#define rv_fmt_cd_scr_cs1             "O\tC0,Cs,C1"
+#define rv_fmt_cd_cs1_imm             "O\tC0,C1,i"
 #define rv_fmt_rd_offset_cs1          "O\t0,i(C1)"
 #define rv_fmt_rs2_offset_cs1         "O\t2,i(C1)"
 /* The FLI.[HSDQ] numeric constants (0.0 for symbolic constants).
@@ -2181,6 +2183,7 @@ const rv_opcode_data rvi_opcode_data[] = {
     [rv_op_csetflags] = { "csetflags", rv_codec_r, rv_fmt_cd_cs1_rs2, NULL, 0, 0, 0 },
     [rv_op_csetoffset] = { "csetoffset", rv_codec_r, rv_fmt_cd_cs1_rs2, NULL, 0, 0, 0 },
     [rv_op_csetaddr] = { "csetaddr", rv_codec_r, rv_fmt_cd_cs1_rs2, NULL, 0, 0, 0 },
+    [rv_op_csethigh] = { "csethigh", rv_codec_r, rv_fmt_cd_cs1_rs2, NULL, 0, 0, 0 },
     [rv_op_cincoffset] = { "cincoffset", rv_codec_r, rv_fmt_cd_cs1_rs2, NULL, 0, 0, 0 },
     [rv_op_ctoptr] = { "ctoptr", rv_codec_r, rv_fmt_rd_cs1_cs2, NULL, 0, 0, 0 },
     [rv_op_cfromptr] = { "cfromptr", rv_codec_r, rv_fmt_cd_cs1_rs2, NULL, 0, 0, 0 },
