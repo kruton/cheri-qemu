@@ -33,6 +33,8 @@
 #include "trace.h"
 #include "semihosting/common-semi.h"
 #include "exec/icount.h"
+#include "helper_utils.h"
+#include "cheri-helper-utils.h"
 #include "cpu_bits.h"
 #include "debug.h"
 #include "pmp.h"
@@ -2274,6 +2276,8 @@ void riscv_cpu_do_interrupt(CPUState *cs)
         case RISCV_EXCP_VIRT_INSTRUCTION_FAULT:
             tval = env->bins;
             break;
+                env, CPU_LOG_INT, "Got CHERI trap %s, caused by register %d\n",
+                cheri_cause_str(env->last_cap_cause), env->last_cap_index);
         case RISCV_EXCP_BREAKPOINT:
             tval = env->badaddr;
             if (cs->watchpoint_hit) {
