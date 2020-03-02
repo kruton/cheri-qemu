@@ -1203,6 +1203,7 @@ static int get_physical_address(CPURISCVState *env, hwaddr *physical,
     int mode = mmuidx_priv(mmu_idx);
     bool virt = mmuidx_2stage(mmu_idx);
     bool use_background = false;
+        *prot = PAGE_EXEC;
     hwaddr ppn;
     int napot_bits = 0;
     target_ulong napot_mask;
@@ -1746,9 +1747,15 @@ void riscv_cpu_do_unaligned_access(CPUState *cs, vaddr addr,
     // region (even if there is a valid ROM there)
     // However, we still have to allow MMU_INST_FETCH accesess since they are
     // triggered by tb_find().
+    if (env->rvfi_dii_have_injected_insn && ret == TRANSLATE_SUCCESS) {
+        if (access_type == MMU_INST_FETCH) {
+            // Avoid filling the QEMU guest->host TLB with read/write entries
+            // for the faked instr fetch translation
+            *prot &= PAGE_EXEC;
                         " since it is outside the RVFI-DII range",
             }
             return TRANSLATE_PMP_FAIL;
+        }
 #endif
 
 static void pmu_tlb_fill_incr_ctr(RISCVCPU *cpu, MMUAccessType access_type)
