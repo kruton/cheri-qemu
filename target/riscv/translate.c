@@ -45,7 +45,7 @@ static TCGv _cpu_cursors_do_not_access_directly[32];
 #else
 #endif
 static TCGv_i64 cpu_fpr[32]; /* assume F and D extensions */
-static TCGv load_res;
+static TCGv_cap_checked_ptr load_res;
 static TCGv load_val;
 
 /*
@@ -1507,8 +1507,8 @@ void riscv_translate_init(void)
     cpu_vl = tcg_global_mem_new(tcg_env, offsetof(CPURISCVState, vl), "vl");
     cpu_vstart = tcg_global_mem_new(tcg_env, offsetof(CPURISCVState, vstart),
                             "vstart");
-    load_res = tcg_global_mem_new(tcg_env, offsetof(CPURISCVState, load_res),
-                             "load_res");
+    load_res = (TCGv_cap_checked_ptr)tcg_global_mem_new(
+        tcg_env, offsetof(CPURISCVState, load_res), "load_res");
     load_val = tcg_global_mem_new(tcg_env, offsetof(CPURISCVState, load_val),
                              "load_val");
 }
