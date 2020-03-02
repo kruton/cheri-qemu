@@ -2248,6 +2248,8 @@ void riscv_cpu_do_interrupt(CPUState *cs)
         case RISCV_EXCP_STORE_AMO_ACCESS_FAULT:
         case RISCV_EXCP_LOAD_PAGE_FAULT:
         case RISCV_EXCP_STORE_PAGE_FAULT:
+        case RISCV_EXCP_LOAD_CAP_PAGE_FAULT:
+        case RISCV_EXCP_STORE_AMO_CAP_PAGE_FAULT:
             if (always_storeamo) {
                 cause = promote_load_fault(cause);
             }
