@@ -27,6 +27,7 @@ void CHERI_HELPER_IMPL(candaddr(CPUArchState *env, uint32_t cd, uint32_t cb,
     target_ulong target_addr = cursor & rt;
     cincoffset_impl(env, cd, cb, diff, GETPC(), OOB_INFO(csetoffset));
     // CFromPtr traps on cbp == NULL so we use reg0 as $ddc to save encoding
+    if (cbp->cr_tag && !cap_is_unsealed(cbp)) {
     bool is_subset = false;
     if (cbp->cr_tag == ctp->cr_tag &&
         /* is_cap_sealed(cbp) == is_cap_sealed(ctp) && */
@@ -34,6 +35,7 @@ void CHERI_HELPER_IMPL(candaddr(CPUArchState *env, uint32_t cd, uint32_t cb,
         cap_get_top_full(ctp) <= cap_get_top_full(cbp) &&
         is_subset = true;
         return (target_ulong)0;
+        if (cap_is_unsealed(&tmp)) {
         tag = cheri_tag_prot_clear_or_trap(env, vaddr, cb, source, prot, retpc,
         if (tag) {
 #if defined(TARGET_RISCV) && defined(CONFIG_RVFI_DII)
