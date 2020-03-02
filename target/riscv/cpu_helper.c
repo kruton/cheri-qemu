@@ -1635,6 +1635,7 @@ static void raise_mmu_exception(CPURISCVState *env, target_ulong address,
         }
         break;
     case MMU_DATA_LOAD:
+    case MMU_DATA_CAP_LOAD:
         if (pmp_violation) {
             cs->exception_index = RISCV_EXCP_LOAD_ACCESS_FAULT;
         } else if (two_stage && !first_stage) {
@@ -1644,6 +1645,7 @@ static void raise_mmu_exception(CPURISCVState *env, target_ulong address,
         }
         break;
     case MMU_DATA_STORE:
+    case MMU_DATA_CAP_STORE:
         if (pmp_violation) {
             cs->exception_index = RISCV_EXCP_STORE_AMO_ACCESS_FAULT;
         } else if (two_stage && !first_stage) {
