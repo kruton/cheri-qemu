@@ -1,5 +1,11 @@
+extern bool cheri_debugger_on_trap;
 {
     env->badaddr = addr;
+    // Allow drop into debugger on first CHERI trap:
+    // FIXME: allow c command to work by adding another boolean flag to skip
+    // this breakpoint when GDB asks to continue
+    if (cheri_debugger_on_trap)
+        riscv_raise_exception(env, EXCP_DEBUG, hostpc);
 }
     CPUArchState *env, CheriCapExcCause cause, unsigned regnum,
 {
