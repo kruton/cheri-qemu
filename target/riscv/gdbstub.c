@@ -266,6 +266,7 @@ static int riscv_gdb_get_cheri_reg(CPUState *cs, GByteArray *buf, int n)
     }
     switch (n) {
     case CHERI_GDB_NUM_GP_CAPREGS:
+        return gdb_get_capreg(buf, cheri_get_current_pcc(env));
     case CHERI_GDB_NUM_GP_CAPREGS + 1:
         return gdb_get_capreg(buf, cheri_get_ddc(env));
     /* All CHERI registers are read-only currently.  */
