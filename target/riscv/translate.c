@@ -405,7 +405,6 @@ static TCGv dest_gprh(DisasContext *ctx, int reg_num)
     return cpu_gprh[reg_num];
 }
 
-static void gen_set_gpr(DisasContext *ctx, int reg_num, TCGv t)
 {
     if (reg_num != 0) {
         switch (get_ol(ctx)) {
