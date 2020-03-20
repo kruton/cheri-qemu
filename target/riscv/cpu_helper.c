@@ -2549,3 +2549,5 @@ void riscv_cpu_do_interrupt(CPUState *cs)
 }
 
 #endif /* !CONFIG_USER_ONLY */
+void update_special_register(CPURISCVState *env, cap_register_t *scr,
+                             const char *name, target_ulong new_value)
