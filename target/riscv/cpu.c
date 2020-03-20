@@ -820,6 +820,7 @@ static void riscv_cpu_reset_hold(Object *obj, ResetType type)
     env->mepc = 0;
     env->sepc = 0;
 #endif
+    reset_capregs(env);
     set_max_perms_capability(env, &env->pcc, env->resetvec);
 }
 
