@@ -622,12 +622,21 @@ extern const char * const riscv_int_regnames[];
 extern const char * const riscv_int_regnamesh[];
 extern const char * const riscv_fpr_regnames[];
 extern const char * const riscv_rvv_regnames[];
+#endif
+#ifdef CONFIG_TCG_LOG_INSTR
+#define log_changed_special_reg(env, name, newval, index, type)                \
     do {                                                                       \
+#define log_changed_special_reg(env, name, newval) ((void)0)
 void update_special_register(CPURISCVState *env, cap_register_t *scr,
                              const char *name, target_ulong value);
+#define SET_SPECIAL_REG(env, name, cheri_name, value)                          \
+#define GET_SPECIAL_REG_ARCH(env, name, cheri_name) ((env)->name)
+    do {                                                                       \
+        env->name = value;                                                     \
     } while (false)
         tcg_gen_st_i64(arg, cpu_env, rvfi_dii_offset(type, field));            \
         tcg_gen_##st_op(rvfi_tc, cpu_env, rvfi_dii_offset(type, field));       \
+#else
 
 const char *riscv_cpu_get_trap_name(target_ulong cause, bool async);
 int riscv_cpu_write_elf64_note(WriteCoreDumpFunction f, CPUState *cs,
