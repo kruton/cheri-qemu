@@ -622,6 +622,10 @@ extern const char * const riscv_int_regnames[];
 extern const char * const riscv_int_regnamesh[];
 extern const char * const riscv_fpr_regnames[];
 extern const char * const riscv_rvv_regnames[];
+    do {                                                                       \
+void update_special_register(CPURISCVState *env, cap_register_t *scr,
+                             const char *name, target_ulong value);
+    } while (false)
         tcg_gen_st_i64(arg, cpu_env, rvfi_dii_offset(type, field));            \
         tcg_gen_##st_op(rvfi_tc, cpu_env, rvfi_dii_offset(type, field));       \
 
