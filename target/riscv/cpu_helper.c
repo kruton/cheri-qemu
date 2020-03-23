@@ -1104,6 +1104,7 @@ static int get_physical_address_pmp(CPURISCVState *env, int *prot, hwaddr addr,
     }
 
     pmp_has_privs = pmp_hart_has_privs(env, addr, size, 1 << access_type,
+                                       access_type_to_pmp_priv(access_type),
                                        &pmp_priv, mode);
     if (!pmp_has_privs) {
         *prot = 0;
@@ -2167,8 +2168,6 @@ static void riscv_do_nmi(CPURISCVState *env, target_ulong cause, bool virt)
 
 #ifdef TARGET_CHERI
 hwaddr cpu_riscv_translate_address_tagmem(CPUArchState *env,
-                                          target_ulong address, int rw, int reg,
-                                          int *prot, uintptr_t retpc)
 {
     int ret = get_physical_address(env, &physical, prot, address, rw,
                                cpu_mmu_index(env, false));
