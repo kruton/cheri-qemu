@@ -5232,6 +5232,24 @@ SRST
 
 ERST
 
+SRST
+``-bp addr``
+    Set GDB breakpoint at addr.
+ERST
+``-bc count``
+    Set GDB breakpoint in <count> instructions after start.
+``-cheri-trace-format type``
+    Set CHERI trace format to <type> (text or cvtrace)
+``-cheri-c2e-on-unrepresentable``
+    Generate C2E exception when capability becomes unrepresentable.
+``-cheri-debugger-on-unrepresentable``
+    Generate debugger exception when a capability becomes unrepresentable.
+``-cheri-debugger-on-trap``
+    Generate debugger exception when a capability fault is taken.
+``-rvfi-dii-port port``
+    Run QEMU in RVFI-DII mode, listing on <port>.
+``-rvfi-dii-debug``
+    Print RVFI-DII debug messages.
 DEF("incoming", HAS_ARG, QEMU_OPTION_incoming, \
     "-incoming tcp:[host]:port[,to=maxport][,ipv4=on|off][,ipv6=on|off]\n" \
     "-incoming rdma:host:port[,ipv4=on|off][,ipv6=on|off]\n" \
