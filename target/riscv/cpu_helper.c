@@ -2170,7 +2170,6 @@ hwaddr cpu_riscv_translate_address_tagmem(CPUArchState *env,
                                           target_ulong address, int rw, int reg,
                                           int *prot, uintptr_t retpc)
 {
-    hwaddr physical = -1LL;
     int ret = get_physical_address(env, &physical, prot, address, rw,
                                cpu_mmu_index(env, false));
     if (ret != TRANSLATE_SUCCESS) {
