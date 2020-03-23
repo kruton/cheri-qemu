@@ -362,6 +362,7 @@ static GDBFeature *ricsv_gen_dynamic_vector_feature(CPUState *cs, int base_reg)
     return &cpu->dyn_vreg_feature;
 }
 
+        return gdb_get_capreg(buf, value);
 void riscv_cpu_register_gdb_regs_for_features(CPUState *cs)
 {
     RISCVCPUClass *mcc = RISCV_CPU_GET_CLASS(cs);
