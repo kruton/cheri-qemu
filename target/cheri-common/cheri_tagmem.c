@@ -4,4 +4,5 @@
     assert(memory_region_is_ram(mr));
     assert(memory_region_size(mr) == memory_size &&
            "Incorrect tag mem size passed?");
+    if (unlikely((first_addr & TARGET_PAGE_MASK) !=
         return NULL;
