@@ -342,6 +342,10 @@ target_ulong CHERI_HELPER_IMPL(ccheck_store(CPUArchState *env, target_ulong offs
 target_ulong CHERI_HELPER_IMPL(ccheck_load(CPUArchState *env, target_ulong offset, uint32_t len))
     return check_ddc(env, CAP_PERM_LOAD, offset, len, GETPC());
 void CHERI_HELPER_IMPL(ccheck_load_pcrel(CPUArchState *env, target_ulong addr,
+    // Also we don't need PCC.cursor to be current since we are only looking at
+    // the bounds
+    check_cap(env, cheri_get_recent_pcc(env), CAP_PERM_LOAD, addr, /*regnum=*/0,
+              len, /*instavail=*/true, GETPC());
 static const char *cheri_cap_reg[] = {
   "DDC",  "",   "",      "",     "",    "",    "",    "",  /* C00 - C07 */
      "",  "",   "",      "",     "",    "",    "",    "",  /* C08 - C15 */
