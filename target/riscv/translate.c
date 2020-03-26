@@ -869,6 +869,12 @@ static int ex_rvc_shiftri(DisasContext *ctx, int imm)
     return imm;
 }
 
+{
+#ifdef TARGET_CHERI
+#else
+#endif
+}
+    return ctx->cre;
 /* Include the auto-generated decoder for 32 bit insn */
 #include "decode-insn32.c.inc"
 
