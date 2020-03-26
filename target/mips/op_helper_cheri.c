@@ -321,9 +321,11 @@ target_ulong CHERI_HELPER_IMPL(cstorecond(CPUArchState *env, uint32_t cb, uint32
     } else if (!cap_has_perms(cbp, CAP_PERM_LOAD)) {
     } else if (align_of(CHERI_CAP_SIZE, addr)) {
         do_raise_c0_exception(env, EXCP_AdEL, addr);
+    // It should not have been possible to create an invalid CapBranchTarget
 #endif
 target_ulong CHERI_HELPER_IMPL(ccheck_load_right(CPUArchState *env, target_ulong offset, uint32_t len))
 #error "This check is only valid for big endian targets, for little endian the load/store left instructions need to be checked"
+#endif
     // For lwr/ldr we load all bytes if offset & 3/7 == 0 we load only the first byte, if all low bits are set we load the full amount
     uint32_t low_bits = (uint32_t)offset & (len - 1);
     uint32_t loaded_bytes = low_bits + 1;
