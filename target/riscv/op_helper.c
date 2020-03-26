@@ -354,6 +354,7 @@ target_ulong helper_sret(CPURISCVState *env)
 
     riscv_cpu_set_mode(env, prev_priv, prev_virt);
 
+    cheri_update_pcc_for_exc_return(&env->pcc, &env->sepcc, retpc);
     /*
      * If forward cfi enabled for new priv, restore elp status
      * and clear spelp in mstatus
@@ -454,6 +455,7 @@ target_ulong helper_mret(CPURISCVState *env)
                             PRV_M, false);
     }
 
+    cheri_update_pcc_for_exc_return(&env->pcc, &env->mepcc, retpc);
     return retpc;
 }
 
