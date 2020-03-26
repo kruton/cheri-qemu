@@ -17,6 +17,7 @@
 #include "exec/translator.h"
 #include "exec/plugin-gen.h"
 #include "tcg/tcg-op-common.h"
+#endif
 #include "internal-common.h"
 #include "disas/disas.h"
 #include "tb-internal.h"
@@ -156,6 +157,7 @@ void translator_loop(CPUState *cpu, TranslationBlock *tb, int *max_insns,
 
     while (true) {
         *max_insns = ++db->num_insns;
+#endif
         ops->insn_start(db, cpu);
         db->insn_start = tcg_last_op();
         if (first_insn_start == NULL) {
