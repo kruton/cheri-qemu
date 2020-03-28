@@ -48,3 +48,4 @@ void CHERI_HELPER_IMPL(candaddr(CPUArchState *env, uint32_t cd, uint32_t cb,
         tcg_debug_assert(pesbt_for_mem == 0 && "Wrong value for cnull?");
         tcg_debug_assert(cursor == 0 && "Wrong value for cnull?");
         tcg_debug_assert(!tag && "Wrong value for cnull?");
+     * Note: we set pc=0 since PC will have been saved prior to calling the
