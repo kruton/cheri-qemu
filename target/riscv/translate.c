@@ -1315,6 +1315,7 @@ static void decode_opc(CPURISCVState *env, DisasContext *ctx)
     ctx->cur_insn_len = insn_len((uint16_t)opcode);
     /* Check for compressed insn */
     if (ctx->cur_insn_len == 2) {
+        gen_check_pcc_bounds_next_inst(ctx, 2);
         ctx->opcode = (uint16_t)opcode;
         /*
          * The Zca extension is added as way to refer to instructions in the C
@@ -1336,6 +1337,7 @@ static void decode_opc(CPURISCVState *env, DisasContext *ctx)
 #else
 #endif
         }
+        gen_check_pcc_bounds_next_inst(ctx, 4);
         ctx->opcode = opcode;
         gen_rvfi_dii_set_field_const_i64(INST, insn, opcode);
 
