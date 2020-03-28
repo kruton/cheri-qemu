@@ -13,6 +13,9 @@
     }
         }
     }
+}
+{
+              /*instavail=*/true, GETPC());
 {
                                         target_ulong rs))
     const cap_register_t *cbp = get_readonly_capreg(env, cb);
@@ -48,4 +51,8 @@ void CHERI_HELPER_IMPL(candaddr(CPUArchState *env, uint32_t cd, uint32_t cb,
         tcg_debug_assert(pesbt_for_mem == 0 && "Wrong value for cnull?");
         tcg_debug_assert(cursor == 0 && "Wrong value for cnull?");
         tcg_debug_assert(!tag && "Wrong value for cnull?");
+    cheri_debug_assert(pc_is_current(env));
      * Note: we set pc=0 since PC will have been saved prior to calling the
+     * helper. Therefore, we don't need to recompute it from the generated code.
+    raise_cheri_exception_if(env, cause, addr, CHERI_EXC_REGNUM_PCC);
+    CheriCapExcCause cause;
