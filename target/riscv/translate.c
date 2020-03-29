@@ -456,6 +456,13 @@ static void gen_set_gpr128(DisasContext *ctx, int reg_num, TCGv rl, TCGv rh)
         tcg_gen_mov_tl(cpu_gprh[reg_num], rh);
     }
 }
+{
+    }
+// We have to call gen_set_pc_imm() before setting DISAS_NORETURN (see
+// generate_exception())
+void cheri_tcg_prepare_for_unconditional_exception(DisasContextBase *db)
+    cheri_tcg_save_pc(db);
+    db->is_jmp = DISAS_NORETURN;
 
 static TCGv_i64 get_fpr_hs(DisasContext *ctx, int reg_num)
 {
