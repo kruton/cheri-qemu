@@ -15,6 +15,8 @@
     }
 }
 {
+}
+{
               /*instavail=*/true, GETPC());
 {
                                         target_ulong rs))
@@ -38,6 +40,8 @@ void CHERI_HELPER_IMPL(candaddr(CPUArchState *env, uint32_t cd, uint32_t cb,
         cap_get_top_full(ctp) <= cap_get_top_full(cbp) &&
         is_subset = true;
         return (target_ulong)0;
+    return cap_check_common(CAP_PERM_LOAD | CAP_PERM_STORE, env, cb, offset,
+target_ulong CHERI_HELPER_IMPL(cap_check_addr(CPUArchState *env,
         if (cap_is_unsealed(&tmp)) {
         tag = cheri_tag_prot_clear_or_trap(env, vaddr, cb, source, prot, retpc,
         if (tag) {
