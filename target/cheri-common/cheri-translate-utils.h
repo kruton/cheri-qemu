@@ -1,6 +1,7 @@
 }
         return;
     if (unlikely(do_checks)) {
+    if (have_cheri_tb_flags(ctx, TB_FLAG_CHERI_PCC_FULL_AS)) {
     // Note: JR/JALR will often be used in hybrid/non-CHERI cases, so we can
     // skip the less than check if pcc.base is zero and top is MAX:
     // We can skip the check of pcc.base if it is zero (common case in
