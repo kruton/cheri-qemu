@@ -1,9 +1,22 @@
+ *
 #include "cheri_tagmem.h"
 #include "cheri-helper-utils.h"
 // XXX: use hbitmap? Or a different data structure?
 #include "qemu/bitmap.h"
 #endif
 #endif
+ * For emulation purposes the tag is stored in a two-level array containing
+ * fixed size bitmaps. To reduce the amount of memory needed the tag flag array
+ * is allocated sparsely, 4K tags at at time, and on demand.
+ * This 4K number is arbitary and depending on the workload other sizes may be
+ * better.
+ * Note: We also support an mode where we use one byte per tag. This makes it
+ * This requires eight times the memory.
+ * As tag accesses are not atomic with regard to data writes/reads spurious
+ * invalid capabilities could be created in a threaded context.
+ * Therefore, we don't use atomic bitwise RMW operations and the one byte per
+ * tag variant actually performs slightly worse due to increased memory usage.
+ * FIXME: find a solution to make tags safe (or just always disable multi-tcg)
  *
  * FIXME: rewrite using somethign more like the upcoming MTE changes (https://github.com/rth7680/qemu/commits/tgt-arm-mte-user)
 #define CAP_TAGBLK_MSK      ((1 << CAP_TAGBLK_SHFT) - 1)
