@@ -983,6 +983,9 @@ static void riscv_cpu_realize(DeviceState *dev, Error **errp)
 #endif
 
     qemu_init_vcpu(cs);
+#ifdef CONFIG_DEBUG_TCG
+    env->_pc_is_current = true;
+#endif
     cpu_reset(cs);
 
     mcc->parent_realize(dev, errp);
