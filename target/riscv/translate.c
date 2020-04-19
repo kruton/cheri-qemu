@@ -27,6 +27,7 @@
 #include "accel/tcg/cpu-ldst.h"
 #include "exec/translation-block.h"
 #include "exec/log.h"
+#include "exec/log_instr.h"
 #include "semihosting/semihost.h"
 
 #include "internals.h"
