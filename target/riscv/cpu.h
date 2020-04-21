@@ -622,6 +622,9 @@ extern const char * const riscv_int_regnames[];
 extern const char * const riscv_int_regnamesh[];
 extern const char * const riscv_fpr_regnames[];
 extern const char * const riscv_rvv_regnames[];
+#ifdef TARGET_CHERI
+/* Needed for cheri-common logging */
+extern const char * const cheri_gp_regnames[];
 #endif
 #ifdef CONFIG_TCG_LOG_INSTR
 #define log_changed_special_reg(env, name, newval, index, type)                \
@@ -637,6 +640,7 @@ void update_special_register(CPURISCVState *env, cap_register_t *scr,
         tcg_gen_st_i64(arg, cpu_env, rvfi_dii_offset(type, field));            \
         tcg_gen_##st_op(rvfi_tc, cpu_env, rvfi_dii_offset(type, field));       \
 #else
+#endif
 
 const char *riscv_cpu_get_trap_name(target_ulong cause, bool async);
 int riscv_cpu_write_elf64_note(WriteCoreDumpFunction f, CPUState *cs,
