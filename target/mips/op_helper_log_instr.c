@@ -13,6 +13,7 @@
 /*
  */
 {
+    qemu_log_instr_asid(env, asid);
 }
 {
 }
