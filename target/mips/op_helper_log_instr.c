@@ -6,6 +6,7 @@
 /*
  */
 {
+    if (qemu_log_instr_enabled(env))
 }
 /*
  */
