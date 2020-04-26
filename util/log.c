@@ -46,7 +46,7 @@ static __thread Notifier qemu_log_thread_cleanup_notifier;
 
 unsigned qemu_loglevel;
 static bool log_per_thread;
-static GArray *debug_regions;
+GArray *debug_regions;
 
 /* Returns true if qemu_log() will really write somewhere. */
 bool qemu_log_enabled(void)
