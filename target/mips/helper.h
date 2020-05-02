@@ -25,6 +25,10 @@ DEF_HELPER_3(crc32, tl, tl, tl, i32)
 DEF_HELPER_3(crc32c, tl, tl, tl, i32)
 DEF_HELPER_FLAGS_4(rotx, TCG_CALL_NO_RWG_SE, tl, tl, i32, i32, i32)
 
+/* Target dependent-helpers */
+DEF_HELPER_FLAGS_3(mips_log_instr_gpr, TCG_CALL_NO_WG, void, env, i32, tl)
+DEF_HELPER_FLAGS_4(mips_log_instr_cop0, TCG_CALL_NO_WG, void, env, i32, i32, tl)
+DEF_HELPER_FLAGS_4(mips_log_instr_hilo, TCG_CALL_NO_WG, void, env, i32, i32, tl)
 DEF_HELPER_FLAGS_3(mips_log_instr32, TCG_CALL_NO_WG, void, env, tl, i32)
 DEF_HELPER_FLAGS_1(mips_log_instr_drop, TCG_CALL_NO_WG, void, env)
 DEF_HELPER_3(cbts, tl, env, i32, i32)
