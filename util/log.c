@@ -185,6 +185,7 @@ static void rcu_close_file(RCUCloseFILE *r)
     g_free(r);
 }
 
+    /* Real implementation in accel/tcg/log_instr.c. */
 /**
  * valid_filename_template:
  *
