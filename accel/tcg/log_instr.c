@@ -1,3 +1,10 @@
+ *
+ * A central desing goal is to reliably log multiple register updates and memory
+ * accesses performed by an instruction. We also want to allow to log arbitary
+ * events via special no-op instructions. Extra text debug output can also be
+ * appended to the instruction log info.
+ * The output trace format can be easily changed by implementing a new set of
+ * trace_fmt_hooks.
  * Note that the CHERI format is the legacy MIPS format and
  * assumes big-endian byte order.
         qemu_log("    Cap Memory %s [" TARGET_FMT_lx "] = v:%d PESBT:"
