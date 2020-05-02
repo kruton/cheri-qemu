@@ -128,6 +128,9 @@ void translator_loop(CPUState *cpu, TranslationBlock *tb, int *max_insns,
     TCGOp *icount_start_insn;
     TCGOp *first_insn_start = NULL;
     bool plugin_enabled;
+#ifdef CONFIG_TCG_LOG_INSTR
+    const bool log_instr_enabled = qemu_log_instr_enabled(cpu_env(cpu));
+#endif
 
     /* Initialize DisasContext */
     db->tb = tb;
@@ -146,6 +149,7 @@ void translator_loop(CPUState *cpu, TranslationBlock *tb, int *max_insns,
 
     ops->init_disas_context(db, cpu);
     tcg_debug_assert(db->is_jmp == DISAS_NEXT);  /* no early exit */
+    db->log_instr_enabled = log_instr_enabled;
 
     /* Start translating.  */
     icount_start_insn = gen_tb_start(db, cflags);
@@ -201,6 +205,10 @@ void translator_loop(CPUState *cpu, TranslationBlock *tb, int *max_insns,
             db->is_jmp = DISAS_TOO_MANY;
             break;
         }
+        /* Commit this instruction */
+        if (unlikely(log_instr_enabled)) {
+            /*
+             */
     }
 
     /* Emit code to exit the TB, as indicated by db->is_jmp.  */
