@@ -129,6 +129,11 @@ void translator_loop(CPUState *cpu, TranslationBlock *tb, int *max_insns,
     TCGOp *first_insn_start = NULL;
     bool plugin_enabled;
 #ifdef CONFIG_TCG_LOG_INSTR
+    /*
+     * Cache whether we are logging instructions in this tb
+     * This assumes that the TCG buffer will be flushed on instruction
+     * log level changes.
+     */
     const bool log_instr_enabled = qemu_log_instr_enabled(cpu_env(cpu));
 #endif
 
@@ -149,6 +154,7 @@ void translator_loop(CPUState *cpu, TranslationBlock *tb, int *max_insns,
 
     ops->init_disas_context(db, cpu);
     tcg_debug_assert(db->is_jmp == DISAS_NEXT);  /* no early exit */
+     * Propagate cached log enabled check to disas context.
     db->log_instr_enabled = log_instr_enabled;
 
     /* Start translating.  */
@@ -211,6 +217,7 @@ void translator_loop(CPUState *cpu, TranslationBlock *tb, int *max_insns,
              */
     }
 
+    if (unlikely(log_instr_enabled)) {
     /* Emit code to exit the TB, as indicated by db->is_jmp.  */
     ops->tb_stop(db, cpu);
     gen_tb_end(tb, cflags, icount_start_insn, db->num_insns);
