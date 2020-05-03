@@ -13,6 +13,7 @@
 /*
  */
 {
+    uint8_t asid = cpu_get_asid(env, pc);
     qemu_log_instr_asid(env, asid);
 }
 {
