@@ -1,11 +1,13 @@
 #include "qemu/osdep.h"
 #include "cheri_tagmem.h"
 #endif
+#else
 #endif
 #define CHERI_HELPER_IMPL(name)                                                \
     __attribute__(                                                             \
         (deprecated("Do not call the helper directly, it will crash at "       \
                     "runtime. Call the _impl variant instead"))) helper_##name
+#endif
 {
 }
 {
@@ -22,7 +24,9 @@
                                         target_ulong rs))
     const cap_register_t *cbp = get_readonly_capreg(env, cb);
                        "Unknown permission bits set!");
+#ifdef TARGET_RISCV
                                   target_ulong rt))
+        raise_cheri_exception(env, CapEx_UserDefViolation, cs);
 void CHERI_HELPER_IMPL(cbuildcap(CPUArchState *env, uint32_t cd, uint32_t cb,
                                  uint32_t ct))
     if (cb == 0) {
@@ -32,6 +36,9 @@ void CHERI_HELPER_IMPL(candaddr(CPUArchState *env, uint32_t cd, uint32_t cb,
     target_ulong target_addr = cursor & rt;
     cincoffset_impl(env, cd, cb, diff, GETPC(), OOB_INFO(csetoffset));
     // CFromPtr traps on cbp == NULL so we use reg0 as $ddc to save encoding
+            raise_cheri_exception(env, CapEx_TagViolation, cb);
+            raise_cheri_exception(env, CapEx_SealViolation, cb);
+            raise_cheri_exception(env, CapEx_LengthViolation, cb);
     if (cbp->cr_tag && !cap_is_unsealed(cbp)) {
     bool is_subset = false;
     if (cbp->cr_tag == ctp->cr_tag &&
