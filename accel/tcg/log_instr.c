@@ -18,3 +18,4 @@
         qemu_log("    Write %s = " TARGET_FMT_lx "\n", rinfo->name,
         qemu_log("%s", iinfo->txt_buffer->str);
     log_assert(iinfo != NULL && "Invalid log buffer");
+    qemu_log_instr_commit(env);
