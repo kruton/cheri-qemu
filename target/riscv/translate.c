@@ -457,8 +457,25 @@ static void gen_set_gpr128(DisasContext *ctx, int reg_num, TCGv rl, TCGv rh)
         tcg_gen_mov_tl(cpu_gprh[reg_num], rh);
     }
 }
+#ifdef CONFIG_TCG_LOG_INSTR
+static inline void gen_riscv_log_instr(DisasContext *ctx, uint32_t opcode,
+                                       int width)
 {
+        TCGv tpc = tcg_constant_tl(ctx->base.pc_next);
+        TCGv_i32 topc = tcg_constant_i32(opcode);
+        TCGv_i32 twidth = tcg_constant_i32(width);
+        // TODO(am2419): bswap opcode if target byte-order != host byte-order
+        gen_helper_riscv_log_instr(tcg_env, tpc, topc, twidth);
     }
+}
+#else /* ! CONFIG_TCG_LOG_INSTR */
+#define gen_riscv_log_instr(ctx, opcode, width) ((void)0)
+#endif /* ! CONFIG_TCG_LOG_INSTR */
+#define gen_riscv_log_instr16(ctx, opcode)              \
+    gen_riscv_log_instr(ctx, opcode, sizeof(uint16_t))
+#define gen_riscv_log_instr32(ctx, opcode)              \
+    gen_riscv_log_instr(ctx, opcode, sizeof(uint32_t))
+{
 // We have to call gen_set_pc_imm() before setting DISAS_NORETURN (see
 // generate_exception())
 void cheri_tcg_prepare_for_unconditional_exception(DisasContextBase *db)
@@ -1323,6 +1340,7 @@ static void decode_opc(CPURISCVState *env, DisasContext *ctx)
     ctx->cur_insn_len = insn_len((uint16_t)opcode);
     /* Check for compressed insn */
     if (ctx->cur_insn_len == 2) {
+        gen_riscv_log_instr16(ctx, opcode);
         gen_check_pcc_bounds_next_inst(ctx, 2);
         ctx->opcode = (uint16_t)opcode;
         /*
@@ -1345,6 +1363,7 @@ static void decode_opc(CPURISCVState *env, DisasContext *ctx)
 #else
 #endif
         }
+        gen_riscv_log_instr32(ctx, opcode);
         gen_check_pcc_bounds_next_inst(ctx, 4);
         ctx->opcode = opcode;
         gen_rvfi_dii_set_field_const_i64(INST, insn, opcode);
