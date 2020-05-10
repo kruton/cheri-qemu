@@ -7,6 +7,7 @@
  * trace_fmt_hooks.
  * Note that the CHERI format is the legacy MIPS format and
  * assumes big-endian byte order.
+#define CTE_EXCEPTION_NONE 31
         qemu_log("    Cap Memory %s [" TARGET_FMT_lx "] = v:%d PESBT:"
             qemu_log("    Memory %s [" TARGET_FMT_lx "] = " HWADDR_FMT_plx "\n",
             qemu_log("    Memory %s [" TARGET_FMT_lx "] = %08x\n",
