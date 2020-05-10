@@ -348,13 +348,16 @@ target_ulong helper_sret(CPURISCVState *env)
         env->hstatus = hstatus;
 
         if (prev_virt) {
-            riscv_cpu_swap_hypervisor_regs(env);
+            riscv_cpu_swap_hypervisor_regs(env, /*hs_mode_trap*/true);
         }
     }
 
     riscv_cpu_set_mode(env, prev_priv, prev_virt);
 
     cheri_update_pcc_for_exc_return(&env->pcc, &env->sepcc, retpc);
+    /* TODO(am2419): do we log PCC as a changed register? */
+    qemu_log_instr_dbg_cap(env, "PCC", &env->pcc);
+#endif
     /*
      * If forward cfi enabled for new priv, restore elp status
      * and clear spelp in mstatus
@@ -437,7 +440,7 @@ target_ulong helper_mret(CPURISCVState *env)
     env->mstatus = mstatus;
 
     if (riscv_has_ext(env, RVH) && prev_virt) {
-        riscv_cpu_swap_hypervisor_regs(env);
+        riscv_cpu_swap_hypervisor_regs(env, /*hs_mode_trap*/false);
     }
 
     riscv_cpu_set_mode(env, prev_priv, prev_virt);
@@ -455,7 +458,10 @@ target_ulong helper_mret(CPURISCVState *env)
                             PRV_M, false);
     }
 
+    riscv_log_instr_csr_changed(env, CSR_MSTATUS);
     cheri_update_pcc_for_exc_return(&env->pcc, &env->mepcc, retpc);
+    /* TODO(am2419): do we log PCC as a changed register? */
+    qemu_log_instr_dbg_cap(env, "PCC", &env->pcc);
     return retpc;
 }
 
