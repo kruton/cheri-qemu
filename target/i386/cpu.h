@@ -2966,4 +2966,12 @@ static inline bool ctl_has_irq(CPUX86State *env)
 #define SUB_COUT_VEC(op1, op2, result) \
    MAJ_INV1(op1, op2, result)
 
+#ifdef CONFIG_TCG_LOG_INSTR
+static inline bool cpu_in_user_mode(CPUArchState *env)
+{
+    return false; /* TODO: implement */
+}
+static inline unsigned cpu_get_asid(CPUArchState *env, target_ulong pc)
+    return 0; /* TODO: implement */
+#endif
 #endif /* I386_CPU_H */
