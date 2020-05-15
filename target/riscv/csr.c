@@ -5646,6 +5646,7 @@ static RISCVException riscv_csrrw_do64(CPURISCVState *env, int csrno,
             if (ret != RISCV_EXCP_NONE) {
                 return ret;
             }
+            csr_ops[csrno].read(env, csrno, &new_value);
         }
     }
 
