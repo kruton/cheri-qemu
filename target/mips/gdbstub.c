@@ -211,6 +211,14 @@ int mips_gdb_get_cheri_reg(CPUMIPSState *env, uint8_t *mem_buf, int n)
         if (env->active_tc.CHWR.DDC.cr_tag)
             cap_valid |= 1;
         for (i = 1; i < 32; i++) {
+        cap_valid |= ((uint64_t)env->active_tc.CHWR.UserTlsCap.cr_tag << 33);
+        cap_valid |= ((uint64_t)env->active_tc.CHWR.PrivTlsCap.cr_tag << 34);
+        cap_valid |= ((uint64_t)env->active_tc.CHWR.KR1C.cr_tag << 35);
+        cap_valid |= ((uint64_t)env->active_tc.CHWR.KR2C.cr_tag << 36);
+        cap_valid |= ((uint64_t)env->active_tc.CHWR.KCC.cr_tag << 37);
+        cap_valid |= ((uint64_t)env->active_tc.CHWR.KDC.cr_tag << 38);
+        cap_valid |= ((uint64_t)env->active_tc.CHWR.EPCC.cr_tag << 39);
+        cap_valid |= ((uint64_t)env->active_tc.CHWR.ErrorEPCC.cr_tag << 40);
     }
     }
 
