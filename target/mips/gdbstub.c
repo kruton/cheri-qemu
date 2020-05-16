@@ -174,6 +174,7 @@ static int gdb_get_capreg(uint8_t *mem_buf, cap_register_t *cap)
     return 32;
 #endif
 }
+_Static_assert(CHERI_GDB_NUM_REGS == 44, "");
 
 int mips_gdb_get_cheri_reg(CPUMIPSState *env, uint8_t *mem_buf, int n)
 {
@@ -208,6 +209,8 @@ int mips_gdb_get_cheri_reg(CPUMIPSState *env, uint8_t *mem_buf, int n)
     case 40:
         return gdb_get_capreg(mem_buf, &env->active_tc.CHWR.EPCC);
     case 41:
+    case CHERI_GDB_NUM_CAPREGS:
+    case CHERI_GDB_NUM_CAPREGS + 1: {
         if (env->active_tc.CHWR.DDC.cr_tag)
             cap_valid |= 1;
         for (i = 1; i < 32; i++) {
