@@ -107,6 +107,7 @@ int riscv_cpu_gdb_write_register(CPUState *cs, uint8_t *mem_buf, int n)
         env->gpr[n] = tmp;
     } else if (n == 32) {
         env->pc = tmp;
+        /* TODO(am2419): arguably we don't want to log changes from gdb */
     }
 
     return length;
