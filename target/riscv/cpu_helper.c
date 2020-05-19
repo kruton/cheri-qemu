@@ -2408,12 +2408,14 @@ void riscv_cpu_do_interrupt(CPUState *cs)
         env->mstatus = s;
         sxlen = 16 << riscv_cpu_sxl(env);
         env->scause = cause | ((target_ulong)async << (sxlen - 1));
-        env->sepc = env->pc;
+        COPY_SPECIAL_REG(env, sepc, sepcc, pc, pcc);
+        riscv_log_instr_csr_changed(env, CSR_SEPC);
         env->stval = tval;
         env->htval = htval;
         env->htinst = tinst;
         env->pc = (env->stvec >> 2 << 2) +
                   ((async && (env->stvec & 3) == 1) ? cause * 4 : 0);
+#endif
         riscv_cpu_set_mode(env, PRV_S, virt);
 
         src = env->sepc;
@@ -2486,7 +2488,8 @@ void riscv_cpu_do_interrupt(CPUState *cs)
         } else {
             env->mtval2 = mtval2;
         }
-        env->mepc = env->pc;
+        COPY_SPECIAL_REG(env, mepc, mepcc, pc, pcc);
+        riscv_log_instr_csr_changed(env, CSR_MEPC);
         env->mtval = tval;
         env->mtinst = tinst;
 
@@ -2494,11 +2497,14 @@ void riscv_cpu_do_interrupt(CPUState *cs)
          * For RNMI exception, program counter is set to the RNMI exception
          * trap handler address.
          */
+#endif
         if (nnmi_excep) {
             env->pc = env->rnmi_excpvec;
         } else {
             env->pc = (env->mtvec >> 2 << 2) +
                       ((async && (env->mtvec & 3) == 1) ? cause * 4 : 0);
+#ifdef TARGET_CHERI
+#else
         }
         riscv_cpu_set_mode(env, PRV_M, virt);
         src = env->mepc;
