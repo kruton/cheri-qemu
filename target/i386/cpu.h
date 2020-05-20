@@ -2975,6 +2975,8 @@ static inline unsigned cpu_get_asid(CPUArchState *env, target_ulong pc)
 {
     return 0; /* TODO: implement */
 }
+static inline char *cpu_get_mode_name(qemu_log_instr_cpu_mode_t mode) {
     return NULL; /* TODO: implement */
+}
 #endif
 #endif /* I386_CPU_H */
