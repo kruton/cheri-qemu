@@ -23,6 +23,7 @@
 #include "qemu/error-report.h"
 #include "qapi/error.h"
 #include "qemu/cutils.h"
+#include "qemu/log_instr.h"
 #include "trace/control.h"
 #include "qemu/thread.h"
 #include "qemu/lockable.h"
