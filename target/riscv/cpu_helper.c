@@ -2169,7 +2169,6 @@ static void riscv_do_nmi(CPURISCVState *env, target_ulong cause, bool virt)
 #ifdef TARGET_CHERI
 hwaddr cpu_riscv_translate_address_tagmem(CPUArchState *env,
 {
-    int ret = get_physical_address(env, &physical, prot, address, rw,
                                cpu_mmu_index(env, false));
     if (ret != TRANSLATE_SUCCESS) {
         raise_mmu_exception(env, address, rw, false);
