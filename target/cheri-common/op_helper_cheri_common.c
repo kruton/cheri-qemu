@@ -16,6 +16,7 @@
         }
     }
 }
+}
 {
 }
 {
@@ -24,6 +25,8 @@
                                         target_ulong rs))
     const cap_register_t *cbp = get_readonly_capreg(env, cb);
                        "Unknown permission bits set!");
+        // The return capability should always be a sentry
+            cap_make_sealed_entry(&result);
 #ifdef TARGET_RISCV
                                   target_ulong rt))
         raise_cheri_exception(env, CapEx_UserDefViolation, cs);
@@ -31,6 +34,7 @@ void CHERI_HELPER_IMPL(cbuildcap(CPUArchState *env, uint32_t cd, uint32_t cb,
                                  uint32_t ct))
     if (cb == 0) {
     const cap_register_t *cbp = get_capreg_0_is_ddc(env, cb);
+        if (cap_is_sealed_entry(ctp)) {
 void CHERI_HELPER_IMPL(candaddr(CPUArchState *env, uint32_t cd, uint32_t cb,
     target_ulong cursor = get_capreg_cursor(env, cb);
     target_ulong target_addr = cursor & rt;
