@@ -2141,6 +2141,17 @@ static RISCVException write_misa(CPURISCVState *env, int csrno,
         return RISCV_EXCP_NONE;
     }
 
+    /*
+     * XXXAR: this code is completely broken:
+     * 1) you can only turn **on** misa.C if PC is not aligned to 4 bytes???
+     * 2) They use GETPC() for this check! This is a QEMU internal program
+     * counter (the current return address, so not even the TCG generated code
+     * address since we could be multiple call stack levels down).
+     *
+     * Fortunately RISCV_FEATURE_MISA should never be enabled so we can't end
+     * up here... If we ever do, abort() is the only safe way out!
+     */
+    abort();
     /* Mask extensions that are not supported by this hart */
     val &= env->misa_ext_mask;
 
