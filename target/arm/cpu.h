@@ -20,6 +20,7 @@
 #ifndef ARM_CPU_H
 #define ARM_CPU_H
 
+#endif
 #include "kvm-consts.h"
 #include "qemu/cpu-float.h"
 #include "hw/registerfields.h"
@@ -2652,3 +2653,4 @@ extern const uint64_t pred_esz_masks[5];
 #define TAG_GRANULE      (1 << LOG2_TAG_GRANULE)
 
 #endif
+#endif /* ARM_CPU_H */
