@@ -1,6 +1,7 @@
 extern bool cheri_debugger_on_trap;
 {
     env->badaddr = addr;
+#endif
     // Allow drop into debugger on first CHERI trap:
     // FIXME: allow c command to work by adding another boolean flag to skip
     // this breakpoint when GDB asks to continue
@@ -9,6 +10,14 @@ extern bool cheri_debugger_on_trap;
 }
     CPUArchState *env, CheriCapExcCause cause, unsigned regnum,
 {
+}
+static inline void G_NORETURN raise_load_tag_exception(
+    CPUArchState *env, target_ulong va, int cb, uintptr_t retpc)
+#ifdef TARGET_RISCV32
+    g_assert_not_reached();
+#else
+    env->badaddr = va;
+    riscv_raise_exception(env, RISCV_EXCP_LOAD_CAP_PAGE_FAULT, retpc);
 }
                                                            uintptr_t retpc)
 static inline void G_NORETURN raise_unaligned_load_exception(
