@@ -1077,8 +1077,11 @@ void riscv_cpu_set_mode(CPURISCVState *env, target_ulong newpriv, bool virt_en)
             riscv_cpu_update_mip(env, 0, 0);
         }
     }
+#endif
 }
 
+/*
+ */
 /*
  * get_physical_address_pmp - check PMP permission for this physical address
  *
