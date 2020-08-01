@@ -1062,6 +1062,7 @@ static const char rv_vreg_name_sym[32][4] = {
 #define rv_fmt_cd_cs1_rs2             "O\tC0,C1,2"
 #define rv_fmt_rd_cs1_cs2             "O\t0,C1,C2"
 #define rv_fmt_cd_scr_cs1             "O\tC0,Cs,C1"
+#define rv_fmt_rd_rs1_imm             "O\t0,1,i"
 #define rv_fmt_cd_cs1_imm             "O\tC0,C1,i"
 #define rv_fmt_rd_offset_cs1          "O\t0,i(C1)"
 #define rv_fmt_rs2_offset_cs1         "O\t2,i(C1)"
@@ -2149,6 +2150,8 @@ const rv_opcode_data rvi_opcode_data[] = {
     [rv_op_clc] = { "clc", rv_codec_i, rv_fmt_cd_offset_cs1, NULL, 0, 0, 0 },
     [rv_op_sc] = { "sc", rv_codec_s, rv_fmt_cs2_offset_rs1, NULL, 0, 0, 0 },
     [rv_op_csc] = { "csc", rv_codec_s, rv_fmt_cs2_offset_cs1, NULL, 0, 0, 0 },
+    [rv_op_cincoffsetimm] = { "cincoffset", rv_codec_i, rv_fmt_cd_cs1_imm, NULL, 0, 0, 0 },
+    [rv_op_csetboundsimm] = { "csetbounds", rv_codec_i, rv_fmt_cd_cs1_imm, NULL, 0, 0, 0 },
     // Two operand
     [rv_op_cgetperm] = { "cgetperm", rv_codec_r, rv_fmt_rd_cs1, NULL, 0, 0, 0 },
     [rv_op_cgettype] = { "cgettype", rv_codec_r, rv_fmt_rd_cs1, NULL, 0, 0, 0 },
