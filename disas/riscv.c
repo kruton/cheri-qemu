@@ -840,10 +840,13 @@ typedef enum {
     rv_op_cgetsealed,
     rv_op_cgetoffset,
     rv_op_cgetflags,
+    rv_op_crrl,
+    rv_op_cram,
     rv_op_cmove,
     rv_op_ccleartag,
     rv_op_cjalr,
     rv_op_cgetaddr,
+    rv_op_csealentry,
     // Three operand
     rv_op_cspecialrw,
     rv_op_csetbounds,
@@ -2202,6 +2205,9 @@ const rv_opcode_data rvi_opcode_data[] = {
     [rv_op_acperm] = { "acperm", rv_codec_r, rv_fmt_cd_cs1_rs2, NULL, 0, 0, 0 },
     [rv_op_scaddr] = { "scaddr", rv_codec_r, rv_fmt_cd_cs1_rs2, NULL, 0, 0, 0 },
     [rv_op_scbnds] = { "scbnds", rv_codec_r, rv_fmt_cd_cs1_rs2, NULL, 0, 0, 0 },
+    [rv_op_scbndsr] = { "scbndsr", rv_codec_r, rv_fmt_cd_cs1_rs2, NULL, 0, 0, 0 },
+    [rv_op_schi] = { "schi", rv_codec_r, rv_fmt_cd_cs1_rs2, NULL, 0, 0, 0 },
+    [rv_op_sceq] = { "sceq", rv_codec_r, rv_fmt_rd_cs1_cs2, NULL, 0, 0, 0 },
     [rv_op_cbld] = { "cbld", rv_codec_r, rv_fmt_cd_cs1_cs2, NULL, 0, 0, 0 },
     [rv_op_scss] = { "scss", rv_codec_r, rv_fmt_rd_cs1_cs2, NULL, 0, 0, 0 },
     { "fcvt.s.bf16", rv_codec_r_m, rv_fmt_rm_frd_frs1, NULL, 0, 0, 0 },
@@ -2665,10 +2671,13 @@ static rv_opcode decode_cheri_two_op(unsigned func) {
     case 0b00101: return rv_op_cgetsealed;
     case 0b00110: return rv_op_cgetoffset;
     case 0b00111: return rv_op_cgetflags;
+    case 0b01000: return rv_op_crrl;
+    case 0b01001: return rv_op_cram;
     case 0b01010: return rv_op_cmove;
     case 0b01011: return rv_op_ccleartag;
     case 0b01100: return rv_op_cjalr;
     case 0b01111: return rv_op_cgetaddr;
+    case 0b10001: return rv_op_csealentry;
     default: return rv_op_illegal;
     }
 }
