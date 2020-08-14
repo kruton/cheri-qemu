@@ -1497,8 +1497,12 @@ void *probe_access(CPUArchState *env, vaddr addr, int size,
     if (unlikely(flags & (TLB_NOTDIRTY | TLB_WATCHPOINT))) {
         /* Handle watchpoints.  */
         if (flags & TLB_WATCHPOINT) {
-            int wp_access = (access_type == MMU_DATA_STORE
-                             ? BP_MEM_WRITE : BP_MEM_READ);
+            bool is_write =
+#ifdef CONFIG_CHERI
+                access_type == MMU_DATA_CAP_STORE ||
+#endif
+                access_type == MMU_DATA_STORE;
+            int wp_access = is_write ? BP_MEM_WRITE : BP_MEM_READ;
             cpu_check_watchpoint(env_cpu(env), addr, size,
                                  full->attrs, wp_access, retaddr);
         }
