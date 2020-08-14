@@ -49,8 +49,10 @@ static CheriTagBlock *cheri_tag_new_tagblk(RAMBlock *ram, uint64_t tagidx)
         return old;
     } else {
         return tagblk;
+    }
 static inline QEMU_ALWAYS_INLINE CheriTagBlock *cheri_tag_block(size_t tag_index,
                                                                 RAMBlock *ram)
+{
     const size_t tagbock_index = tag_index >> CAP_TAGBLK_SHFT;
     cheri_debug_assert(ram->cheri_tags);
     return tagmem[tagbock_index];
@@ -61,8 +63,25 @@ static inline QEMU_ALWAYS_INLINE void tagblock_clear_tag(CheriTagBlock *block,
     assert(memory_region_is_ram(mr));
     assert(memory_region_size(mr) == memory_size &&
            "Incorrect tag mem size passed?");
+    cheri_debug_assert(size == TARGET_PAGE_SIZE && "Unexpected size");
+#endif
     CheriTagBlock *tagblk = cheri_tag_block(tag, ram);
+        /*
+         */
+#else
+    if (tagblk != NULL) {
+        const size_t tagblk_index = CAP_TAGBLK_IDX(tag);
+        return tagblk->tag_bitmap + BIT_WORD(tagblk_index);
+    /* XXXAR: see mte_helper.c */
+     * Find the iotlbentry for ptr.  This *must* be present in the TLB
+     * because we just found the mapping.
+     * TODO: Perhaps there should be a cputlb helper that returns a
+     * matching tlb entry + iotlb entry.
+#ifdef CONFIG_DEBUG_TCG
+    CPUTLBEntry *entry = cheri_tlb_entry(env_cpu(env), mmu_idx, vaddr);
 #if defined(CHERI_UNALIGNED)
     if (unlikely((first_addr & TARGET_PAGE_MASK) !=
         warn_report("Got unaligned %d-byte store across page "
         return NULL;
+    if (!ram->cheri_tags) {
+        CheriTagBlock *tagblk = cheri_tag_block(tag, ram);
