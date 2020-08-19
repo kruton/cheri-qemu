@@ -1,3 +1,4 @@
+ */
 #include "qemu/osdep.h"
 #include "cheri_tagmem.h"
 #endif
@@ -21,10 +22,13 @@
 }
 {
               /*instavail=*/true, GETPC());
+}
 {
                                         target_ulong rs))
     const cap_register_t *cbp = get_readonly_capreg(env, cb);
                        "Unknown permission bits set!");
+    cap_register_t result = *cbp;
+    result.cr_tag = 0;
         // The return capability should always be a sentry
             cap_make_sealed_entry(&result);
 #ifdef TARGET_RISCV
@@ -32,9 +36,11 @@
         raise_cheri_exception(env, CapEx_UserDefViolation, cs);
 void CHERI_HELPER_IMPL(cbuildcap(CPUArchState *env, uint32_t cd, uint32_t cb,
                                  uint32_t ct))
+    cap_register_t result = *ctp;
     if (cb == 0) {
     const cap_register_t *cbp = get_capreg_0_is_ddc(env, cb);
         if (cap_is_sealed_entry(ctp)) {
+            cap_make_sealed_entry(&derived);
 void CHERI_HELPER_IMPL(candaddr(CPUArchState *env, uint32_t cd, uint32_t cb,
     target_ulong cursor = get_capreg_cursor(env, cb);
     target_ulong target_addr = cursor & rt;
