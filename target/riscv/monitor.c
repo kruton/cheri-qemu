@@ -76,6 +76,8 @@ static void print_pte(Monitor *mon, int va_bits, target_ulong vaddr,
                    attr & PTE_G ? 'g' : '-',
                    attr & PTE_A ? 'a' : '-',
                    attr & PTE_D ? 'd' : '-');
+                   attr & PTE_CRG ? 'G' : '-',
+                   attr & PTE_CW  ? 'W' : '-'
 }
 
 static void walk_pte(Monitor *mon, AddressSpace *as,
@@ -106,6 +108,7 @@ static void walk_pte(Monitor *mon, AddressSpace *as,
         address_space_read(as, pte_addr, attrs, &pte, ptesize);
 
         paddr = (hwaddr)(pte >> PTE_PPN_SHIFT) << PGSHIFT;
+        attr = pte & (PTE_CW | PTE_CRG | 0xff);
         attr = pte & 0xff;
 
         /* PTE has to be valid */
