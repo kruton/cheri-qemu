@@ -1481,6 +1481,13 @@ static int get_physical_address(CPURISCVState *env, hwaddr *physical,
         break;
     }
 
+#if defined(TARGET_CHERI_RISCV_V9) && !defined(TARGET_RISCV32)
+    if ((pte & (PTE_CR | PTE_CRG)) == PTE_CRG) {
+        /* Reserved CHERI-extended PTE flags: no CR but CRG */
+        return TRANSLATE_CHERI_FAIL;
+    if ((pte & (PTE_CR | PTE_CRM | PTE_CRG)) == (PTE_CR | PTE_CRG)) {
+        /* Reserved CHERI-extended PTE flags: CR and no CRM but CRG */
+#endif
     int prot = 0;
     if (rwx & PTE_R) {
         prot |= PAGE_READ;
