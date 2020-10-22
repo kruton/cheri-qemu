@@ -5487,9 +5487,14 @@ static RISCVException write_mnstatus(CPURISCVState *env, int csrno,
 }
 static RISCVException stid(CPURISCVState *env, int csrno)
 {
+#endif
     }
 
 #endif
+    ccsr = set_field(ccsr, XCCSR_ENABLE, cpu->cfg.ext_cheri);
+#if !defined(TARGET_RISCV32)
+    if (csrno == CSR_SCCSR)
+        ccsr |= env->sccsr;
 
 /* Crypto Extension */
 target_ulong riscv_new_csr_seed(target_ulong new_value,
@@ -6156,6 +6161,9 @@ riscv_csr_operations csr_ops[CSR_TABLE_SIZE] = {
                           .min_priv_ver = PRIV_VERSION_1_12_0                },
 
 #ifdef TARGET_CHERI_RISCV_V9
+    // CHERI CSRs: For now we always report enabled and dirty and don't support
+    // turning off CHERI.  sccsr contains global capability load generation bits
+    // that can be written, but the other two are constant.
     [CSR_UCCSR]        = { "uccsr", umode, read_ccsr, write_ccsr },
     [CSR_SCCSR]        = { "sccsr", smode, read_ccsr, write_ccsr },
     [CSR_MCCSR]        = { "mccsr", any, read_ccsr, write_ccsr },
