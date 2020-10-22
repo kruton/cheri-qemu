@@ -67,6 +67,8 @@ static void print_pte(Monitor *mon, int va_bits, target_ulong vaddr,
 
     monitor_printf(mon, TARGET_FMT_lx " " HWADDR_FMT_plx " " TARGET_FMT_lx
                    " %c%c%c%c%c%c%c\n",
+                   "%c%c%c%c%c"
+                   "%c%c"
                    addr_canonical(va_bits, vaddr),
                    paddr, size,
                    attr & PTE_R ? 'r' : '-',
@@ -76,7 +78,12 @@ static void print_pte(Monitor *mon, int va_bits, target_ulong vaddr,
                    attr & PTE_G ? 'g' : '-',
                    attr & PTE_A ? 'a' : '-',
                    attr & PTE_D ? 'd' : '-');
+                   attr & PTE_D ? 'd' : '-'
+                   ,
                    attr & PTE_CRG ? 'G' : '-',
+                   attr & PTE_CRM ? 'M' : '-',
+                   attr & PTE_CD  ? 'D' : '-',
+                   attr & PTE_CR  ? 'R' : '-',
                    attr & PTE_CW  ? 'W' : '-'
 }
 
@@ -108,6 +115,7 @@ static void walk_pte(Monitor *mon, AddressSpace *as,
         address_space_read(as, pte_addr, attrs, &pte, ptesize);
 
         paddr = (hwaddr)(pte >> PTE_PPN_SHIFT) << PGSHIFT;
+        attr = pte & (PTE_CR | PTE_CW | PTE_CD | PTE_CRM | PTE_CRG | 0xff);
         attr = pte & (PTE_CW | PTE_CRG | 0xff);
         attr = pte & 0xff;
 
