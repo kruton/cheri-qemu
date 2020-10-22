@@ -738,6 +738,8 @@ typedef enum {
 #define PTE_RESERVED(svrsw60t59b)    \
     (svrsw60t59b ? 0x07C0000000000000ULL : 0x1FC0000000000000ULL) /* Reserved bits */
 #define PTE_ATTR            (PTE_N | PTE_PBMT) /* All attributes bits */
+#define PTE_CRG             0x0800000000000000 /* Cap Read Generation */
+#define PTE_CRM             0x1000000000000000 /* Cap Read Modifier */
 
 /* Page table PPN shift amount */
 #define PTE_PPN_SHIFT       10
