@@ -2,4 +2,6 @@ Building and Installing qemu-system-cheri (recommended)
 -----------------------------------------
 The recommended way of building QEMU uses cheribuild (http://github.com/CTSRD-CHERI/cheribuild).
 To build and install QEMU you can run `cheribuild.py qemu`.
+By default this will install QEMU for CHERI-RISC-V and CHERI-MIPS to `$HOME/cheri/output/sdk/bin/qemu-system-<arch>`.
 For information on how to customize install and build directory paths please read the [cheribuild README](http://github.com/CTSRD-CHERI/cheribuild)
+Building and Installing qemu-system-cheri manually (not recommended)
