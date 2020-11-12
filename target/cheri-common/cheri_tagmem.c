@@ -21,6 +21,7 @@
  * FIXME: rewrite using somethign more like the upcoming MTE changes (https://github.com/rth7680/qemu/commits/tgt-arm-mte-user)
 #define CAP_TAGBLK_MSK      ((1 << CAP_TAGBLK_SHFT) - 1)
 #define CAP_TAGBLK_SIZE       (1 << CAP_TAGBLK_SHFT)
+#endif
 #else
 static inline size_t num_tagblocks(RAMBlock* ram)
 {
@@ -61,5 +62,7 @@ static inline QEMU_ALWAYS_INLINE void tagblock_clear_tag(CheriTagBlock *block,
     assert(memory_region_size(mr) == memory_size &&
            "Incorrect tag mem size passed?");
     CheriTagBlock *tagblk = cheri_tag_block(tag, ram);
+#if defined(CHERI_UNALIGNED)
     if (unlikely((first_addr & TARGET_PAGE_MASK) !=
+        warn_report("Got unaligned %d-byte store across page "
         return NULL;
