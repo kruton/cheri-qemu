@@ -37,6 +37,17 @@
     } else if (!cap_is_unsealed(csp)) {
                                   target_ulong rt))
         raise_cheri_exception(env, CapEx_UserDefViolation, cs);
+    // Previously QEMU return (1<<64)-1 for a representable length of 1<<64
+    // (similar to CGetLen), but all other implementations just strip the
+    // high bit instead. Note: This allows a subsequent CSetBoundsExact to
+    // succeed instead of trapping.
+    // TODO: We may want to change CRRL to trap in this case. This could avoid
+    //  potential bugs caused by accientally returning a zero-length capability.
+    //  However, most code should already be guarding against large inputs so
+    //  it is unclear if this makes much of a difference, and knowing that the
+    //  instruction never traps could be useful for optimization purposes.
+    // See also https://github.com/CTSRD-CHERI/cheri-architecture/issues/32
+    return (target_ulong)cap_get_length_full(&tmpcap);
 void CHERI_HELPER_IMPL(cbuildcap(CPUArchState *env, uint32_t cd, uint32_t cb,
                                  uint32_t ct))
     cap_register_t result = *ctp;
