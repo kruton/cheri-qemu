@@ -58,6 +58,7 @@ G_NORETURN void riscv_raise_exception(CPURISCVState *env,
 
     cs->exception_index = exception;
     cpu_loop_exit_restore(cs, pc);
+        if (ret != 0 && PC_ADDR(env) != 0) {
 }
 
 void helper_raise_exception(CPURISCVState *env, uint32_t exception)
