@@ -301,8 +301,13 @@ target_ulong helper_sret(CPURISCVState *env)
     if (!riscv_cpu_allow_16bit_insn(&env_archcpu(env)->cfg,
                                     env->priv_ver,
                                     env->misa_ext) && (retpc & 0x3)) {
-        riscv_raise_exception(env, RISCV_EXCP_INST_ADDR_MIS, GETPC());
     }
+    // We have to clear the low bit of the address since that is defined as zero
+    // in the privileged spec. The cheri_update_pcc_for_exc_return() check below
+    // will de-tag pcc if this would result changing the address for sealed caps.
+    // If RVC is not supported, we also mask sepc[1] as specified in the RISC-V
+    // privileged spec 4.1.7 Supervisor Exception Program Counter (sepc):
+    // "This masking occurs also for the implicit read by the SRET instruction."
 
     if (get_field(env->mstatus, MSTATUS_TSR) && !(env->priv >= PRV_M)) {
         riscv_raise_exception(env, RISCV_EXCP_ILLEGAL_INST, GETPC());
@@ -414,6 +419,12 @@ static target_ulong ssdbltrp_mxret(CPURISCVState *env, target_ulong mstatus,
 target_ulong helper_mret(CPURISCVState *env)
 {
     target_ulong retpc = env->mepc & get_xepc_mask(env);
+    // We have to clear the low bit of the address since that is defined as zero
+    // in the privileged spec. The cheri_update_pcc_for_exc_return() check below
+    // will de-tag pcc if this would result changing the address for sealed caps.
+    // If RVC is not supported, we also mask sepc[1] as specified in the RISC-V
+    // privileged spec 3.1.15 Machine Exception Program Counter (mepc):
+    // "This masking occurs also for the implicit read by the MRET instruction."
     uint64_t mstatus = env->mstatus;
     target_ulong prev_priv = get_field(mstatus, MSTATUS_MPP);
     uintptr_t ra = GETPC();
