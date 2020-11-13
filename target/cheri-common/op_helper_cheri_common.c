@@ -34,6 +34,7 @@
         // The return capability should always be a sentry
             cap_make_sealed_entry(&result);
 #ifdef TARGET_RISCV
+    } else if (!cap_is_unsealed(csp)) {
                                   target_ulong rt))
         raise_cheri_exception(env, CapEx_UserDefViolation, cs);
 void CHERI_HELPER_IMPL(cbuildcap(CPUArchState *env, uint32_t cd, uint32_t cb,
@@ -44,6 +45,11 @@ void CHERI_HELPER_IMPL(cbuildcap(CPUArchState *env, uint32_t cd, uint32_t cb,
         if (cap_is_sealed_entry(ctp)) {
             cap_make_sealed_entry(&derived);
             /* For reserved otypes we return a null-derived value. */
+            update_capreg(env, cd, csp);
+    } else if (conditional && !cap_is_unsealed(csp)) {
+    } else if (conditional && !cap_cursor_in_bounds(ctp)) {
+    } else if (!conditional && !cap_is_unsealed(csp)) {
+    } else if (!conditional && !cap_cursor_in_bounds(ctp)) {
 void CHERI_HELPER_IMPL(candaddr(CPUArchState *env, uint32_t cd, uint32_t cb,
     target_ulong cursor = get_capreg_cursor(env, cb);
     target_ulong target_addr = cursor & rt;
