@@ -9,6 +9,8 @@
         (deprecated("Do not call the helper directly, it will crash at "       \
                     "runtime. Call the _impl variant instead"))) helper_##name
 #endif
+/*
+ */
 {
 }
 {
@@ -41,6 +43,7 @@ void CHERI_HELPER_IMPL(cbuildcap(CPUArchState *env, uint32_t cd, uint32_t cb,
     const cap_register_t *cbp = get_capreg_0_is_ddc(env, cb);
         if (cap_is_sealed_entry(ctp)) {
             cap_make_sealed_entry(&derived);
+            /* For reserved otypes we return a null-derived value. */
 void CHERI_HELPER_IMPL(candaddr(CPUArchState *env, uint32_t cd, uint32_t cb,
     target_ulong cursor = get_capreg_cursor(env, cb);
     target_ulong target_addr = cursor & rt;
