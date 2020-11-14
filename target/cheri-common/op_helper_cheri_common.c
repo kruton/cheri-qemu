@@ -98,6 +98,7 @@ target_ulong CHERI_HELPER_IMPL(cap_check_addr(CPUArchState *env,
         tcg_debug_assert(pesbt_for_mem == 0 && "Wrong value for cnull?");
         tcg_debug_assert(cursor == 0 && "Wrong value for cnull?");
         tcg_debug_assert(!tag && "Wrong value for cnull?");
+    env->rvfi_dii_trace.MEM.rvfi_mem_wdata[0] = cursor;
     cheri_debug_assert(pc_is_current(env));
      * Note: we set pc=0 since PC will have been saved prior to calling the
      * helper. Therefore, we don't need to recompute it from the generated code.
