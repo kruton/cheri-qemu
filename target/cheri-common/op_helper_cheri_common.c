@@ -53,6 +53,10 @@ void CHERI_HELPER_IMPL(cbuildcap(CPUArchState *env, uint32_t cd, uint32_t cb,
     cap_register_t result = *ctp;
     if (cb == 0) {
     const cap_register_t *cbp = get_capreg_0_is_ddc(env, cb);
+    } else if (cap_get_base(ctp) < cap_get_base(cbp)) {
+    } else if (cap_get_top_full(ctp) > cap_get_top_full(cbp)) {
+    } else if (cap_get_base(ctp) > cap_get_top_full(ctp)) {
+        // check for length < 0 - possible because cs2 might be untagged
         if (cap_is_sealed_entry(ctp)) {
             cap_make_sealed_entry(&derived);
             /* For reserved otypes we return a null-derived value. */
@@ -76,6 +80,7 @@ void CHERI_HELPER_IMPL(candaddr(CPUArchState *env, uint32_t cd, uint32_t cb,
         cap_get_base(cbp) <= cap_get_base(ctp) &&
         cap_get_top_full(ctp) <= cap_get_top_full(cbp) &&
         is_subset = true;
+        raise_cheri_exception(env, CapEx_TagViolation, ct);
         return (target_ulong)0;
     return cap_check_common(CAP_PERM_LOAD | CAP_PERM_STORE, env, cb, offset,
 target_ulong CHERI_HELPER_IMPL(cap_check_addr(CPUArchState *env,
