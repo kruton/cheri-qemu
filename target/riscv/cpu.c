@@ -700,6 +700,7 @@ bool riscv_cpu_has_work(CPUState *cs)
             tb_flush(cs);
             // TestRIG expects all capability registers to be max perms
             set_max_perms_capregs(env);
+            env->rvfi_dii_trace.PC.rvfi_pc_rdata = GET_SPECIAL_REG_ARCH(env, pc, pcc);
 static void riscv_cpu_reset_hold(Object *obj, ResetType type)
 {
 #ifndef CONFIG_USER_ONLY
