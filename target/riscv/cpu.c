@@ -820,9 +820,13 @@ static void riscv_cpu_reset_hold(Object *obj, ResetType type)
     // Also reset mepc/sepc to zero for predicatable behaviour
     env->mepc = 0;
     env->sepc = 0;
+#ifdef TARGET_CHERI_RISCV_V9
 #endif
+    if (!cpu->cfg.ext_cheri) {
+    }
     reset_capregs(env);
     set_max_perms_capability(env, &env->pcc, env->resetvec);
+#endif
 }
 
 static void riscv_cpu_disas_set_info(CPUState *s, disassemble_info *info)
