@@ -517,6 +517,11 @@ struct CPUArchState {
 
 #endif
 
+#endif
+    target_ulong mhartid;
+    uint32_t features;
+#ifdef CONFIG_USER_ONLY
+    uint32_t elf_flags;
     /* Fields from here on are preserved across CPU reset. */
     QEMUTimer *stimer; /* Internal timer for S-mode interrupt */
     QEMUTimer *vstimer; /* Internal timer for VS-mode interrupt */
