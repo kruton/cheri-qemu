@@ -20,6 +20,7 @@ static inline void rvfi_changed_capreg(CPUArchState *env, unsigned regnum,
 #if defined(TARGET_RISCV) && defined(CONFIG_RVFI_DII)
     env->rvfi_dii_trace.INTEGER.rvfi_rd_addr = regnum;
     env->rvfi_dii_trace.INTEGER.rvfi_rd_wdata = cursor;
+    env->rvfi_dii_trace.available_fields |= RVFI_INTEGER_DATA;
                                  const cap_register_t *newval)
     case CREG_INTEGER:
         cheri_debug_assert(result == 0);
