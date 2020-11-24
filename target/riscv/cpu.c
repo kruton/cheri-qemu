@@ -685,6 +685,10 @@ bool riscv_cpu_has_work(CPUState *cs)
 
     // Single-step completed -> update PC in the trace buffer
     env->rvfi_dii_trace.INST.rvfi_order++;
+        // Print the instruction now and skip the next commit() call that
+        // happens when we return to the translator loop.
+        qemu_log_instr_commit(env);
+        qemu_log_instr_drop(env); // Avoid an invalid instruction log
             env->rvfi_dii_trace.INST.rvfi_order = 0;
             hwaddr system_ram_addr = cpu_get_phys_page_debug(cs, PC_ADDR(env));
             hwaddr system_ram_size = RVFI_DII_RAM_SIZE;
@@ -700,6 +704,14 @@ bool riscv_cpu_has_work(CPUState *cs)
             tb_flush(cs);
             // TestRIG expects all capability registers to be max perms
             set_max_perms_capregs(env);
+                char buf[512];
+                FILE *tmp = fmemopen(buf, sizeof(buf), "w+");
+                target_disas_buf(tmp, cs, &cmd_buf.rvfi_dii_insn,
+                                 sizeof(cmd_buf.rvfi_dii_insn), PC_ADDR(env),
+                                 1);
+                fclose(tmp);
+                info_report("injecting instruction %d '0x%08x' at %s",
+                            cmd_buf.rvfi_dii_time, cmd_buf.rvfi_dii_insn, buf);
             env->rvfi_dii_trace.PC.rvfi_pc_rdata = GET_SPECIAL_REG_ARCH(env, pc, pcc);
 static void riscv_cpu_reset_hold(Object *obj, ResetType type)
 {
