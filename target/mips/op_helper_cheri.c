@@ -154,6 +154,7 @@ static target_ulong ccall_common(CPUArchState *env, uint32_t cs, uint32_t cb, ui
         raise_cheri_exception(env, CapEx_LengthViolation, cs);
     } else {
             raise_cheri_exception(env, CapEx_CallTrap, cs);
+        } else if (!cap_has_perms(csp, CAP_PERM_CINVOKE) && !allow_unsealed) {
             raise_cheri_exception(env, CapEx_PermitCCallViolation, cs);
             raise_cheri_exception(env, CapEx_PermitCCallViolation, cb);
         } else {
