@@ -653,6 +653,7 @@ static void gen_jal(DisasContext *ctx, int rd, target_ulong imm)
     TCGv succ_pc = dest_gpr(ctx, rd);
 
     /* check misaligned: */
+    } else {
     }
     if (!riscv_cpu_allow_16bit_insn(ctx->cfg_ptr,
                                     ctx->priv_ver,
@@ -660,6 +661,7 @@ static void gen_jal(DisasContext *ctx, int rd, target_ulong imm)
         if ((imm & 0x3) != 0) {
             TCGv target_pc = tcg_temp_new();
             gen_pc_plus_diff(target_pc, ctx, imm);
+            }
             gen_exception_inst_addr_mis(ctx, target_pc);
             return;
         }
@@ -676,6 +678,10 @@ static void gen_jal(DisasContext *ctx, int rd, target_ulong imm)
         gen_set_gpr_const(ctx, rd, ctx->pc_succ_insn);
 
     gen_goto_tb(ctx, 0, imm); /* must use this for safety */
+static void gen_jalr(DisasContext *ctx, int rd, int rs1, target_ulong imm)
+{
+         */
+    lookup_and_goto_ptr(ctx);
     ctx->base.is_jmp = DISAS_NORETURN;
 }
 
@@ -1498,6 +1504,8 @@ static void riscv_tr_tb_stop(DisasContextBase *dcbase, CPUState *cpu)
     switch (ctx->base.is_jmp) {
     case DISAS_TOO_MANY:
         gen_goto_tb(ctx, 0, 0);
+        /* CHERI PCC bounds check done on next ifetch. */
+        gen_goto_tb(ctx, 0, 0, /*bounds_check=*/false);
         break;
     case DISAS_NORETURN:
         break;
