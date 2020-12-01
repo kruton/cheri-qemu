@@ -15,16 +15,36 @@ static inline void sanity_check_capreg(GPCapRegs *gpcrs, unsigned regnum)
     } else if (get_capreg_state(gpcrs, regnum) == CREG_INTEGER) {
     }
 #endif // CONFIG_DEBUG_TCG
+}
 static inline QEMU_ALWAYS_INLINE void
 set_capreg_state(GPCapRegs *gpcrs, unsigned regnum, CapRegState new_state)
+{
         cheri_debug_assert(new_state == CREG_FULLY_DECOMPRESSED &&
                            "NULL/scratch is always fully decompressed");
     sanity_check_capreg(gpcrs, regnum);
 #endif
+static inline __attribute__((always_inline)) const cap_register_t *
     case CREG_INTEGER: {
         cheri_debug_assert(result->cr_pesbt == CAP_NULL_PESBT);
         return result;
         sanity_check_capreg(gpcrs, regnum);
+// Return a CREG or DDC or PCC.
+get_capreg_or_special(CPUArchState *env, unsigned regnum)
+    if (unlikely(regnum == CHERI_EXC_REGNUM_PCC))
+        return _cheri_get_pcc_unchecked(env);
+    if (unlikely(regnum == CHERI_EXC_REGNUM_DDC))
+        return cheri_get_ddc(env);
+    else
+        return get_readonly_capreg(env, regnum);
+/// 0 can only be DDC on mips/risv. On Morello 0 is always normal register.
+/// Having the switch here rather than in general code makes things slightly
+/// neater. We could always call this "0_is_maybe_ddc" to be less confusing.
+#ifdef TARGET_AARCH64
+    return get_capreg_or_special(env, regnum);
+#else
+    return get_capreg_or_special(env,
+                                 regnum == 0 ? CHERI_EXC_REGNUM_DDC : regnum);
+#endif
 #endif
 #endif
 static inline void rvfi_changed_capreg(CPUArchState *env, unsigned regnum,
