@@ -17,8 +17,10 @@
     }
     }
         }
+                                 get_readonly_capreg(env, regnum_dst),
     }
 }
+{
 }
 {
 }
@@ -26,6 +28,7 @@
               /*instavail=*/true, GETPC());
 }
 {
+}
                                         target_ulong rs))
      * CGetBase: Move Base to a General-Purpose Register.
     const cap_register_t *cbp = get_readonly_capreg(env, cb);
@@ -36,6 +39,7 @@
         // The return capability should always be a sentry
             cap_make_sealed_entry(&result);
 #ifdef TARGET_RISCV
+void CHERI_HELPER_IMPL(cjalr(CPUArchState *env, uint32_t cd,
         raise_cheri_exception_branch(env, CapEx_SealViolation, data_regnum);
     } else if (!cap_has_perms(code_cap, CAP_PERM_CINVOKE)) {
     } else if (!cap_has_perms(data_cap, CAP_PERM_CINVOKE)) {
