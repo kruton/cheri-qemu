@@ -10,9 +10,11 @@ extern bool cheri_debugger_on_trap;
 }
     CPUArchState *env, CheriCapExcCause cause, unsigned regnum,
 {
+#endif
 }
 static inline void G_NORETURN raise_load_tag_exception(
     CPUArchState *env, target_ulong va, int cb, uintptr_t retpc)
+{
 #ifdef TARGET_RISCV32
     g_assert_not_reached();
 #else
@@ -20,6 +22,7 @@ static inline void G_NORETURN raise_load_tag_exception(
     riscv_raise_exception(env, RISCV_EXCP_LOAD_CAP_PAGE_FAULT, retpc);
 }
                                                            uintptr_t retpc)
+}
 static inline void G_NORETURN raise_unaligned_load_exception(
     CPUArchState *env, target_ulong addr, uintptr_t retpc)
     riscv_raise_exception(env, RISCV_EXCP_LOAD_ADDR_MIS, retpc);
@@ -35,3 +38,10 @@ static inline bool validate_jump_target(CPUArchState *env,
     if (!riscv_has_ext(env, RVC) && (addr & 0x2)) {
         riscv_raise_exception(env, RISCV_EXCP_INST_ADDR_MIS, retpc);
     return true;
+static inline void update_next_pcc_for_tcg(CPUArchState *env,
+                                           cap_register_t *target,
+    assert_valid_jump_target(target);
+    // On return to TCG we will jump there immediately, so update env->pcc now.
+    env->pcc = *target;
+#ifdef CONFIG_DEBUG_TCG
+    env->_pc_is_current = true; // PCC.cursor is up-to-date again.
