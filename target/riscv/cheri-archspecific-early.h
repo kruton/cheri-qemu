@@ -1,0 +1,1 @@
+#define CINVOKE_DATA_REGNUM 31
