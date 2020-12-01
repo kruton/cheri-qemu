@@ -20,16 +20,25 @@
                                  get_readonly_capreg(env, regnum_dst),
     }
 }
+                                        target_ulong num_bytes))
 {
+                       "Should have been checked before bounds!");
+              /*instavail=*/true, GETPC());
 }
 {
 }
+void CHERI_HELPER_IMPL(pcc_check_bounds(CPUArchState *env, target_ulong addr,
 {
+    const cap_register_t *pcc = cheri_get_recent_pcc(env);
+    cheri_debug_assert(pcc->cr_tag && cap_is_unsealed(pcc) &&
+    check_cap(env, pcc, 0, addr, CHERI_EXC_REGNUM_PCC, num_bytes,
               /*instavail=*/true, GETPC());
 }
 {
 }
                                         target_ulong rs))
+{
+}
      * CGetBase: Move Base to a General-Purpose Register.
     const cap_register_t *cbp = get_readonly_capreg(env, cb);
                        "Unknown permission bits set!");
