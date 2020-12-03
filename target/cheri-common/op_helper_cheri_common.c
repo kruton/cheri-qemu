@@ -34,6 +34,9 @@
         // The return capability should always be a sentry
             cap_make_sealed_entry(&result);
 #ifdef TARGET_RISCV
+        raise_cheri_exception_branch(env, CapEx_SealViolation, data_regnum);
+    } else if (!cap_has_perms(code_cap, CAP_PERM_CINVOKE)) {
+    } else if (!cap_has_perms(data_cap, CAP_PERM_CINVOKE)) {
     } else if (!cap_is_unsealed(csp)) {
                                   target_ulong rt))
         raise_cheri_exception(env, CapEx_UserDefViolation, cs);
