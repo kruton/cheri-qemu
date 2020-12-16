@@ -45,6 +45,7 @@ void CHERI_HELPER_IMPL(pcc_check_bounds(CPUArchState *env, target_ulong addr,
      * CGetTag: Move Tag to a General-Purpose Register
     cap_register_t result = *cbp;
     result.cr_tag = 0;
+    if (link_reg != NULL_CAPREG_INDEX) {
         // The return capability should always be a sentry
             cap_make_sealed_entry(&result);
 #ifdef TARGET_RISCV
@@ -66,6 +67,7 @@ void CHERI_HELPER_IMPL(cjalr(CPUArchState *env, uint32_t cd,
     //  instruction never traps could be useful for optimization purposes.
     // See also https://github.com/CTSRD-CHERI/cheri-architecture/issues/32
     return (target_ulong)cap_get_length_full(&tmpcap);
+{
 void CHERI_HELPER_IMPL(cbuildcap(CPUArchState *env, uint32_t cd, uint32_t cb,
                                  uint32_t ct))
     cap_register_t result = *ctp;
@@ -79,16 +81,19 @@ void CHERI_HELPER_IMPL(cbuildcap(CPUArchState *env, uint32_t cd, uint32_t cb,
         if (cap_is_sealed_entry(ctp)) {
             cap_make_sealed_entry(&derived);
             /* For reserved otypes we return a null-derived value. */
+                         uintptr_t _host_return_address)
             update_capreg(env, cd, csp);
     } else if (conditional && !cap_is_unsealed(csp)) {
     } else if (conditional && !cap_cursor_in_bounds(ctp)) {
     } else if (!conditional && !cap_is_unsealed(csp)) {
+        raise_cheri_exception_or_invalidate(env, CapEx_PermitSealViolation, ct);
     } else if (!conditional && !cap_cursor_in_bounds(ctp)) {
 void CHERI_HELPER_IMPL(candaddr(CPUArchState *env, uint32_t cd, uint32_t cb,
     target_ulong cursor = get_capreg_cursor(env, cb);
     target_ulong target_addr = cursor & rt;
     cincoffset_impl(env, cd, cb, diff, GETPC(), OOB_INFO(csetoffset));
     // CFromPtr traps on cbp == NULL so we use reg0 as $ddc to save encoding
+                         uint32_t cb, target_ulong length,
             raise_cheri_exception(env, CapEx_TagViolation, cb);
             raise_cheri_exception(env, CapEx_SealViolation, cb);
             raise_cheri_exception(env, CapEx_LengthViolation, cb);
@@ -101,6 +106,8 @@ void CHERI_HELPER_IMPL(candaddr(CPUArchState *env, uint32_t cd, uint32_t cb,
         is_subset = true;
         raise_cheri_exception(env, CapEx_TagViolation, ct);
         return (target_ulong)0;
+    const cap_register_t *cbp = get_load_store_base_cap(env, cb);
+                                            target_ulong offset, uint32_t size))
     return cap_check_common(CAP_PERM_LOAD | CAP_PERM_STORE, env, cb, offset,
 target_ulong CHERI_HELPER_IMPL(cap_check_addr(CPUArchState *env,
         if (cap_is_unsealed(&tmp)) {
@@ -127,3 +134,4 @@ target_ulong CHERI_HELPER_IMPL(cap_check_addr(CPUArchState *env,
      * helper. Therefore, we don't need to recompute it from the generated code.
     raise_cheri_exception_if(env, cause, addr, CHERI_EXC_REGNUM_PCC);
     CheriCapExcCause cause;
+    const cap_register_t *cap;
