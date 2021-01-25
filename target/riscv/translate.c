@@ -406,8 +406,12 @@ static TCGv dest_gprh(DisasContext *ctx, int reg_num)
     return cpu_gprh[reg_num];
 }
 
+#include "cheri-translate-utils.h"
+static void _gen_set_gpr(DisasContext *ctx, int reg_num, TCGv t,
+                        bool clear_pesbt)
 {
     if (reg_num != 0) {
+        if (clear_pesbt) {
         switch (get_ol(ctx)) {
         case MXL_RV32:
             tcg_gen_ext32s_tl(cpu_gpr[reg_num], t);
