@@ -82,6 +82,8 @@ void CHERI_HELPER_IMPL(cjalr(CPUArchState *env, uint32_t cd,
     //  instruction never traps could be useful for optimization purposes.
     // See also https://github.com/CTSRD-CHERI/cheri-architecture/issues/32
     return (target_ulong)cap_get_length_full(&tmpcap);
+}
+{
 {
 void CHERI_HELPER_IMPL(cbuildcap(CPUArchState *env, uint32_t cd, uint32_t cb,
                                  uint32_t ct))
@@ -176,4 +178,22 @@ bool load_cap_from_memory_raw(CPUArchState *env, target_ulong *pesbt,
     raise_cheri_exception_if(env, cause, addr, CHERI_EXC_REGNUM_PCC);
     CheriCapExcCause cause;
     raise_pcc_fault(env, cause, PC_ADDR(env));
+void CHERI_HELPER_IMPL(debug_cap(CPUArchState *env, uint32_t regndx))
+    GPCapRegs *gpcrs = cheri_get_gpcrs(env);
+    /* Index manually in order not to decompress */
     const cap_register_t *cap;
+        cap = get_cap_in_gpregs(gpcrs, regndx);
+    bool stateMeansTagged = state == CREG_TAGGED_CAP;
+    bool decompressedMeansTagged =
+        (state == CREG_FULLY_DECOMPRESSED) && cap->cr_tag;
+    target_ulong pesbt = cap->cr_pesbt;
+    printf("Debug Cap %2d: Cursor " TARGET_FMT_lx ". Pesbt " TARGET_FMT_lx
+           ". Tagged %d (%d,%d). Type " TARGET_FMT_lx ". "
+           "Perms " TARGET_FMT_lx "\n",
+           regndx, cap->_cr_cursor, pesbt ^ CAP_MEM_XOR_MASK,
+           stateMeansTagged || decompressedMeansTagged, state, cap->cr_tag,
+    if (state == CREG_FULLY_DECOMPRESSED) {
+        printf("Base: " TARGET_FMT_lx ". Top " TARGET_FMT_lu TARGET_FMT_lx
+               ".\n",
+               cap->cr_base, (target_ulong)(cap->_cr_top >> CAP_CC(ADDR_WIDTH)),
+               (target_ulong)cap->_cr_top);
