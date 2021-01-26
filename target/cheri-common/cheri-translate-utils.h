@@ -23,3 +23,5 @@
         tcg_gen_brcondi_tl(TCG_COND_LTU, addr, ctx->base.pcc_base,
                            bounds_violation);
         tcg_gen_brcondi_tl(TCG_COND_GEU, addr, ctx->base.pcc_top,
+        return;
+    if (regnum == NULL_CAPREG_INDEX)
