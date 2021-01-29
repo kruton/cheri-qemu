@@ -3,6 +3,14 @@
 }
         break;
         } else {
+    printf(
+        "Memop: %s vec:%d rd:%d rd2:%d size:%d extend:%d rn:%d rm:%d imm:%ld. "
+        "AB? %d. CB? %d. pcc_base? %d. pre %d. post %d. opt: %d. shift %d.\n",
+        is_load ? "load" : "store", vector, rd, rd2, size, extend_size, rn, rm,
+        imm, alternate_base, capability_base, pcc_base, pre_inc, post_inc,
+        option, shift);
+    if (rm != REG_NONE)
+        gen_cap_debug(ctx, rm);
         TCGv_i32 tcg_rd2 = NULL;
             tcg_rd2 = tcg_constant_i32(rd2);
             if (rd2 != REG_NONE) {
