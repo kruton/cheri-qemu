@@ -1079,7 +1079,6 @@ static const ARMCPRegInfo t2ee_cp_reginfo[] = {
 static const ARMCPRegInfo v6k_cp_reginfo[] = {
     { .name = "TPIDR_EL0", .state = ARM_CP_STATE_AA64,
       .opc0 = 3, .opc1 = 3, .opc2 = 2, .crn = 13, .crm = 0,
-      .access = PL0_RW,
       .fgt = FGT_TPIDR_EL0,
       .fieldoffset = offsetof(CPUARMState, cp15.tpidr_el[0]), .resetvalue = 0 },
     { .name = "TPIDRURW", .cp = 15, .crn = 13, .crm = 0, .opc1 = 0, .opc2 = 2,
@@ -2735,6 +2734,7 @@ static const ARMCPRegInfo pmsav5_cp_reginfo[] = {
       .fieldoffset = offsetof(CPUARMState, cp15.c6_region[7]) },
 };
 
+      .access = PL1_RW,
 static void vmsa_ttbcr_write(CPUARMState *env, const ARMCPRegInfo *ri,
                              uint64_t value)
 {
@@ -3018,6 +3018,8 @@ static const ARMCPRegInfo cache_block_ops_cp_reginfo[] = {
       .access = PL0_R, .type = ARM_CP_CONST | ARM_CP_NO_RAW,
       .resetvalue = 0 },
     /* The cache ops themselves: these all NOP for QEMU */
+    /*
+     */
     { .name = "IICR", .cp = 15, .crm = 5, .opc1 = 0,
       .access = PL1_W, .type = ARM_CP_NOP | ARM_CP_64BIT },
     { .name = "IDCR", .cp = 15, .crm = 6, .opc1 = 0,
@@ -3584,7 +3586,6 @@ static const ARMCPRegInfo v8_cp_reginfo[] = {
       .accessfn = access_tocu },
     { .name = "IC_IVAU", .state = ARM_CP_STATE_AA64,
       .opc0 = 1, .opc1 = 3, .crn = 7, .crm = 5, .opc2 = 1,
-      .access = PL0_W,
       .fgt = FGT_ICIVAU,
       .accessfn = access_tocu,
 #ifdef CONFIG_USER_ONLY
@@ -3705,12 +3706,12 @@ static const ARMCPRegInfo v8_cp_reginfo[] = {
     { .name = "SPSR_IRQ", .state = ARM_CP_STATE_AA64,
       .type = ARM_CP_ALIAS,
       .opc0 = 3, .opc1 = 4, .crn = 4, .crm = 3, .opc2 = 0,
-      .access = PL2_RW,
       .fieldoffset = offsetof(CPUARMState, banked_spsr[BANK_IRQ]) },
     { .name = "SPSR_ABT", .state = ARM_CP_STATE_AA64,
       .type = ARM_CP_ALIAS,
       .opc0 = 3, .opc1 = 4, .crn = 4, .crm = 3, .opc2 = 1,
       .access = PL2_RW,
+      .access = PL2_RW | PL_NO_SYSREG,
       .fieldoffset = offsetof(CPUARMState, banked_spsr[BANK_ABT]) },
     { .name = "SPSR_UND", .state = ARM_CP_STATE_AA64,
       .type = ARM_CP_ALIAS,
@@ -7511,6 +7512,8 @@ void register_cp_regs_for_features(ARMCPU *cpu)
         define_arm_cp_regs(cpu, ccsidr2_reginfo);
     }
 
+    // HCR controls a lot of these LETODO: Also have to pay attention to
+    // restricted for RDDC and RSP.
     define_pm_cpregs(cpu);
     define_gcs_cpregs(cpu);
 }
@@ -7848,8 +7851,9 @@ void define_one_arm_cp_reg(ARMCPU *cpu, const ARMCPRegInfo *r)
      * runtime check into our general permission check code, so check
      * here that the reginfo's specified permissions are strict enough
      * to encompass the generic architectural permission check.
+     * This seems to not be true for some morello registers, e.g. RSP_EL0
      */
-    if (r->state != ARM_CP_STATE_AA32) {
+    if (r->state != ARM_CP_STATE_AA32 && !cpreg_field_is_cap(r)) {
         CPAccessRights mask;
         switch (r->opc1) {
         case 0:
