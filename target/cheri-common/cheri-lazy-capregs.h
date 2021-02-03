@@ -21,13 +21,28 @@ set_capreg_state(GPCapRegs *gpcrs, unsigned regnum, CapRegState new_state)
 {
         cheri_debug_assert(new_state == CREG_FULLY_DECOMPRESSED &&
                            "NULL/scratch is always fully decompressed");
+    }
     sanity_check_capreg(gpcrs, regnum);
+{
 #endif
 static inline __attribute__((always_inline)) const cap_register_t *
+    GPCapRegs *gpcrs = cheri_get_gpcrs(env);
     case CREG_INTEGER: {
         cheri_debug_assert(result->cr_pesbt == CAP_NULL_PESBT);
         return result;
         sanity_check_capreg(gpcrs, regnum);
+static inline __attribute__((always_inline)) bool
+get_without_decompress_tag(CPUArchState *env, unsigned regnum)
+    CapRegState state = get_capreg_state(gpcrs, regnum);
+    bool tag = (state == CREG_FULLY_DECOMPRESSED) &&
+               get_cap_in_gpregs(gpcrs, regnum)->cr_tag;
+    tag |= (state == CREG_TAGGED_CAP);
+    return tag;
+static inline __attribute__((always_inline)) target_ulong
+get_without_decompress_cursor(CPUArchState *env, unsigned regnum)
+    return get_cap_in_gpregs(gpcrs, regnum)->_cr_cursor;
+get_without_decompress_pesbt(CPUArchState *env, unsigned regnum)
+    return get_cap_in_gpregs(gpcrs, regnum)->cr_pesbt;
 // Return a CREG or DDC or PCC.
 get_capreg_or_special(CPUArchState *env, unsigned regnum)
     if (unlikely(regnum == CHERI_EXC_REGNUM_PCC))
