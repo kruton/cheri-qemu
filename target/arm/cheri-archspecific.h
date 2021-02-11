@@ -1,0 +1,1 @@
+#define CAP_TAG_GET_MANY_SHFT 2
