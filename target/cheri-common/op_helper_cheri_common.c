@@ -149,7 +149,14 @@ target_ulong CHERI_HELPER_IMPL(cap_check_addr(CPUArchState *env,
     env->rvfi_dii_trace.MEM.rvfi_mem_rmask = (1 << CHERI_CAP_SIZE) - 1;
     // TODO: Add one extra bit to include the tag?
     env->rvfi_dii_trace.available_fields |= RVFI_MEM_DATA;
+bool load_cap_from_memory_raw_tag(CPUArchState *env, target_ulong *pesbt,
+                                  target_ulong *cursor, uint32_t cb,
+                                  const cap_register_t *source,
                                   target_ulong vaddr, uintptr_t retpc,
+                                  hwaddr *physaddr, bool *raw_tag)
+bool load_cap_from_memory_raw(CPUArchState *env, target_ulong *pesbt,
+                              const cap_register_t *source, target_ulong vaddr,
+    target_ulong vaddr, uintptr_t retpc, hwaddr *physaddr)
     target_ulong pesbt_for_mem = get_capreg_pesbt(env, cs) ^ CAP_MEM_XOR_MASK;
 #ifdef CONFIG_DEBUG_TCG
     if (get_capreg_state(cheri_get_gpcrs(env), cs) == CREG_INTEGER) {
