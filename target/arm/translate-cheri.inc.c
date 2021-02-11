@@ -1,8 +1,19 @@
 {
     return true;
 }
+{
+}
         break;
         } else {
+    } else {
+    if (regnum == NULL_CAPREG_INDEX) {
+        return cpu_reg(ctx, 31);
+        return cpu_reg_sp(ctx, regnum);
+static inline TCGv_i64 read_cpu_reg_maybe_0(DisasContext *ctx, int regnum)
+        return read_cpu_reg(ctx, 31, 1);
+        return read_cpu_reg_sp(ctx, regnum, 1);
+    bool alternate_base, bool pcc_base, bool exclusive, int acquire_release,
+    int swap, int option, unsigned int shift, bool unpriv)
     printf(
         "Memop: %s vec:%d rd:%d rd2:%d size:%d extend:%d rn:%d rm:%d imm:%ld. "
         "AB? %d. CB? %d. pcc_base? %d. pre %d. post %d. opt: %d. shift %d.\n",
