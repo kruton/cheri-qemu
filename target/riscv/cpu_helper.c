@@ -1550,6 +1550,8 @@ static int get_physical_address(CPURISCVState *env, hwaddr *physical,
     } else if (!(pte & PTE_A) ||
                (access_type == MMU_DATA_STORE && !(pte & PTE_D))) {
         return TRANSLATE_FAIL;
+#if defined(TARGET_CHERI)
+#endif
     }
 
     /* Page table updates need to be atomic with MTTCG enabled */
@@ -1640,7 +1642,9 @@ static void raise_mmu_exception(CPURISCVState *env, target_ulong address,
         }
         break;
     case MMU_DATA_LOAD:
+#if defined(TARGET_CHERI)
     case MMU_DATA_CAP_LOAD:
+#endif
         if (pmp_violation) {
             cs->exception_index = RISCV_EXCP_LOAD_ACCESS_FAULT;
         } else if (two_stage && !first_stage) {
