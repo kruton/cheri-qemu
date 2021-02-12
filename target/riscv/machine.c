@@ -114,9 +114,9 @@ static const VMStateDescription vmstate_hyper = {
         VMSTATE_UINTTL(env.mtval2, RISCVCPU),
         VMSTATE_UINTTL(env.mtinst, RISCVCPU),
 
-        VMSTATE_UINTTL(env.stvec_hs, RISCVCPU),
         VMSTATE_UINTTL(env.sscratch_hs, RISCVCPU),
-        VMSTATE_UINTTL(env.sepc_hs, RISCVCPU),
+        VMSTATE_UINTTL_OR_CAP(env.stvec_hs, env.stcc_hs, RISCVCPU),
+        VMSTATE_UINTTL_OR_CAP(env.sepc_hs, env.sepcc_hs, RISCVCPU),
         VMSTATE_UINTTL(env.scause_hs, RISCVCPU),
         VMSTATE_UINTTL(env.stval_hs, RISCVCPU),
         VMSTATE_UINTTL(env.satp_hs, RISCVCPU),
@@ -435,7 +435,7 @@ const VMStateDescription vmstate_riscv_cpu = {
         VMSTATE_UINT64_ARRAY(env.fpr, RISCVCPU, 32),
         VMSTATE_UINT8_ARRAY(env.miprio, RISCVCPU, 64),
         VMSTATE_UINT8_ARRAY(env.siprio, RISCVCPU, 64),
-        VMSTATE_UINTTL(env.pc, RISCVCPU),
+        VMSTATE_UINTTL_OR_CAP(env.pc, env.pcc, RISCVCPU),
         VMSTATE_UINTTL(env.load_res, RISCVCPU),
         VMSTATE_UINTTL(env.load_val, RISCVCPU),
         VMSTATE_UINTTL(env.frm, RISCVCPU),
@@ -461,9 +461,10 @@ const VMStateDescription vmstate_riscv_cpu = {
         VMSTATE_UINT64(env.mideleg, RISCVCPU),
         VMSTATE_UINTTL(env.satp, RISCVCPU),
         VMSTATE_UINTTL(env.stval, RISCVCPU),
+#endif
         VMSTATE_UINTTL(env.medeleg, RISCVCPU),
         VMSTATE_UINTTL(env.stvec, RISCVCPU),
-        VMSTATE_UINTTL(env.sepc, RISCVCPU),
+        VMSTATE_UINTTL_OR_CAP(env.sepc, env.sepcc, RISCVCPU),
         VMSTATE_UINTTL(env.scause, RISCVCPU),
         VMSTATE_UINTTL(env.mtvec, RISCVCPU),
         VMSTATE_UINTTL(env.mepc, RISCVCPU),
@@ -479,8 +480,8 @@ const VMStateDescription vmstate_riscv_cpu = {
                              vmstate_pmu_ctr_state, PMUCTRState),
         VMSTATE_UINTTL_ARRAY(env.mhpmevent_val, RISCVCPU, RV_MAX_MHPMEVENTS),
         VMSTATE_UINTTL_ARRAY(env.mhpmeventh_val, RISCVCPU, RV_MAX_MHPMEVENTS),
-        VMSTATE_UINTTL(env.sscratch, RISCVCPU),
-        VMSTATE_UINTTL(env.mscratch, RISCVCPU),
+        VMSTATE_UINTTL_OR_CAP(env.sscratch, env.sscratchc, RISCVCPU),
+        VMSTATE_UINTTL_OR_CAP(env.mscratch, env.mscratchc, RISCVCPU),
         VMSTATE_UINT64(env.stimecmp, RISCVCPU),
 
         VMSTATE_END_OF_LIST()
