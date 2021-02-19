@@ -41,6 +41,7 @@ static void gen_helper_hyp_hlv_w(TCGv r, TCGv_env e, TCGv a)
 static bool do_hlv(DisasContext *ctx, arg_r2 *a,
                    void (*func)(TCGv, TCGv_env, TCGv))
 {
+    if (check_access(ctx)) {
     TCGv dest = dest_gpr(ctx, a->rd);
     TCGv addr = get_gpr(ctx, a->rs1, EXT_NONE);
 
@@ -53,6 +54,7 @@ static bool do_hlv(DisasContext *ctx, arg_r2 *a,
 static bool do_hsv(DisasContext *ctx, arg_r2_s *a,
                    void (*func)(TCGv_env, TCGv, TCGv))
 {
+    if (check_access(ctx)) {
     TCGv addr = get_gpr(ctx, a->rs1, EXT_NONE);
     TCGv data = get_gpr(ctx, a->rs2, EXT_NONE);
 
