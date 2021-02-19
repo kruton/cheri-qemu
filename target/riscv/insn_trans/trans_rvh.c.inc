@@ -41,7 +41,11 @@ static void gen_helper_hyp_hlv_w(TCGv r, TCGv_env e, TCGv a)
 static bool do_hlv(DisasContext *ctx, arg_r2 *a,
                    void (*func)(TCGv, TCGv_env, TCGv))
 {
+#ifdef TARGET_CHERI
     if (check_access(ctx)) {
+#endif
+        if (ctx->capmode) {
+            return gen_cap_load_mem_idx(ctx, a->rd, a->rs1, 0, mem_idx, mop);
     TCGv dest = dest_gpr(ctx, a->rd);
     TCGv addr = get_gpr(ctx, a->rs1, EXT_NONE);
 
@@ -49,12 +53,16 @@ static bool do_hlv(DisasContext *ctx, arg_r2 *a,
     func(dest, tcg_env, addr);
     gen_set_gpr(ctx, a->rd, dest);
     return true;
+#endif
 }
 
 static bool do_hsv(DisasContext *ctx, arg_r2_s *a,
                    void (*func)(TCGv_env, TCGv, TCGv))
 {
+#ifdef TARGET_CHERI
     if (check_access(ctx)) {
+        if (ctx->capmode) {
+            return gen_cap_store_mem_idx(ctx, a->rs1, a->rs2, 0, mem_idx, mop);
     TCGv addr = get_gpr(ctx, a->rs1, EXT_NONE);
     TCGv data = get_gpr(ctx, a->rs2, EXT_NONE);
 
