@@ -549,6 +549,9 @@ class Format(General):
 class Pattern(General):
     """Class representing an instruction pattern"""
 
+    def __init__(self, name, lineno, base, fixb, fixm, udfm, fldm, flds, w, p):
+        super().__init__(name, lineno, base, fixb, fixm, udfm, fldm, flds, w)
+        self.preds = p
     def output_decl(self):
         global translate_scope
         global translate_prefix
@@ -562,6 +565,16 @@ class Pattern(General):
         ind = str_indent(i)
         arg = self.base.base.name
         output(ind, '/* ', self.file, ':', str(self.lineno), ' */\n')
+        if self.preds:
+            output(ind, 'if (')
+            prefix = ''
+            for pred in self.preds:
+                output(prefix, pred, '(ctx)')
+                prefix = ' && '
+            output(') {\n')
+            ind2 = str_indent(i + 4)
+        else:
+            ind2 = ind
         # We might have named references in the format that refer to fields
         # in the pattern, or named references in the pattern that refer
         # to fields in the format. This affects whether we extract the fields
@@ -1063,6 +1076,7 @@ def parse_generic(lineno, parent_pat, name, toks):
     flds = {}
     arg = None
     fmt = None
+    preds = []
     for t in toks:
         # '&Foo' gives a format an explicit argument set.
         if re.fullmatch(re_arg_ident, t):
@@ -1105,6 +1119,11 @@ def parse_generic(lineno, parent_pat, name, toks):
             flds = add_field(lineno, flds, fname, ConstField(value))
             continue
 
+        # '?Foo' and '?!Foo' give a pattern a dynamic predicate.
+        if re.fullmatch(r'\?!?' + re_C_ident, t):
+            tt = t[1:]
+            preds.append(tt)
+            continue
         # Pattern of 0s, 1s, dots and dashes indicate required zeros,
         # required ones, or dont-cares.
         if re.fullmatch('[01.-]+', t):
@@ -1164,6 +1183,8 @@ def parse_generic(lineno, parent_pat, name, toks):
         # Formats cannot reference formats.
         if fmt:
             error(lineno, 'format referencing format')
+        if preds:
+            error(lineno, 'format referencing predicates')
         # If an argument set is given, then there should be no fields
         # without a place to store it.
         if arg:
@@ -1203,7 +1224,7 @@ def parse_generic(lineno, parent_pat, name, toks):
             if f not in flds.keys() and f not in fmt.fields.keys():
                 error(lineno, f'field {f} not initialized')
         pat = Pattern(name, lineno, fmt, fixedbits, fixedmask,
-                      undefmask, fieldmask, flds, width)
+                      undefmask, fieldmask, flds, width, preds)
         parent_pat.pats.append(pat)
         allpatterns.append(pat)
 
