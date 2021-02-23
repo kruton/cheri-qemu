@@ -675,13 +675,36 @@ static void gen_jal(DisasContext *ctx, int rd, target_ulong imm)
 
     gen_pc_plus_diff(succ_pc, ctx, ctx->cur_insn_len);
     gen_set_gpr(ctx, rd, succ_pc);
+    /* For CHERI ISAv8 the result is an offset relative to PCC.base */
+        gen_set_gpr_const(ctx, rd, ctx->pc_succ_insn - pcc_reloc(ctx));
         gen_set_gpr_const(ctx, rd, ctx->pc_succ_insn);
+    }
+    ctx->base.is_jmp = DISAS_NORETURN;
 
     gen_goto_tb(ctx, 0, imm); /* must use this for safety */
 static void gen_jalr(DisasContext *ctx, int rd, int rs1, target_ulong imm)
 {
+    /* no chaining with JALR */
+    TCGLabel *misaligned = NULL;
+    // Note: We need to use tcg_temp_new() for t0 since
+    // gen_check_branch_target_dynamic() inserts branches.
+    TCGv t0 = tcg_temp_new();
+    gen_get_gpr(ctx, t0, rs1);
+    /* For CHERI ISAv8 the destination is an offset relative to PCC.base. */
+    tcg_gen_addi_tl(t0, t0, imm + pcc_reloc(ctx));
+    tcg_gen_andi_tl(t0, t0, (target_ulong)-2);
+    gen_check_branch_target_dynamic(ctx, t0);
+        gen_set_gpri(ctx, rd, ctx->pc_succ_insn);
+    // Note: Only update cpu_pc after a successful bounds check to avoid
+    // representability issues caused by directly modifying PCC.cursor.
+        misaligned = gen_new_label();
+        tcg_gen_andi_tl(t0, cpu_pc, 0x2);
+        tcg_gen_brcondi_tl(TCG_COND_NE, t0, 0x0, misaligned);
          */
     lookup_and_goto_ptr(ctx);
+    if (misaligned) {
+        gen_set_label(misaligned);
+        gen_exception_inst_addr_mis(ctx, cpu_pc);
     ctx->base.is_jmp = DISAS_NORETURN;
 }
 
@@ -900,11 +923,19 @@ static int ex_rvc_shiftri(DisasContext *ctx, int imm)
     return imm;
 }
 
+static bool pred_capmode(DisasContext *ctx)
 {
 #ifdef TARGET_CHERI
+    return ctx->capmode;
 #else
+    return false;
 #endif
 }
+{
+}
+#else
+#endif
+#if defined(TARGET_CHERI)
     return ctx->cre;
 /* Include the auto-generated decoder for 32 bit insn */
 #include "decode-insn32.c.inc"
