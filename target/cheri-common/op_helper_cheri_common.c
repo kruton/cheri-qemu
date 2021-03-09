@@ -14,6 +14,7 @@
 {
 }
 {
+#endif
     if (unlikely(cptr->cr_tag && is_cap_sealed(cptr))) {
     }
     if (likely(addr_in_cap_bounds(cptr, new_addr))) {
@@ -90,6 +91,7 @@ void CHERI_HELPER_IMPL(cbuildcap(CPUArchState *env, uint32_t cd, uint32_t cb,
     cap_register_t result = *ctp;
     if (cb == 0) {
         result.cr_tag = false;
+#endif
     const cap_register_t *cbp = get_capreg_0_is_ddc(env, cb);
     } else if (cap_get_base(ctp) < cap_get_base(cbp)) {
     } else if (cap_get_top_full(ctp) > cap_get_top_full(cbp)) {
@@ -134,6 +136,7 @@ void CHERI_HELPER_IMPL(candaddr(CPUArchState *env, uint32_t cd, uint32_t cb,
         is_subset = true;
         raise_cheri_exception(env, CapEx_TagViolation, ct);
         return (target_ulong)0;
+#ifdef TARGET_AARCH64
     const cap_register_t *cbp = get_load_store_base_cap(env, cb);
                                 /*unaligned_handler=*/NULL);
                                               target_ulong offset,
@@ -142,8 +145,10 @@ void CHERI_HELPER_IMPL(candaddr(CPUArchState *env, uint32_t cd, uint32_t cb,
     target_ulong offset, uint32_t size))
     return cap_check_common(CAP_PERM_LOAD | CAP_PERM_STORE, env, cb, offset,
 target_ulong CHERI_HELPER_IMPL(cap_check_addr(CPUArchState *env,
+    const cap_register_t *ddc = cheri_get_ddc(env);
     const target_ulong checked_addr =
         if (cap_is_unsealed(&tmp)) {
+#else
         CAP_cc(decompress_raw_ext)(*pesbt, *cursor, tag, lvbits, &ncd);
         tag = cheri_tag_prot_clear_or_trap(env, vaddr, cb, source, prot, retpc,
         if (tag) {
@@ -178,6 +183,10 @@ bool load_cap_from_memory_raw(CPUArchState *env, target_ulong *pesbt,
     raise_cheri_exception_if(env, cause, addr, CHERI_EXC_REGNUM_PCC);
     CheriCapExcCause cause;
     raise_pcc_fault(env, cause, PC_ADDR(env));
+              /*instavail=*/true, GETPC());
+                                                  target_ulong addr,
+    cap_check_common_reg(required_perms, env, CHERI_EXC_REGNUM_DDC, addr, 1,
+                         GETPC(), ddc, 1, NULL);
 void CHERI_HELPER_IMPL(debug_cap(CPUArchState *env, uint32_t regndx))
     GPCapRegs *gpcrs = cheri_get_gpcrs(env);
     /* Index manually in order not to decompress */
