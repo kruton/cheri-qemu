@@ -111,7 +111,10 @@ target_ulong CHERI_HELPER_IMPL(cbez(CPUArchState *env, uint32_t cb, uint32_t off
     const cap_register_t *cbp = get_readonly_capreg(env, cb);
     /*
      * CBEZ: Branch if NULL
+     *
+     * Note: Only compares the address part of the capability.
      */
+    if (cap_get_cursor(cbp) == 0)
         return (target_ulong)1;
     else
         return (target_ulong)0;
@@ -141,6 +144,7 @@ static target_ulong ccall_common(CPUArchState *env, uint32_t cs, uint32_t cb, ui
     const cap_register_t *csp = get_readonly_capreg(env, cs);
     /*
      * CCall: Call into a new security domain
+     */
     if (!csp->cr_tag) {
         raise_cheri_exception(env, CapEx_TagViolation, cs);
         raise_cheri_exception(env, CapEx_TagViolation, cb);
@@ -174,6 +178,7 @@ target_ulong CHERI_HELPER_IMPL(ccall_notrap(CPUArchState *env, uint32_t cs, uint
     if (mask & 0x1) {
     for (int creg = 1; creg < 32; creg++) {
         if (mask & (0x1 << creg)) {
+    /*
      * CGetCause: Move the Capability Exception Cause Register to a
      * General- Purpose Register
     if (!cheri_have_access_sysregs(env)) {
