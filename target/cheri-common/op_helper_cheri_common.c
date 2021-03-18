@@ -187,6 +187,7 @@ bool load_cap_from_memory_raw(CPUArchState *env, target_ulong *pesbt,
                                                   target_ulong addr,
     cap_check_common_reg(required_perms, env, CHERI_EXC_REGNUM_DDC, addr, 1,
                          GETPC(), ddc, 1, NULL);
+              /*instavail=*/true, GETPC());
 void CHERI_HELPER_IMPL(debug_cap(CPUArchState *env, uint32_t regndx))
     GPCapRegs *gpcrs = cheri_get_gpcrs(env);
     /* Index manually in order not to decompress */
