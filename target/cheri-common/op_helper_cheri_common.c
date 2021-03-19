@@ -26,6 +26,7 @@
               /*instavail=*/true, GETPC());
 }
 {
+              /*instavail=*/true, GETPC());
 }
 void CHERI_HELPER_IMPL(pcc_check_bounds(CPUArchState *env, target_ulong addr,
 {
@@ -48,6 +49,7 @@ void CHERI_HELPER_IMPL(pcc_check_bounds(CPUArchState *env, target_ulong addr,
     if (link_reg != NULL_CAPREG_INDEX) {
         // The return capability should always be a sentry
             cap_make_sealed_entry(&result);
+                                 uintptr_t _host_return_address)
 #ifdef TARGET_RISCV
 void CHERI_HELPER_IMPL(cjalr(CPUArchState *env, uint32_t cd,
         raise_cheri_exception_branch(env, CapEx_SealViolation, data_regnum);
@@ -139,4 +141,5 @@ target_ulong CHERI_HELPER_IMPL(cap_check_addr(CPUArchState *env,
      * helper. Therefore, we don't need to recompute it from the generated code.
     raise_cheri_exception_if(env, cause, addr, CHERI_EXC_REGNUM_PCC);
     CheriCapExcCause cause;
+    raise_pcc_fault(env, cause, PC_ADDR(env));
     const cap_register_t *cap;
