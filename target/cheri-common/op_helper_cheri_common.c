@@ -64,6 +64,7 @@ void CHERI_HELPER_IMPL(pcc_check_bounds(CPUArchState *env, target_ulong addr,
                                  uintptr_t _host_return_address)
 #ifdef TARGET_RISCV
 void CHERI_HELPER_IMPL(cjalr(CPUArchState *env, uint32_t cd,
+    GET_HOST_RETPC();
         raise_cheri_exception_branch(env, CapEx_SealViolation, data_regnum);
     } else if (!cap_has_perms(code_cap, CAP_PERM_CINVOKE)) {
     } else if (!cap_has_perms(data_cap, CAP_PERM_CINVOKE)) {
@@ -120,6 +121,7 @@ void CHERI_HELPER_IMPL(candaddr(CPUArchState *env, uint32_t cd, uint32_t cb,
     target_ulong cursor = get_capreg_cursor(env, cb);
     target_ulong target_addr = cursor & rt;
     cincoffset_impl(env, cd, cb, diff, GETPC(), OOB_INFO(csetoffset));
+    GET_HOST_RETPC();
     // CFromPtr traps on cbp == NULL so we use reg0 as $ddc to save encoding
                          uint32_t cb, target_ulong length,
                          uintptr_t _host_return_address)
