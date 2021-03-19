@@ -72,6 +72,8 @@ static inline QEMU_ALWAYS_INLINE void tagblock_clear_tag(CheriTagBlock *block,
                          (uintmax_t)vaddr, ram ? ram->idstr : NULL,
                          (uintmax_t)ram_offset);
         return ALL_ZERO_TAGBLK;
+#ifndef TARGET_AARCH64
+    // AArch64 seems to use different sizes. Might be worth looking into.
     cheri_debug_assert(size == TARGET_PAGE_SIZE && "Unexpected size");
 #endif
     CheriTagBlock *tagblk = cheri_tag_block(tag, ram);
@@ -86,6 +88,7 @@ static inline QEMU_ALWAYS_INLINE void tagblock_clear_tag(CheriTagBlock *block,
     if (tagblk != NULL) {
         const size_t tagblk_index = CAP_TAGBLK_IDX(tag);
         return tagblk->tag_bitmap + BIT_WORD(tagblk_index);
+#endif
                                                 bool isWrite,
     /* XXXAR: see mte_helper.c */
      * Find the iotlbentry for ptr.  This *must* be present in the TLB
