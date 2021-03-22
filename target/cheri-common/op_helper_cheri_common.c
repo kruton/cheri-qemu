@@ -27,8 +27,10 @@
 }
 {
                                         target_ulong rs))
+     * CGetBase: Move Base to a General-Purpose Register.
     const cap_register_t *cbp = get_readonly_capreg(env, cb);
                        "Unknown permission bits set!");
+     * CGetTag: Move Tag to a General-Purpose Register
     cap_register_t result = *cbp;
     result.cr_tag = 0;
         // The return capability should always be a sentry
