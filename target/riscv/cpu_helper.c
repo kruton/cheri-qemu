@@ -1080,8 +1080,16 @@ void riscv_cpu_set_mode(CPURISCVState *env, target_ulong newpriv, bool virt_en)
 #endif
 }
 
+#endif
+#ifndef RISCV_PTE_TRAPPY
 /*
+ * The PTW logic below supports trapping on any subset of PTE_A, PTE_D, PTE_CD
+ * being clear during an access that would have them be set.  The RISC-V spec
+ * says that PTE_A and PTE_D always go together, and it's probably most sensible
+ * that PTE_CD implies PTE_A and PTE_D.  So, sensible values for this constant
+ * are 0, (PTE_A | PTE_D), or (PTE_A | PTE_D | PTE_CD).
  */
+#define RISCV_PTE_TRAPPY 0
 /*
  * get_physical_address_pmp - check PMP permission for this physical address
  *
@@ -1554,10 +1562,14 @@ static int get_physical_address(CPURISCVState *env, hwaddr *physical,
      */
     if (adue) {
         updated_pte |= PTE_A | (access_type == MMU_DATA_STORE ? PTE_D : 0);
-    } else if (!(pte & PTE_A) ||
                (access_type == MMU_DATA_STORE && !(pte & PTE_D))) {
-        return TRANSLATE_FAIL;
 #if defined(TARGET_CHERI)
+#if defined(TARGET_CHERI_RISCV_V9) && !defined(TARGET_RISCV32)
+#endif
+        if (access_type == MMU_DATA_STORE && !(pte & PTE_D)) {
+        if (access_type == MMU_DATA_CAP_STORE && !(pte & PTE_D)) {
+        if (access_type == MMU_DATA_CAP_STORE && !(pte & PTE_CD)) {
+            return TRANSLATE_CHERI_FAIL;
 #endif
     }
 
