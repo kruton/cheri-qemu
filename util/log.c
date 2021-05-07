@@ -186,7 +186,10 @@ static void rcu_close_file(RCUCloseFILE *r)
     g_free(r);
 }
 
+__attribute__((weak)) int qemu_log_instr_global_switch(int log_flags)
+{
     /* Real implementation in accel/tcg/log_instr.c. */
+    return log_flags;
 /**
  * valid_filename_template:
  *
@@ -475,6 +478,7 @@ out:
     g_strfreev(ranges);
 }
 
+/* clang-format off */
 const QEMULogItem qemu_log_items[] = {
     { CPU_LOG_TB_OUT_ASM, "out_asm",
       "show generated host assembly code for each compiled TB" },
@@ -494,6 +498,8 @@ const QEMULogItem qemu_log_items[] = {
       "show interrupts/exceptions in short format" },
     { CPU_LOG_EXEC, "exec",
       "show trace before each executed TB (lots of logs)" },
+    { CPU_LOG_INSTR_U, "uinstr",
+      "CHERI only: show executed instructions and changed CPU state (user)" },
     { CPU_LOG_GUEST_DEBUG_MSG, "guest_debug",
       "CHERI only: Print guest debug messages" },
     { CPU_LOG_CHERI_BOUNDS, "bounds",
@@ -531,6 +537,7 @@ const QEMULogItem qemu_log_items[] = {
       "log invalid memory accesses" },
     { 0, NULL, NULL },
 };
+/* clang-format on */
 
 /* takes a comma separated list of log masks. Return 0 if error. */
 int qemu_str_to_log_mask(const char *str)
