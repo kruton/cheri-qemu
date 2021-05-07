@@ -9454,6 +9454,8 @@ static void arm_cpu_do_interrupt_aarch64(CPUState *cs)
     qemu_log_mask(CPU_LOG_INT, "...to EL%d PC 0x%" PRIx64
                   " PSTATE 0x%" PRIx64 "\n",
                   new_el, env->pc, pstate_read(env));
+    qemu_log_instr_mode_switch(env, arm_el_to_logging_mode(env, new_el),
+                               get_aarch_reg_as_x(&env->pc));
 }
 
 /*
