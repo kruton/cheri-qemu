@@ -42,6 +42,7 @@
         // TODO: Add some integer names to riscv/mips
         return;
     if (regnum == NULL_CAPREG_INDEX)
+    if (!lazy_capreg_number_is_special(regnum))
 // Does addr + offset <= top. If offset non zero, Addr MUST be a multiple of
 // offset.
                                           TCGv_i64 addr, TCGv result,
