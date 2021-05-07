@@ -1,3 +1,5 @@
+// Lazy capreg state is a global, and so anything that might
+// cause a decompression can write global.
 DEF_HELPER_FLAGS_2(cgetaddr, TCG_CALL_NO_WG, tl, env, i32)
 DEF_HELPER_2(cgetbase, tl, env, i32)
 DEF_HELPER_2(cgetflags, tl, env, i32)
