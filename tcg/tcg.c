@@ -3567,6 +3567,8 @@ void tcg_op_remove(TCGContext *s, TCGOp *op)
     case INDEX_op_brcond2_i32:
         remove_label_use(op, 5);
         break;
+    case INDEX_op_sync:
+        tcg_debug_assert(0 && "Syncs should never be deleted");
     default:
         break;
     }
@@ -4146,6 +4148,8 @@ liveness_pass_1(TCGContext *s)
         case INDEX_op_sync:
             /* Sync should never cause anything to be live as if a global is
              * dead then it should not need syncing */
+            ts = arg_temp(op->args[0]);
+            ts->state |= TS_MEM;
             break;
 
         case INDEX_op_muls2:
@@ -6847,6 +6851,14 @@ static void tcg_out_st_helper_args(TCGContext *s, const TCGLabelQemuLdst *ldst,
     tcg_out_helper_load_common_args(s, ldst, parm, info, next_arg);
 }
 
+static void sync_global(TCGContext *s, TCGOp *op)
+{
+    TCGTemp *ts = arg_temp(op->args[0]);
+    tcg_debug_assert(ts->val_type == TEMP_VAL_REG ||
+                     ts->val_type == TEMP_VAL_MEM);
+    // Liveness analysis should make sure that the sync happened at the last
+    tcg_debug_assert((ts->val_type != TEMP_VAL_REG) || (ts->mem_coherent));
+}
 int tcg_gen_code(TCGContext *s, TranslationBlock *tb, uint64_t pc_start)
 {
     int i, num_insns;
@@ -6991,6 +7003,7 @@ int tcg_gen_code(TCGContext *s, TranslationBlock *tb, uint64_t pc_start)
             temp_dead(s, arg_temp(op->args[0]));
             break;
         case INDEX_op_sync:
+            sync_global(s, op);
             break;
         case INDEX_op_set_label:
             tcg_reg_alloc_bb_end(s, s->reserved_regs);
