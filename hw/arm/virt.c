@@ -94,6 +94,9 @@
 #include "hw/cxl/cxl_host.h"
 #include "qemu/guest-random.h"
 
+#ifdef TARGET_CHERI
+#include "cheri_tagmem.h"
+#endif
 static GlobalProperty arm_virt_compat[] = {
     { TYPE_VIRTIO_IOMMU_PCI, "aw-bits", "48" },
 };
@@ -1763,6 +1766,9 @@ static void create_secure_ram(VirtMachineState *vms,
 
     memory_region_init_ram(secram, NULL, "virt.secure-ram", size,
                            &error_fatal);
+#ifdef TARGET_CHERI
+    cheri_tag_init(secram, size);
+#endif
     memory_region_add_subregion(secure_sysmem, base, secram);
 
     nodename = g_strdup_printf("/secram@%" PRIx64, base);
@@ -3253,6 +3259,7 @@ static int virt_hvf_get_physical_address_range(MachineState *ms)
 
 static const char *virt_get_default_cpu_type(const MachineState *ms)
 {
+    return ARM_CPU_TYPE_NAME("morello");
     return tcg_enabled() ? ARM_CPU_TYPE_NAME("cortex-a15")
                          : ARM_CPU_TYPE_NAME("max");
 }
