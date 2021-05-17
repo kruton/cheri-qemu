@@ -15,5 +15,6 @@
 #define CAP_FLAGS_ALL_BITS CAP_CC(FIELD_FLAGS_MASK_NOT_SHIFTED)
 #define CAP_MAX_LENGTH CAP_CC(MAX_LENGTH)
 #define CAP_MAX_TOP CAP_CC(MAX_TOP)
+typedef CAP_cc(cap_t) cap_register_t;
     /* DDC is tagged, unsealed and cursor (addresss) is zero */
     /* DDC is tagged, unsealed and top is max_addr  */
