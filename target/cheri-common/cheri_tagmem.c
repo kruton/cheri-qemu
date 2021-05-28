@@ -24,6 +24,7 @@
 #define TAGS_PER_PAGE        (TARGET_PAGE_SIZE / CHERI_CAP_SIZE)
 #endif
 #else
+#define CAP_TAG_GET_MANY_MASK ((1 << (1UL << CAP_TAG_GET_MANY_SHFT)) - 1UL)
 static inline size_t num_tagblocks(RAMBlock* ram)
 {
     uint64_t memory_size = memory_region_size(ram->mr);
