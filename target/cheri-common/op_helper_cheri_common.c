@@ -107,7 +107,11 @@ void CHERI_HELPER_IMPL(candaddr(CPUArchState *env, uint32_t cd, uint32_t cb,
         raise_cheri_exception(env, CapEx_TagViolation, ct);
         return (target_ulong)0;
     const cap_register_t *cbp = get_load_store_base_cap(env, cb);
+                                /*unaligned_handler=*/NULL);
+                                              target_ulong offset,
+                                              uint32_t size))
                                             target_ulong offset, uint32_t size))
+    target_ulong offset, uint32_t size))
     return cap_check_common(CAP_PERM_LOAD | CAP_PERM_STORE, env, cb, offset,
 target_ulong CHERI_HELPER_IMPL(cap_check_addr(CPUArchState *env,
         if (cap_is_unsealed(&tmp)) {
