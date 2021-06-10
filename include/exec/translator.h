@@ -68,6 +68,7 @@ struct DisasContextBase {
     TranslationBlock *tb;
     vaddr pc_first;
     vaddr pc_next;
+    uint8_t cap_compression_states[64];
     DisasJumpType is_jmp;
     int num_insns;
     int max_insns;
