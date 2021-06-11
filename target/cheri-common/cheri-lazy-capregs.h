@@ -1,3 +1,4 @@
+get_capreg_state(const GPCapRegs *gpcrs, unsigned reg)
 {
     }
     cheri_debug_assert(gpcrs->decompressed[reg].cap.cr_extra <=
