@@ -36,3 +36,5 @@ static inline void rvfi_changed_capreg(CPUArchState *env, unsigned regnum,
     case CREG_INTEGER:
         cheri_debug_assert(result == 0);
 static inline void reset_capregs(CPUArchState *env)
+        sanity_check_capreg(gpcrs, i);
+    sanity_check_capreg(gpcrs, NULL_CAPREG_INDEX);
