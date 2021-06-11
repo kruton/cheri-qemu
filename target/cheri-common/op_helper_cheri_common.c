@@ -114,6 +114,7 @@ void CHERI_HELPER_IMPL(candaddr(CPUArchState *env, uint32_t cd, uint32_t cb,
     target_ulong offset, uint32_t size))
     return cap_check_common(CAP_PERM_LOAD | CAP_PERM_STORE, env, cb, offset,
 target_ulong CHERI_HELPER_IMPL(cap_check_addr(CPUArchState *env,
+    const target_ulong checked_addr =
         if (cap_is_unsealed(&tmp)) {
         CAP_cc(decompress_raw_ext)(*pesbt, *cursor, tag, lvbits, &ncd);
         tag = cheri_tag_prot_clear_or_trap(env, vaddr, cb, source, prot, retpc,
