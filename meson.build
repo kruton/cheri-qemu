@@ -1,5 +1,5 @@
 project('qemu', ['c'], meson_version: '>=1.5.0',
-        default_options: ['warning_level=1', 'c_std=gnu11', 'cpp_std=gnu++11', 'b_colorout=auto',
+        default_options: ['warning_level=1', 'c_std=gnu11', 'cpp_std=gnu++14', 'b_colorout=auto',
                           'b_staticpic=false', 'stdsplit=false', 'optimization=2', 'b_pie=true'],
         version: files('VERSION'))
 
@@ -4121,6 +4121,7 @@ libsystem = static_library('system',
 # configuration will be in build.ninja, but are never built by default.
 common_all = static_library('common',
                             build_by_default: false,
+                            override_options : ['cpp_std=gnu++14'],
                             sources: common_ss.all_sources() + genh,
                             implicit_include_directories: false,
                             dependencies: common_ss.all_dependencies())
