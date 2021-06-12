@@ -1,4 +1,5 @@
 }
+#elif defined(TARGET_AARCH64)
         return;
     if (unlikely(do_checks)) {
     if (have_cheri_tb_flags(ctx, TB_FLAG_CHERI_PCC_FULL_AS)) {
