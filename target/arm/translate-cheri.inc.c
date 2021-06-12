@@ -54,3 +54,4 @@ TRANS_F(GC)
         gen_cap_get_perms(ctx, regnum, result);
     case 0b111: // type
         gen_cap_get_type(ctx, regnum, result);
+    helper(cpu_reg(ctx, a->Rd), tcg_env, cpu_reg(ctx, a->Rn));
