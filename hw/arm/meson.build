@@ -106,5 +106,7 @@ arm_common_ss.add(when: 'CONFIG_VEXPRESS', if_true: files('vexpress.c'))
 
 arm_common_ss.add(files('boot.c'))
 
+arm_ss.add(when: 'CONFIG_MORELLO', if_true: files('morello.c', 'armtrickbox.c'))
+
 hw_arch += {'arm': arm_ss}
 hw_common_arch += {'arm': arm_common_ss}
