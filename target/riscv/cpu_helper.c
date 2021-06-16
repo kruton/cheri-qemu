@@ -1603,6 +1603,10 @@ static int get_physical_address(CPURISCVState *env, hwaddr *physical,
         napot_bits = ctzl(ppn) + 1;
         if ((i != (levels - 1)) || (napot_bits != 4)) {
             return TRANSLATE_FAIL;
+        (access_type == MMU_DATA_STORE ||
+         access_type == MMU_DATA_CAP_STORE || (pte & PTE_D))) {
+        prot |= PAGE_SC_TRAP;
+        if (!(pte & PTE_CW)) {
         }
     }
 
@@ -1902,8 +1906,11 @@ bool riscv_cpu_tlb_fill(CPUState *cs, vaddr address, int size,
     }
 
     if (ret == TRANSLATE_SUCCESS) {
-        tlb_set_page(cs, address & ~(tlb_size - 1), pa & ~(tlb_size - 1),
-                     prot, mmu_idx, tlb_size);
+        MemTxAttrs attrs = MEMTXATTRS_UNSPECIFIED;
+#ifdef TARGET_CHERI
+        attrs.tag_setting = access_type == MMU_DATA_CAP_STORE;
+#endif
+        tlb_set_page_with_attrs(cs, address & ~(tlb_size - 1), pa & ~(tlb_size - 1),
         return true;
     } else if (probe) {
         return false;
