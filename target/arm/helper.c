@@ -378,7 +378,8 @@ static void dacr_write(CPUARMState *env, const ARMCPRegInfo *ri, uint64_t value)
     tlb_flush(CPU(cpu)); /* Flush TLB as domain not tracked in TLB */
 }
 
-static void fcse_write(CPUARMState *env, const ARMCPRegInfo *ri, uint64_t value)
+static void tlb_effecting_write(CPUARMState *env, const ARMCPRegInfo *ri,
+                                uint64_t value)
 {
     ARMCPU *cpu = env_archcpu(env);
 
@@ -392,6 +393,8 @@ static void fcse_write(CPUARMState *env, const ARMCPRegInfo *ri, uint64_t value)
     }
 }
 
+#define fcse_write tlb_effecting_write
+#define cctlr_write tlb_effecting_write
 static void contextidr_write(CPUARMState *env, const ARMCPRegInfo *ri,
                              uint64_t value)
 {
@@ -4256,6 +4259,7 @@ static const ARMCPRegInfo el2_cp_reginfo[] = {
     { .name = "TPIDR_EL2", .state = ARM_CP_STATE_BOTH,
       .opc0 = 3, .opc1 = 4, .crn = 13, .crm = 0, .opc2 = 2,
       .access = PL2_RW, .resetvalue = 0,
+      .resetvalue = 0,
       .nv2_redirect_offset = 0x90,
       .fieldoffset = offsetof(CPUARMState, cp15.tpidr_el[2]) },
       .fieldoffset = offsetof(CPUARMState, cp15.tpidr_el[2]),
@@ -4490,6 +4494,7 @@ static const ARMCPRegInfo el3_cp_reginfo[] = {
       .opc0 = 3, .opc1 = 6, .crn = 13, .crm = 0, .opc2 = 2,
       .access = PL3_RW, .resetvalue = 0,
       .fieldoffset = offsetof(CPUARMState, cp15.tpidr_el[3]) },
+      .resetvalue = 0,
       .fieldoffset = offsetof(CPUARMState, cp15.tpidr_el[3]),
     { .name = "AMAIR_EL3", .state = ARM_CP_STATE_AA64,
       .opc0 = 3, .opc1 = 6, .crn = 10, .crm = 3, .opc2 = 0,
@@ -7348,6 +7353,7 @@ void register_cp_regs_for_features(ARMCPU *cpu)
               .nv2_redirect_offset = 0x250 | NV2_REDIR_NV1,
               .vhe_redir_to_el2 = ENCODE_AA64_CP_REG(3, 4, 12, 0, 0),
               .vhe_redir_to_el01 = ENCODE_AA64_CP_REG(3, 5, 12, 0, 0),
+              .writefn = vbar_write,
               .bank_fieldoffsets = { offsetof(CPUARMState, cp15.vbar_s),
                                      offsetof(CPUARMState, cp15.vbar_ns) },
               .resetvalue = 0 },
@@ -7516,6 +7522,7 @@ void register_cp_regs_for_features(ARMCPU *cpu)
 
     // HCR controls a lot of these LETODO: Also have to pay attention to
     // restricted for RDDC and RSP.
+          .resetvalue = 0 },
           .fieldoffset = offsetof(CPUARMState, CCTLR_el[3]),
           .fieldoffset = offsetof(CPUARMState, CCTLR_el[0]),
     define_pm_cpregs(cpu);
