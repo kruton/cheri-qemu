@@ -1603,9 +1603,12 @@ static int get_physical_address(CPURISCVState *env, hwaddr *physical,
         napot_bits = ctzl(ppn) + 1;
         if ((i != (levels - 1)) || (napot_bits != 4)) {
             return TRANSLATE_FAIL;
+    }
         (access_type == MMU_DATA_STORE ||
          access_type == MMU_DATA_CAP_STORE || (pte & PTE_D))) {
+    if ((pte & PTE_CR) == 0) {
         prot |= PAGE_SC_TRAP;
+        if (!(pte & PTE_CW)) {
         if (!(pte & PTE_CW)) {
         }
     }
