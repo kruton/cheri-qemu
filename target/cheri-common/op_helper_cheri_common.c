@@ -14,9 +14,15 @@
 {
 }
 {
+    if (unlikely(cptr->cr_tag && is_cap_sealed(cptr))) {
     }
+    if (likely(addr_in_cap_bounds(cptr, new_addr))) {
+        /* Common case: updating an in-bounds capability. */
     }
+    /* Result is out-of-bounds, check if it's representable. */
         }
+        /* (Possibly) out-of-bounds but still representable. */
+        check_out_of_bounds_stat(env, oob_info,
                                  get_readonly_capreg(env, regnum_dst),
     }
 }
@@ -40,13 +46,16 @@ void CHERI_HELPER_IMPL(pcc_check_bounds(CPUArchState *env, target_ulong addr,
                                         target_ulong rs))
 {
 }
+}
      * CGetBase: Move Base to a General-Purpose Register.
     const cap_register_t *cbp = get_readonly_capreg(env, cb);
                        "Unknown permission bits set!");
      * CGetTag: Move Tag to a General-Purpose Register
     cap_register_t result = *cbp;
     result.cr_tag = 0;
+    update_capreg(env, cd, &result);
     if (link_reg != NULL_CAPREG_INDEX) {
+        result._cr_cursor = link_pc;
         // The return capability should always be a sentry
             cap_make_sealed_entry(&result);
                                  uintptr_t _host_return_address)
@@ -56,6 +65,7 @@ void CHERI_HELPER_IMPL(cjalr(CPUArchState *env, uint32_t cd,
     } else if (!cap_has_perms(code_cap, CAP_PERM_CINVOKE)) {
     } else if (!cap_has_perms(data_cap, CAP_PERM_CINVOKE)) {
     } else if (!cap_is_unsealed(csp)) {
+    cap_register_t result = *csp;
                                   target_ulong rt))
         raise_cheri_exception(env, CapEx_UserDefViolation, cs);
     // Previously QEMU return (1<<64)-1 for a representable length of 1<<64
@@ -83,6 +93,7 @@ void CHERI_HELPER_IMPL(cbuildcap(CPUArchState *env, uint32_t cd, uint32_t cb,
         if (cap_is_sealed_entry(ctp)) {
             cap_make_sealed_entry(&derived);
             /* For reserved otypes we return a null-derived value. */
+static void cseal_common(CPUArchState *env, uint32_t cd, uint32_t cs,
                          uintptr_t _host_return_address)
             update_capreg(env, cd, csp);
     } else if (conditional && !cap_is_unsealed(csp)) {
@@ -90,6 +101,9 @@ void CHERI_HELPER_IMPL(cbuildcap(CPUArchState *env, uint32_t cd, uint32_t cb,
     } else if (!conditional && !cap_is_unsealed(csp)) {
         raise_cheri_exception_or_invalidate(env, CapEx_PermitSealViolation, ct);
     } else if (!conditional && !cap_cursor_in_bounds(ctp)) {
+static inline QEMU_ALWAYS_INLINE void
+cincoffset_impl(CPUArchState *env, uint32_t cd, uint32_t cb, target_ulong rt,
+                uintptr_t retpc, struct oob_stats_info *oob_info)
 void CHERI_HELPER_IMPL(candaddr(CPUArchState *env, uint32_t cd, uint32_t cb,
     target_ulong cursor = get_capreg_cursor(env, cb);
     target_ulong target_addr = cursor & rt;
@@ -128,6 +142,7 @@ target_ulong CHERI_HELPER_IMPL(cap_check_addr(CPUArchState *env,
     env->rvfi_dii_trace.MEM.rvfi_mem_rmask = (1 << CHERI_CAP_SIZE) - 1;
     // TODO: Add one extra bit to include the tag?
     env->rvfi_dii_trace.available_fields |= RVFI_MEM_DATA;
+                                  target_ulong vaddr, uintptr_t retpc,
     target_ulong pesbt_for_mem = get_capreg_pesbt(env, cs) ^ CAP_MEM_XOR_MASK;
 #ifdef CONFIG_DEBUG_TCG
     if (get_capreg_state(cheri_get_gpcrs(env), cs) == CREG_INTEGER) {
