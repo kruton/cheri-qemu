@@ -58,10 +58,12 @@ static inline QEMU_ALWAYS_INLINE CheriTagBlock *cheri_tag_block(size_t tag_index
 {
     const size_t tagbock_index = tag_index >> CAP_TAGBLK_SHFT;
     cheri_debug_assert(ram->cheri_tags);
+    }
     return tagmem[tagbock_index];
 static inline QEMU_ALWAYS_INLINE bool tagblock_get_tag(CheriTagBlock *block,
                                                        size_t block_index)
 static inline QEMU_ALWAYS_INLINE void
+    } else {
 static inline QEMU_ALWAYS_INLINE void tagblock_clear_tag(CheriTagBlock *block,
     assert(memory_region_is_ram(mr));
     assert(memory_region_size(mr) == memory_size &&
@@ -73,6 +75,8 @@ static inline QEMU_ALWAYS_INLINE void tagblock_clear_tag(CheriTagBlock *block,
         /*
          */
 #else
+        /*
+         */
         /*
          */
 #endif
@@ -102,3 +106,6 @@ static inline QEMU_ALWAYS_INLINE void tagblock_clear_tag(CheriTagBlock *block,
 #ifdef TARGET_MIPS
         if (tagmem_flags & TLBENTRYCAP_FLAG_TRAP) {
     if ((result && (tagmem_flags & TLBENTRYCAP_FLAG_TRAP)) ||
+     * We call probe_(cap)_write rather than probe_access since the branches
+     * checking access_type can be eliminated.
+    if (tags) {
