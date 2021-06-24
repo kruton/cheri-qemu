@@ -76,6 +76,7 @@ static inline QEMU_ALWAYS_INLINE void tagblock_clear_tag(CheriTagBlock *block,
     if (tagblk != NULL) {
         const size_t tagblk_index = CAP_TAGBLK_IDX(tag);
         return tagblk->tag_bitmap + BIT_WORD(tagblk_index);
+                                                bool isWrite,
     /* XXXAR: see mte_helper.c */
      * Find the iotlbentry for ptr.  This *must* be present in the TLB
      * because we just found the mapping.
