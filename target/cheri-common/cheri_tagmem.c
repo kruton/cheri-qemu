@@ -73,6 +73,9 @@ static inline QEMU_ALWAYS_INLINE void tagblock_clear_tag(CheriTagBlock *block,
         /*
          */
 #else
+        /*
+         */
+#endif
     if (tagblk != NULL) {
         const size_t tagblk_index = CAP_TAGBLK_IDX(tag);
         return tagblk->tag_bitmap + BIT_WORD(tagblk_index);
@@ -95,3 +98,6 @@ static inline QEMU_ALWAYS_INLINE void tagblock_clear_tag(CheriTagBlock *block,
             vaddr, qemu_ram_addr_from_host(host_addr), old_value);
     if (!ram->cheri_tags) {
         CheriTagBlock *tagblk = cheri_tag_block(tag, ram);
+#ifdef TARGET_MIPS
+        if (tagmem_flags & TLBENTRYCAP_FLAG_TRAP) {
+    if ((result && (tagmem_flags & TLBENTRYCAP_FLAG_TRAP)) ||
