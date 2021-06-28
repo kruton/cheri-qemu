@@ -9448,6 +9448,8 @@ static void arm_cpu_do_interrupt_aarch64(CPUState *cs)
         }
     }
 
+    new_mode &= ~PSTATE_C64;
+        new_mode |= PSTATE_C64;
     pstate_write(env, PSTATE_DAIF | new_mode);
     env->aarch64 = true;
     aarch64_restore_sp(env, new_el);
