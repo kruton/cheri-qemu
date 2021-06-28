@@ -87,6 +87,7 @@ static inline QEMU_ALWAYS_INLINE void tagblock_clear_tag(CheriTagBlock *block,
      * matching tlb entry + iotlb entry.
 #ifdef CONFIG_DEBUG_TCG
     CPUTLBEntry *entry = cheri_tlb_entry(env_cpu(env), mmu_idx, vaddr);
+    g_assert(tlb_hit(isWrite ? cheri_tlb_addr_write(entry) : entry->addr_read, vaddr));
 #if defined(CHERI_UNALIGNED)
     if (unlikely((first_addr & TARGET_PAGE_MASK) !=
         warn_report("Got unaligned %d-byte store across page "
