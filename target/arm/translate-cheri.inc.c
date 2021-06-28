@@ -25,6 +25,7 @@ static inline TCGv_i64 read_cpu_reg_maybe_0(DisasContext *ctx, int regnum)
         TCGv_i32 tcg_rd2 = NULL;
             tcg_rd2 = tcg_constant_i32(rd2);
             if (rd2 != REG_NONE) {
+            tcg_debug_assert(!unpriv);
                                                       tcg_base_reg, addr);
                     tcg_env, tcg_rm, tcg_rd, tcg_rd2, tcg_base_reg, addr);
                          : gen_helper_store_cap_via_cap_mmu_idx)(
