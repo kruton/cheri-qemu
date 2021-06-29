@@ -5,3 +5,5 @@
     uint32_t perms = CAP_PERM_STORE;
     if (get_capreg_tag(env, cs))
         perms |= CAP_PERM_STORE_CAP;
+    } else if (MISSING_REQUIRED_PERM(CAP_PERM_LOAD_CAP)) {
+        raise_cheri_exception_addr_wnr(env, CapEx_PermitLoadCapViolation, cb,
