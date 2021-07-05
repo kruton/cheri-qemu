@@ -20,6 +20,7 @@ static inline TCGv_i64 read_cpu_reg_maybe_0(DisasContext *ctx, int regnum)
         is_load ? "load" : "store", vector, rd, rd2, size, extend_size, rn, rm,
         imm, alternate_base, capability_base, pcc_base, pre_inc, post_inc,
         option, shift);
+        gen_cap_debug(ctx, rn);
     if (rm != REG_NONE)
         gen_cap_debug(ctx, rm);
         TCGv_i32 tcg_rd2 = NULL;
