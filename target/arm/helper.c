@@ -4493,7 +4493,6 @@ static const ARMCPRegInfo el3_cp_reginfo[] = {
     { .name = "TPIDR_EL3", .state = ARM_CP_STATE_AA64,
       .opc0 = 3, .opc1 = 6, .crn = 13, .crm = 0, .opc2 = 2,
       .access = PL3_RW, .resetvalue = 0,
-      .fieldoffset = offsetof(CPUARMState, cp15.tpidr_el[3]) },
       .resetvalue = 0,
       .fieldoffset = offsetof(CPUARMState, cp15.tpidr_el[3]),
     { .name = "AMAIR_EL3", .state = ARM_CP_STATE_AA64,
@@ -7522,9 +7521,12 @@ void register_cp_regs_for_features(ARMCPU *cpu)
 
     // HCR controls a lot of these LETODO: Also have to pay attention to
     // restricted for RDDC and RSP.
+          .type = ARM_CP_CAP,
+          .fieldoffset = offsetof(CPUARMState, sp_el[4]) },
           .resetvalue = 0 },
           .fieldoffset = offsetof(CPUARMState, CCTLR_el[3]),
           .fieldoffset = offsetof(CPUARMState, CCTLR_el[0]),
+          .type = ARM_CP_CAP_ON_MORELLO,
     define_pm_cpregs(cpu);
     define_gcs_cpregs(cpu);
 }
