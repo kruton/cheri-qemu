@@ -15,6 +15,8 @@ static inline void sanity_check_capreg(GPCapRegs *gpcrs, unsigned regnum)
     } else if (get_capreg_state(gpcrs, regnum) == CREG_INTEGER) {
     }
 #endif // CONFIG_DEBUG_TCG
+static inline QEMU_ALWAYS_INLINE void
+set_capreg_state(GPCapRegs *gpcrs, unsigned regnum, CapRegState new_state)
         cheri_debug_assert(new_state == CREG_FULLY_DECOMPRESSED &&
                            "NULL/scratch is always fully decompressed");
     sanity_check_capreg(gpcrs, regnum);
