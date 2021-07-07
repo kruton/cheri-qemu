@@ -6857,6 +6857,7 @@ static void sync_global(TCGContext *s, TCGOp *op)
     tcg_debug_assert(ts->val_type == TEMP_VAL_REG ||
                      ts->val_type == TEMP_VAL_MEM);
     // Liveness analysis should make sure that the sync happened at the last
+    // write
     tcg_debug_assert((ts->val_type != TEMP_VAL_REG) || (ts->mem_coherent));
 }
 int tcg_gen_code(TCGContext *s, TranslationBlock *tb, uint64_t pc_start)
