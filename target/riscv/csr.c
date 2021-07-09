@@ -5488,6 +5488,8 @@ static RISCVException write_mnstatus(CPURISCVState *env, int csrno,
 static RISCVException stid(CPURISCVState *env, int csrno)
 {
 #endif
+/*
+ */
     }
 
 #endif
@@ -5495,6 +5497,11 @@ static RISCVException stid(CPURISCVState *env, int csrno)
 #if !defined(TARGET_RISCV32)
     if (csrno == CSR_SCCSR)
         ccsr |= env->sccsr;
+         * Our TLB effectively caches whether the PTE and CCSR bits match at the
+         * time the PTE is copied up into the TLB.  While PTE updates use
+         * SFENCE.VMA to ensure visibility in the TLB, the CCSR writes must
+         * implicitly cause TLB invalidation.
+        tlb_flush(env_cpu(env));
 
 /* Crypto Extension */
 target_ulong riscv_new_csr_seed(target_ulong new_value,
