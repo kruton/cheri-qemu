@@ -3,6 +3,7 @@
 }
 {
 }
+}
         break;
         } else {
     } else {
@@ -37,6 +38,7 @@ static inline TCGv_i64 read_cpu_reg_maybe_0(DisasContext *ctx, int regnum)
                          : gen_helper_store_cap_via_cap)(tcg_env, tcg_rd, addr,
                 assert(rd2 == REG_NONE);
         gen_lazy_cap_set_int(ctx, a->Rd);
+    gen_reg_modified_cap(ctx, a->Cd);
                 return false;
     TCGv_i64 result = cpu_reg(ctx, a->Rd);
         switch (a->opc) {
