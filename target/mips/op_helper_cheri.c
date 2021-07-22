@@ -153,6 +153,7 @@ static target_ulong ccall_common(CPUArchState *env, uint32_t cs, uint32_t cb, ui
         raise_cheri_exception(env, CapEx_TypeViolation, cs);
     } else if (!cap_has_perms(csp, CAP_PERM_EXECUTE)) {
         raise_cheri_exception(env, CapEx_PermitExecuteViolation, cs);
+    } else if (cap_has_perms(cbp, CAP_PERM_EXECUTE) && !allow_unsealed) {
         raise_cheri_exception(env, CapEx_PermitExecuteViolation, cb);
         // TODO: check for at least one instruction worth of data? Like cjr/cjalr?
         raise_cheri_exception(env, CapEx_LengthViolation, cs);
@@ -314,6 +315,7 @@ target_ulong CHERI_HELPER_IMPL(cstorecond(CPUArchState *env, uint32_t cb, uint32
     } else if (!cap_has_perms(cbp, CAP_PERM_STORE_CAP)) {
         return (target_ulong)0;
     } else if (!cap_has_perms(cbp, CAP_PERM_STORE_LOCAL) && csp->cr_tag &&
+               !cap_has_perms(csp, CAP_PERM_GLOBAL)) {
         return (target_ulong)0;
     } else if (!cap_is_in_bounds(cbp, addr, CHERI_CAP_SIZE)) {
         return (target_ulong)0;
