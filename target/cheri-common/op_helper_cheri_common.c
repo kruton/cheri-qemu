@@ -177,6 +177,8 @@ bool load_cap_from_memory_raw(CPUArchState *env, target_ulong *pesbt,
         tcg_debug_assert(cursor == 0 && "Wrong value for cnull?");
         tcg_debug_assert(!tag && "Wrong value for cnull?");
     env->rvfi_dii_trace.MEM.rvfi_mem_wdata[0] = cursor;
+G_NORETURN static inline void
+raise_pcc_fault(CPUArchState *env, CheriCapExcCause cause, target_ulong addr)
     cheri_debug_assert(pc_is_current(env));
      * Note: we set pc=0 since PC will have been saved prior to calling the
      * helper. Therefore, we don't need to recompute it from the generated code.
