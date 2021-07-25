@@ -94,6 +94,7 @@ void CHERI_HELPER_IMPL(cbuildcap(CPUArchState *env, uint32_t cd, uint32_t cb,
         // check for length < 0 - possible because cs2 might be untagged
     } else if ((cap_get_all_perms(ctp) & cap_get_all_perms(cbp)) !=
                cap_get_all_perms(ctp)) {
+    } else if (cap_has_reserved_bits_set(ctp)) {
         if (cap_is_sealed_entry(ctp)) {
             cap_make_sealed_entry(&derived);
             /* For reserved otypes we return a null-derived value. */
