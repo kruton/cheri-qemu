@@ -51,6 +51,7 @@ void CHERI_HELPER_IMPL(pcc_check_bounds(CPUArchState *env, target_ulong addr,
     const cap_register_t *cbp = get_readonly_capreg(env, cb);
                        "Unknown permission bits set!");
      * CGetTag: Move Tag to a General-Purpose Register
+    const target_long otype = cap_get_otype_signext(cbp);
     cap_register_t result = *cbp;
     result.cr_tag = 0;
     update_capreg(env, cd, &result);
