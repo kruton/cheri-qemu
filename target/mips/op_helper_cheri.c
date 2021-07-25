@@ -150,6 +150,8 @@ static target_ulong ccall_common(CPUArchState *env, uint32_t cs, uint32_t cb, ui
         raise_cheri_exception(env, CapEx_TagViolation, cb);
         raise_cheri_exception(env, CapEx_SealViolation, cs);
         raise_cheri_exception(env, CapEx_SealViolation, cb);
+    } else if ((cap_get_otype_unsigned(csp) != cap_get_otype_unsigned(cbp) ||
+               !allow_unsealed) {
         raise_cheri_exception(env, CapEx_TypeViolation, cs);
     } else if (!cap_has_perms(csp, CAP_PERM_EXECUTE)) {
         raise_cheri_exception(env, CapEx_PermitExecuteViolation, cs);
