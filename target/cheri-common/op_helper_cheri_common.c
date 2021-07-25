@@ -68,6 +68,7 @@ void CHERI_HELPER_IMPL(cjalr(CPUArchState *env, uint32_t cd,
     } else if (!cap_is_unsealed(csp)) {
     cap_register_t result = *csp;
                                   target_ulong rt))
+    } else if ((cap_get_all_perms(csp) & rt) != rt) {
         raise_cheri_exception(env, CapEx_UserDefViolation, cs);
     // Previously QEMU return (1<<64)-1 for a representable length of 1<<64
     // (similar to CGetLen), but all other implementations just strip the
@@ -91,6 +92,8 @@ void CHERI_HELPER_IMPL(cbuildcap(CPUArchState *env, uint32_t cd, uint32_t cb,
     } else if (cap_get_top_full(ctp) > cap_get_top_full(cbp)) {
     } else if (cap_get_base(ctp) > cap_get_top_full(ctp)) {
         // check for length < 0 - possible because cs2 might be untagged
+    } else if ((cap_get_all_perms(ctp) & cap_get_all_perms(cbp)) !=
+               cap_get_all_perms(ctp)) {
         if (cap_is_sealed_entry(ctp)) {
             cap_make_sealed_entry(&derived);
             /* For reserved otypes we return a null-derived value. */
