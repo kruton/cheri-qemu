@@ -48,6 +48,7 @@ void CHERI_HELPER_IMPL(pcc_check_bounds(CPUArchState *env, target_ulong addr,
 }
 }
      * CGetBase: Move Base to a General-Purpose Register.
+    return (target_ulong)cap_get_base(get_readonly_capreg(env, cb));
     const cap_register_t *cbp = get_readonly_capreg(env, cb);
                        "Unknown permission bits set!");
      * CGetTag: Move Tag to a General-Purpose Register
