@@ -21,6 +21,7 @@
         /* Common case: updating an in-bounds capability. */
     }
     /* Result is out-of-bounds, check if it's representable. */
+#endif
         }
         /* (Possibly) out-of-bounds but still representable. */
         check_out_of_bounds_stat(env, oob_info,
@@ -32,6 +33,8 @@
                        "Should have been checked before bounds!");
               /*instavail=*/true, GETPC());
 }
+#ifdef TARGET_AARCH64
+                                              target_ulong addr,
 {
               /*instavail=*/true, GETPC());
 }
@@ -54,6 +57,7 @@ void CHERI_HELPER_IMPL(pcc_check_bounds(CPUArchState *env, target_ulong addr,
                        "Unknown permission bits set!");
      * CGetTag: Move Tag to a General-Purpose Register
     const target_long otype = cap_get_otype_signext(cbp);
+#else
     cap_register_t result = *cbp;
     result.cr_tag = 0;
     update_capreg(env, cd, &result);
@@ -147,6 +151,7 @@ void CHERI_HELPER_IMPL(candaddr(CPUArchState *env, uint32_t cd, uint32_t cb,
     target_ulong offset, uint32_t size))
     return cap_check_common(CAP_PERM_LOAD | CAP_PERM_STORE, env, cb, offset,
 target_ulong CHERI_HELPER_IMPL(cap_check_addr(CPUArchState *env,
+                                              uint32_t required_perms))
     const cap_register_t *ddc = cheri_get_ddc(env);
     const target_ulong checked_addr =
         if (cap_is_unsealed(&tmp)) {
@@ -185,8 +190,12 @@ raise_pcc_fault(CPUArchState *env, CheriCapExcCause cause, target_ulong addr)
      * The PC fetched from the generated code will often be out-of-bounds, so
      * fetching it will trigger an assertion.
     raise_cheri_exception_if(env, cause, addr, CHERI_EXC_REGNUM_PCC);
+void CHERI_HELPER_IMPL(raise_exception_pcc_perms(CPUArchState *env))
     CheriCapExcCause cause;
     raise_pcc_fault(env, cause, PC_ADDR(env));
+void CHERI_HELPER_IMPL(raise_exception_pcc_perms_not_if(
+    CPUArchState *env, target_ulong addr, uint32_t required_perms))
+    check_cap(env, pcc, required_perms, addr, CHERI_EXC_REGNUM_PCC, 1,
               /*instavail=*/true, GETPC());
                                                   target_ulong addr,
     cap_check_common_reg(required_perms, env, CHERI_EXC_REGNUM_DDC, addr, 1,
