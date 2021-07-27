@@ -9289,7 +9289,11 @@ static void arm_cpu_do_interrupt_aarch64(CPUState *cs)
             addr += 0x600;
         }
     } else {
-        if (pstate_read(env) & PSTATE_SP) {
+        if ((pstate_read(env) & PSTATE_SP)
+#ifdef TARGET_CHERI
+            && cheri_is_executive(env)
+#endif
+        ) {
             addr += 0x200;
         }
         if (is_a64(env) && (env->cp15.gcscr_el[new_el] & GCSCR_EXLOCKEN)) {
