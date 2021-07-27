@@ -2652,5 +2652,11 @@ extern const uint64_t pred_esz_masks[5];
 #define LOG2_TAG_GRANULE 4
 #define TAG_GRANULE      (1 << LOG2_TAG_GRANULE)
 
+{
+}
+// restricted is not executive. Decided it might make things more readable to
+// have this.
+static inline bool cheri_is_restricted(CPUARMState *env)
+    return !cheri_is_executive(env);
 #endif
 #endif /* ARM_CPU_H */
