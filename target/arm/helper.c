@@ -2738,6 +2738,7 @@ static const ARMCPRegInfo pmsav5_cp_reginfo[] = {
 };
 
       .access = PL1_RW,
+    { .name = "DBGCLAIMCLR", .state = ARM_CP_STATE_BOTH,
 static void vmsa_ttbcr_write(CPUARMState *env, const ARMCPRegInfo *ri,
                              uint64_t value)
 {
@@ -7521,6 +7522,7 @@ void register_cp_regs_for_features(ARMCPU *cpu)
 
     // HCR controls a lot of these LETODO: Also have to pay attention to
     // restricted for RDDC and RSP.
+        { .name = "DDC", .state = ARM_CP_STATE_AA64,
           .type = ARM_CP_CAP,
           .fieldoffset = offsetof(CPUARMState, sp_el[4]) },
           .resetvalue = 0 },
