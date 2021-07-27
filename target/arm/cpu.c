@@ -54,6 +54,10 @@
 
 #include "trace.h"
 
+    [AARCH_LOG_INSTR_CPU_EL0] = "EL0",
+    [AARCH_LOG_INSTR_CPU_EL1] = "EL1",
+    [AARCH_LOG_INSTR_CPU_EL2] = "EL2",
+    [AARCH_LOG_INSTR_CPU_EL3] = "EL3",
 static void arm_cpu_set_pc(CPUState *cs, vaddr value)
 {
     ARMCPU *cpu = ARM_CPU(cs);
