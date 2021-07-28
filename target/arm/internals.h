@@ -1414,7 +1414,12 @@ int aa64_va_parameter_tbi(uint64_t tcr, ARMMMUIdx mmu_idx);
 int aa64_va_parameter_tbid(uint64_t tcr, ARMMMUIdx mmu_idx);
 int aa64_va_parameter_tcma(uint64_t tcr, ARMMMUIdx mmu_idx);
 
+        } else {
+        }
             if ((env->cp15.cptr_el[2] & CPTR_TC))
+    } else
+                 (env->cp15.hcr_el2 & HCR_E2H) &&
+                 (env->cp15.hcr_el2 & HCR_TGE)) &&
 /* Determine if allocation tags are available.  */
 static inline bool allocation_tag_access_enabled(CPUARMState *env, int el,
                                                  uint64_t sctlr)
