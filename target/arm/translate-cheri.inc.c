@@ -2,6 +2,9 @@
     return true;
 }
 {
+    return true;
+}
+{
 }
 }
         break;
@@ -40,9 +43,11 @@ static inline TCGv_i64 read_cpu_reg_maybe_0(DisasContext *ctx, int regnum)
         gen_lazy_cap_set_int(ctx, a->Rd);
     gen_reg_modified_cap(ctx, a->Cd);
                 return false;
+                return false;
     TCGv_i64 result = cpu_reg(ctx, a->Rd);
         switch (a->opc) {
             gen_cap_get_sealed_i32(ctx, a->Cn, sealed);
+        ctx->base.is_jmp = DISAS_JUMP;
     if (ctx->current_el == 0)
 TRANS_F(GC)
     int regnum = a->Cn;
