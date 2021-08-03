@@ -2737,8 +2737,20 @@ static const ARMCPRegInfo pmsav5_cp_reginfo[] = {
       .fieldoffset = offsetof(CPUARMState, cp15.c6_region[7]) },
 };
 
+static uint64_t claim_read(CPUARMState *env, const ARMCPRegInfo *ri)
+{
+    return (uint64_t)env->cp15.dbgclaim;
+}
+static void claim_set_write(CPUARMState *env, const ARMCPRegInfo *ri,
+                            uint64_t value)
+    env->cp15.dbgclaim |= (value & 0xFF);
+static void claim_clear_write(CPUARMState *env, const ARMCPRegInfo *ri,
+    env->cp15.dbgclaim &= ~(value & 0xFF);
+static const ARMCPRegInfo claim_cp_reginfo[] = {
       .access = PL1_RW,
+      .fieldoffset = offsetof(CPUARMState, cp15.dbgclaim),
     { .name = "DBGCLAIMCLR", .state = ARM_CP_STATE_BOTH,
+      .access = PL1_RW,
 static void vmsa_ttbcr_write(CPUARMState *env, const ARMCPRegInfo *ri,
                              uint64_t value)
 {
@@ -7530,6 +7542,8 @@ void register_cp_regs_for_features(ARMCPU *cpu)
         define_arm_cp_regs(cpu, ccsidr2_reginfo);
     }
 
+    // Claim is not really CHERI specific
+    define_arm_cp_regs(cpu, claim_cp_reginfo);
     // HCR controls a lot of these LETODO: Also have to pay attention to
     // restricted for RDDC and RSP.
         { .name = "DDC", .state = ARM_CP_STATE_AA64,
