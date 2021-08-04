@@ -38,6 +38,7 @@
 {
               /*instavail=*/true, GETPC());
 }
+#endif
 void CHERI_HELPER_IMPL(pcc_check_bounds(CPUArchState *env, target_ulong addr,
 {
     const cap_register_t *pcc = cheri_get_recent_pcc(env);
@@ -61,7 +62,12 @@ void CHERI_HELPER_IMPL(pcc_check_bounds(CPUArchState *env, target_ulong addr,
     cap_register_t result = *cbp;
     result.cr_tag = 0;
     update_capreg(env, cd, &result);
+    update_target_for_jump(env, &next_pcc, cjalr_flags);
+#else
+    cheri_debug_assert(cap_is_unsealed(target) || cap_is_sealed_entry(target));
+    if (next_pcc.cr_tag && cap_is_sealed_entry(&next_pcc)) {
     if (link_reg != NULL_CAPREG_INDEX) {
+#ifdef TARGET_AARCH64
         result._cr_cursor = link_pc;
         // The return capability should always be a sentry
             cap_make_sealed_entry(&result);
