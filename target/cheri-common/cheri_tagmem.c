@@ -25,6 +25,7 @@
 #endif
 #else
 #define CAP_TAG_GET_MANY_MASK ((1 << (1UL << CAP_TAG_GET_MANY_SHFT)) - 1UL)
+#define CAP_TAG_MANY_DATA_SIZE (CHERI_CAP_SIZE << CAP_TAG_GET_MANY_SHFT)
 static inline size_t num_tagblocks(RAMBlock* ram)
 {
     uint64_t memory_size = memory_region_size(ram->mr);
@@ -112,6 +113,7 @@ static inline QEMU_ALWAYS_INLINE void tagblock_clear_tag(CheriTagBlock *block,
         CheriTagBlock *tagblk = cheri_tag_block(tag, ram);
 #ifdef TARGET_MIPS
         if (tagmem_flags & TLBENTRYCAP_FLAG_TRAP) {
+    probe_read(env, vaddr, CAP_TAG_MANY_DATA_SIZE, mmu_idx, pc);
     if ((result && (tagmem_flags & TLBENTRYCAP_FLAG_TRAP)) ||
      * We call probe_(cap)_write rather than probe_access since the branches
      * checking access_type can be eliminated.
