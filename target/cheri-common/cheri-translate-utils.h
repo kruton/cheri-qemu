@@ -62,4 +62,11 @@
         // doing this before the or below will make full length caps still work
         // properly
         tcg_gen_and_i64(result, result, temp);
+        tcg_gen_and_tl(temp0, temp0, new_type);
+        // This handles the CAP_NO_SEALING case
+        // success == type == CAP_NO_SEALING
+        // TODO: This belongs in another header
+#define CAP_NO_SEALING -1l
+        tcg_gen_movi_tl(temp0, CAP_NO_SEALING);
+        tcg_gen_setcond_tl(TCG_COND_EQ, success, new_type, temp0);
     tcg_gen_setcond_i64(TCG_COND_LEU, result, tempa, tempb);
