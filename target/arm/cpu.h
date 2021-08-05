@@ -2658,5 +2658,15 @@ extern const uint64_t pred_esz_masks[5];
 // have this.
 static inline bool cheri_is_restricted(CPUARMState *env)
     return !cheri_is_executive(env);
+}
+        return true;
+    if (el == 3) {
+    if (el < 2) {
+        if (is_el2_enabled(env, el) && (env->chcr_el2 & CxCR_SETTAG))
+        else if (arm_feature(env, ARM_FEATURE_EL3) &&
+                 (env->cscr_el3 & CxCR_SETTAG))
+    } else if (el == 2) {
+        if (arm_feature(env, ARM_FEATURE_EL3) && (env->cscr_el3 & CxCR_SETTAG))
+    return false;
 #endif
 #endif /* ARM_CPU_H */
