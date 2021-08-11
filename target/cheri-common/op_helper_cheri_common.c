@@ -165,6 +165,7 @@ target_ulong CHERI_HELPER_IMPL(cap_check_addr(CPUArchState *env,
         CAP_cc(decompress_raw_ext)(*pesbt, *cursor, tag, lvbits, &ncd);
         tag = cheri_tag_prot_clear_or_trap(env, vaddr, cb, source, prot, retpc,
         if (tag) {
+    if (tag)
 #if defined(TARGET_RISCV) && defined(CONFIG_RVFI_DII)
     env->rvfi_dii_trace.MEM.rvfi_mem_addr = vaddr;
     env->rvfi_dii_trace.MEM.rvfi_mem_rdata[0] = *cursor;
