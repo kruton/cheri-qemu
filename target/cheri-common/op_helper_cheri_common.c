@@ -160,6 +160,8 @@ target_ulong CHERI_HELPER_IMPL(cap_check_addr(CPUArchState *env,
                                               uint32_t required_perms))
     const cap_register_t *ddc = cheri_get_ddc(env);
     const target_ulong checked_addr =
+    if (tag && (prot & PAGE_LC_CLEAR)) {
+    if ((tag && (prot & PAGE_LC_TRAP)) || (prot & PAGE_LC_TRAP_ANY))
         if (cap_is_unsealed(&tmp)) {
 #else
         CAP_cc(decompress_raw_ext)(*pesbt, *cursor, tag, lvbits, &ncd);
