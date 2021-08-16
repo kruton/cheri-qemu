@@ -99,6 +99,7 @@ static inline QEMU_ALWAYS_INLINE void tagblock_clear_tag(CheriTagBlock *block,
     if (unlikely((first_addr & TARGET_PAGE_MASK) !=
         warn_report("Got unaligned %d-byte store across page "
         return NULL;
+        get_tagmem_from_iotlb_entry(env, vaddr, mmu_idx, true, &tagmem_flags);
     if (qemu_log_instr_enabled(env)) {
         qemu_log_instr_extra(
             env,
