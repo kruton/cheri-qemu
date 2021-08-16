@@ -61,6 +61,7 @@ static inline QEMU_ALWAYS_INLINE CheriTagBlock *cheri_tag_block(size_t tag_index
     cheri_debug_assert(ram->cheri_tags);
     }
     return tagmem[tagbock_index];
+}
 static inline QEMU_ALWAYS_INLINE bool tagblock_get_tag(CheriTagBlock *block,
                                                        size_t block_index)
 static inline QEMU_ALWAYS_INLINE void
@@ -89,6 +90,10 @@ static inline QEMU_ALWAYS_INLINE void tagblock_clear_tag(CheriTagBlock *block,
     if (tagblk != NULL) {
         const size_t tagblk_index = CAP_TAGBLK_IDX(tag);
         return tagblk->tag_bitmap + BIT_WORD(tagblk_index);
+    if (!(*prot & PAGE_SC_CLEAR)) {
+        // Add in a (fake) SC_TRAP to prompt a TLB refill if a tag is stored
+        // to this location. See the comment around TLBENTRYCAP_INVALID_WRITE_*.
+        *prot |= PAGE_SC_TRAP;
 #endif
                                                 bool isWrite,
     /* XXXAR: see mte_helper.c */
