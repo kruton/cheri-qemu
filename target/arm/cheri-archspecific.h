@@ -6,3 +6,5 @@
         CPUState *cs = env_cpu(env);
         cpu_restore_state(cs, hostpc);
     raise_cheri_exception_impl_if_wnr(env, CapEx_TLBNoStoreCap, cb, va, false,
+                                      retpc, false, false);
+    raise_cheri_exception_impl_if_wnr(env, CapEx_TLBNoStoreCap, reg, va, false,
