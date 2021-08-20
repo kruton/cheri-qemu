@@ -66,6 +66,7 @@ void CHERI_HELPER_IMPL(pcc_check_bounds(CPUArchState *env, target_ulong addr,
 #else
     cheri_debug_assert(cap_is_unsealed(target) || cap_is_sealed_entry(target));
     if (next_pcc.cr_tag && cap_is_sealed_entry(&next_pcc)) {
+        next_pcc.cr_tag = 0;
     if (link_reg != NULL_CAPREG_INDEX) {
 #ifdef TARGET_AARCH64
         result._cr_cursor = link_pc;
