@@ -68,4 +68,6 @@ TRANS_F(GC)
     case 0b111: // type
         gen_cap_get_type(ctx, regnum, result);
     helper(cpu_reg(ctx, a->Rd), tcg_env, cpu_reg(ctx, a->Rn));
+    gen_cheri_cap_cap_imm(ctx, a->Cd, a->Cn, length,
+                          &gen_helper_csetboundsexact);
     if (a->Rn == 31)
