@@ -56,6 +56,7 @@ void CHERI_HELPER_IMPL(pcc_check_bounds(CPUArchState *env, target_ulong addr,
     return (target_ulong)cap_get_base(get_readonly_capreg(env, cb));
     const cap_register_t *cbp = get_readonly_capreg(env, cb);
                        "Unknown permission bits set!");
+#endif
      * CGetTag: Move Tag to a General-Purpose Register
     const target_long otype = cap_get_otype_signext(cbp);
 #else
@@ -75,6 +76,7 @@ void CHERI_HELPER_IMPL(pcc_check_bounds(CPUArchState *env, target_ulong addr,
                                  uintptr_t _host_return_address)
 #ifdef TARGET_RISCV
 void CHERI_HELPER_IMPL(cjalr(CPUArchState *env, uint32_t cd,
+    const target_ulong cursor = cap_get_cursor(cbp);
     GET_HOST_RETPC();
         raise_cheri_exception_branch(env, CapEx_SealViolation, data_regnum);
     } else if (!cap_has_perms(code_cap, CAP_PERM_CINVOKE)) {
@@ -97,6 +99,7 @@ void CHERI_HELPER_IMPL(cjalr(CPUArchState *env, uint32_t cd,
     return (target_ulong)cap_get_length_full(&tmpcap);
 }
 {
+}
 {
 void CHERI_HELPER_IMPL(cbuildcap(CPUArchState *env, uint32_t cd, uint32_t cb,
                                  uint32_t ct))
@@ -112,13 +115,18 @@ void CHERI_HELPER_IMPL(cbuildcap(CPUArchState *env, uint32_t cd, uint32_t cb,
     } else if ((cap_get_all_perms(ctp) & cap_get_all_perms(cbp)) !=
                cap_get_all_perms(ctp)) {
     } else if (cap_has_reserved_bits_set(ctp)) {
+#ifndef TARGET_AARCH64
+#endif
         if (cap_is_sealed_entry(ctp)) {
             cap_make_sealed_entry(&derived);
             /*
              */
+            RESULT_VALID = false;
             /* For reserved otypes we return a null-derived value. */
 static void cseal_common(CPUArchState *env, uint32_t cd, uint32_t cs,
                          uintptr_t _host_return_address)
+    /*
+     */
             update_capreg(env, cd, csp);
     } else if (conditional && !cap_is_unsealed(csp)) {
     } else if (conditional && !cap_cursor_in_bounds(ctp)) {
@@ -139,6 +147,7 @@ void CHERI_HELPER_IMPL(candaddr(CPUArchState *env, uint32_t cd, uint32_t cb,
             raise_cheri_exception(env, CapEx_TagViolation, cb);
             raise_cheri_exception(env, CapEx_SealViolation, cb);
             raise_cheri_exception(env, CapEx_LengthViolation, cb);
+        assert(cap_get_top_full(&result) <= cap_get_top_full(cbp) &&
     if (cbp->cr_tag && !cap_is_unsealed(cbp)) {
     bool is_subset = false;
     if (cbp->cr_tag == ctp->cr_tag &&
