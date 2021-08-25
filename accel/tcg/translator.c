@@ -160,6 +160,7 @@ void translator_loop(CPUState *cpu, TranslationBlock *tb, int *max_insns,
     /* Start translating.  */
     icount_start_insn = gen_tb_start(db, cflags);
     ops->tb_start(db, cpu);
+        qemu_log_gen_printf_flush(db, true, true);
     tcg_debug_assert(db->is_jmp == DISAS_NEXT);  /* no early exit */
 
     plugin_enabled = plugin_gen_tb_start(cpu, db);
@@ -215,6 +216,7 @@ void translator_loop(CPUState *cpu, TranslationBlock *tb, int *max_insns,
         if (unlikely(log_instr_enabled)) {
             /*
              */
+            qemu_log_gen_printf_flush(db, true, false);
     }
 
     if (unlikely(log_instr_enabled)) {
