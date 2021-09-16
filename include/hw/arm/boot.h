@@ -13,6 +13,7 @@
 
 #include "target/arm/cpu-qom.h"
 #include "qemu/notify.h"
+#include "hw/loader.h"
 
 typedef enum {
     ARM_ENDIANNESS_UNKNOWN = 0,
@@ -133,6 +134,7 @@ struct arm_boot_info {
 
     arm_endianness endianness;
 
+    symbol_fn_t sym_cb;
     /* CPU having load the kernel and that should be the first to boot.  */
     ARMCPU *primary_cpu;
 };
