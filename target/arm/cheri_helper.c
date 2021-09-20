@@ -1,3 +1,9 @@
+    cap_check_common_reg(min_perms_for_store(env, cd), env, cb, addr,
+                         CHERI_CAP_SIZE, _host_return_address, cbp,
+                         CHERI_CAP_SIZE, raise_unaligned_store_exception);
+    store_cap_to_memory(env, cd, cb, addr, _host_return_address);
+    cap_check_common_reg(min_perms_for_store(env, cd2), env, cb,
+                         addr + CHERI_CAP_SIZE, CHERI_CAP_SIZE,
                         _host_return_address);
     // Now do a probe early, so that we get the store fault with priority
     // (LC/SC MMU fault priority) is the reverse of cap permissions)
