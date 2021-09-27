@@ -29,6 +29,7 @@
                            bounds_violation);
         tcg_gen_brcondi_tl(TCG_COND_GEU, addr, ctx->base.pcc_top,
                     sizeof(cap_register_t), sizeof(aligned_cap_register_t));
+                    sizeof(cap_register_t), sizeof(aligned_cap_register_t));
     if (qemu_ctx_logging_enabled(ctx)) {
         TCGv_ptr name = tcg_constant_ptr(str_name);
         gen_helper_qemu_log_instr_cap(tcg_env, name, reg,
