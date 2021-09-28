@@ -63,6 +63,7 @@
         // doing this before the or below will make full length caps still work
         // properly
         tcg_gen_and_i64(result, result, temp);
+// Handles sealed and unrepresentable caps when the cursor is changed. If
         tcg_gen_and_tl(temp0, temp0, new_type);
         // This handles the CAP_NO_SEALING case
         // success == type == CAP_NO_SEALING
