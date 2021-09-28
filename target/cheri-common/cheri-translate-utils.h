@@ -15,6 +15,7 @@
 #define target_get_gpr(ctx, t, reg) gen_get_gpr(ctx, (TCGv)t, reg)
 #else
 #error "Don't know how to fetch a GPR value"
+    }
 #else
         return;
     if (unlikely(do_checks)) {
@@ -40,3 +41,23 @@
         // TODO: Add some integer names to riscv/mips
         return;
     if (regnum == NULL_CAPREG_INDEX)
+// Does addr + offset <= top. If offset non zero, Addr MUST be a multiple of
+// offset.
+                                          TCGv_i64 addr, TCGv result,
+                                          int offset)
+    // Because of the above invariant,
+    // Offsets of less than one can be folded into the comparison
+    if (offset > 1) {
+        TCGv_i64 addrtmp = tcg_temp_new_i64();
+        tcg_gen_movi_i64(addrtmp, offset);
+        tcg_gen_add_i64(addrtmp, addrtmp, addr);
+        addr = addrtmp;
+    tcg_gen_setcond_i64(offset == 1 ? TCG_COND_LTU : TCG_COND_LEU, result, addr,
+                        temp);
+        // The only overflow that can occur will make address exactly 0.
+        tcg_gen_movi_i64(temp, 0);
+        tcg_gen_setcond_i64(TCG_COND_NE, temp, addr, temp);
+        // doing this before the or below will make full length caps still work
+        // properly
+        tcg_gen_and_i64(result, result, temp);
+    tcg_gen_setcond_i64(TCG_COND_LEU, result, tempa, tempb);
