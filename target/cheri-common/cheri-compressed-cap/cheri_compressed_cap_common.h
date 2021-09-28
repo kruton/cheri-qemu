@@ -27,5 +27,7 @@ static inline _cc_addr_t _cc_N(cap_bounds_address)(_cc_addr_t addr) {
     if (cursor & ((_CC_CURSOR_MASK >> 1) + 1))
         cursor |= ~_CC_CURSOR_MASK;
     return cursor;
+        return false;
 static inline bool _cc_N(is_representable_cap_exact)(const _cc_cap_t* cap) {
            _CC_ENCODE_FIELD(bot_ie, EXP_NONZERO_BOTTOM);
+    if (!cap->cr_bounds_valid) {
