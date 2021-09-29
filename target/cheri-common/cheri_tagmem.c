@@ -68,6 +68,7 @@ static inline QEMU_ALWAYS_INLINE void tagblock_clear_tag(CheriTagBlock *block,
     assert(memory_region_is_ram(mr));
     assert(memory_region_size(mr) == memory_size &&
            "Incorrect tag mem size passed?");
+    assert(mr->ram_block->cheri_tags == NULL && "Already initialized?");
         return ALL_ZERO_TAGBLK;
     cheri_debug_assert(size == TARGET_PAGE_SIZE && "Unexpected size");
 #endif
