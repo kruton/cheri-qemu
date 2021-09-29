@@ -1082,6 +1082,7 @@ static const ARMCPRegInfo t2ee_cp_reginfo[] = {
 static const ARMCPRegInfo v6k_cp_reginfo[] = {
     { .name = "TPIDR_EL0", .state = ARM_CP_STATE_AA64,
       .opc0 = 3, .opc1 = 3, .opc2 = 2, .crn = 13, .crm = 0,
+      .access = PL0_RW | PL_NO_SYSREG,
       .fgt = FGT_TPIDR_EL0,
       .fieldoffset = offsetof(CPUARMState, cp15.tpidr_el[0]), .resetvalue = 0 },
     { .name = "TPIDRURW", .cp = 15, .crn = 13, .crm = 0, .opc1 = 0, .opc2 = 2,
@@ -1104,7 +1105,6 @@ static const ARMCPRegInfo v6k_cp_reginfo[] = {
       .resetfn = arm_cp_reset_ignore },
     { .name = "TPIDR_EL1", .state = ARM_CP_STATE_AA64,
       .opc0 = 3, .opc1 = 0, .opc2 = 4, .crn = 13, .crm = 0,
-      .access = PL1_RW,
       .fgt = FGT_TPIDR_EL1,
       .fieldoffset = offsetof(CPUARMState, cp15.tpidr_el[1]), .resetvalue = 0 },
     { .name = "TPIDRPRW", .opc1 = 0, .cp = 15, .crn = 13, .crm = 0, .opc2 = 4,
@@ -3193,7 +3193,7 @@ static void aa64_pan_write(CPUARMState *env, const ARMCPRegInfo *ri,
 static const ARMCPRegInfo pan_reginfo = {
     .name = "PAN", .state = ARM_CP_STATE_AA64,
     .opc0 = 3, .opc1 = 0, .crn = 4, .crm = 2, .opc2 = 3,
-    .type = ARM_CP_NO_RAW, .access = PL1_RW,
+    .type = ARM_CP_NO_RAW, .access = PL1_RW | PL_NO_SYSREG,
     .readfn = aa64_pan_read, .writefn = aa64_pan_write
 };
 
@@ -3211,7 +3211,7 @@ static void aa64_uao_write(CPUARMState *env, const ARMCPRegInfo *ri,
 static const ARMCPRegInfo uao_reginfo = {
     .name = "UAO", .state = ARM_CP_STATE_AA64,
     .opc0 = 3, .opc1 = 0, .crn = 4, .crm = 2, .opc2 = 4,
-    .type = ARM_CP_NO_RAW, .access = PL1_RW,
+    .type = ARM_CP_NO_RAW, .access = PL1_RW | PL_NO_SYSREG,
     .readfn = aa64_uao_read, .writefn = aa64_uao_write
 };
 
@@ -3612,6 +3612,7 @@ static const ARMCPRegInfo v8_cp_reginfo[] = {
       .accessfn = access_tocu },
     { .name = "IC_IVAU", .state = ARM_CP_STATE_AA64,
       .opc0 = 1, .opc1 = 3, .crn = 7, .crm = 5, .opc2 = 1,
+      .access = PL0_W | PL_NO_SYSREG,
       .fgt = FGT_ICIVAU,
       .accessfn = access_tocu,
 #ifdef CONFIG_USER_ONLY
@@ -3729,6 +3730,7 @@ static const ARMCPRegInfo v8_cp_reginfo[] = {
       .opc0 = 3, .opc1 = 0, .crn = 4, .crm = 2, .opc2 = 0,
       .type = ARM_CP_NO_RAW,
       .access = PL1_RW, .readfn = spsel_read, .writefn = spsel_write },
+      .access = PL1_RW | PL_NO_SYSREG,
     { .name = "SPSR_IRQ", .state = ARM_CP_STATE_AA64,
       .type = ARM_CP_ALIAS,
       .opc0 = 3, .opc1 = 4, .crn = 4, .crm = 3, .opc2 = 0,
@@ -3736,7 +3738,6 @@ static const ARMCPRegInfo v8_cp_reginfo[] = {
     { .name = "SPSR_ABT", .state = ARM_CP_STATE_AA64,
       .type = ARM_CP_ALIAS,
       .opc0 = 3, .opc1 = 4, .crn = 4, .crm = 3, .opc2 = 1,
-      .access = PL2_RW,
       .access = PL2_RW | PL_NO_SYSREG,
       .fieldoffset = offsetof(CPUARMState, banked_spsr[BANK_ABT]) },
     { .name = "SPSR_UND", .state = ARM_CP_STATE_AA64,
@@ -4217,6 +4218,7 @@ static const ARMCPRegInfo el2_cp_reginfo[] = {
     { .name = "SP_EL2", .state = ARM_CP_STATE_AA64,
       .opc0 = 3, .opc1 = 6, .crn = 4, .crm = 1, .opc2 = 0,
       .access = PL3_RW, .type = ARM_CP_ALIAS,
+      .access = PL_IN_EXECUTIVE | PL3_RW | PL_NO_SYSREG,
       .fieldoffset = offsetof(CPUARMState, sp_el[2]) },
     { .name = "CPTR_EL2", .state = ARM_CP_STATE_BOTH,
       .opc0 = 3, .opc1 = 4, .crn = 1, .crm = 1, .opc2 = 2,
@@ -5453,6 +5455,7 @@ static const ARMCPRegInfo dcpop_reg[] = {
     { .name = "DC_CVAP", .state = ARM_CP_STATE_AA64,
       .opc0 = 1, .opc1 = 3, .crn = 7, .crm = 12, .opc2 = 1,
       .access = PL0_W, .type = ARM_CP_NO_RAW | ARM_CP_SUPPRESS_TB_END,
+      .access = PL0_W | PL_NO_SYSREG,
       .type = ARM_CP_IC_OR_DC_VA,
       .fgt = FGT_DCCVAP,
       .accessfn = aa64_cacheop_poc_access, .writefn = dccvap_writefn },
@@ -5588,7 +5591,7 @@ static const ARMCPRegInfo mte_reginfo[] = {
       .type = ARM_CP_NOP, .access = PL1_W, .accessfn = access_tsw },
     { .name = "DC_IGDVAC", .state = ARM_CP_STATE_AA64,
       .opc0 = 1, .opc1 = 0, .crn = 7, .crm = 6, .opc2 = 5,
-      .type = ARM_CP_NOP, .access = PL1_W,
+      .type = ARM_CP_NOP, .access = PL1_W | PL_NO_SYSREG,
       .fgt = FGT_DCIVAC,
       .accessfn = aa64_cacheop_poc_access },
     { .name = "DC_IGDSW", .state = ARM_CP_STATE_AA64,
@@ -7548,6 +7551,7 @@ void register_cp_regs_for_features(ARMCPU *cpu)
     // HCR controls a lot of these LETODO: Also have to pay attention to
     // restricted for RDDC and RSP.
         { .name = "DDC", .state = ARM_CP_STATE_AA64,
+          .access = PL1_RW | PL_IN_EXECUTIVE | PL_NO_SYSREG,
           .type = ARM_CP_CAP,
           .fieldoffset = offsetof(CPUARMState, sp_el[4]) },
           .resetvalue = 0 },
