@@ -20,6 +20,7 @@
         return;
     if (unlikely(do_checks)) {
 #ifdef TARGET_AARCH64
+            cheri_debug_assert(!(req_perms & CAP_PERM_STORE));
     if (have_cheri_tb_flags(ctx, TB_FLAG_CHERI_PCC_FULL_AS)) {
     // Note: JR/JALR will often be used in hybrid/non-CHERI cases, so we can
     // skip the less than check if pcc.base is zero and top is MAX:
