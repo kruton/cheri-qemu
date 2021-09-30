@@ -148,6 +148,8 @@ void CHERI_HELPER_IMPL(candaddr(CPUArchState *env, uint32_t cd, uint32_t cb,
             raise_cheri_exception(env, CapEx_SealViolation, cb);
             raise_cheri_exception(env, CapEx_LengthViolation, cb);
         assert(cap_get_top_full(&result) <= cap_get_top_full(cbp) &&
+#ifndef TARGET_AARCH64
+/* Morello does not have flags in the capability metadata */
     if (cbp->cr_tag && !cap_is_unsealed(cbp)) {
     bool is_subset = false;
     if (cbp->cr_tag == ctp->cr_tag &&
