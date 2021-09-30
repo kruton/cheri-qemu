@@ -1213,6 +1213,7 @@ const VMStateDescription vmstate_arm_cpu = {
         NULL
     }
 };
+/* clang-format on */
 
 const InterfaceInfo arm_machine_interfaces[] = {
     { TYPE_TARGET_ARM_MACHINE },
