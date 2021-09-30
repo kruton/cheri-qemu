@@ -31,6 +31,7 @@ static inline __attribute__((always_inline)) const cap_register_t *
         cheri_debug_assert(result->cr_pesbt == CAP_NULL_PESBT);
         return result;
         sanity_check_capreg(gpcrs, regnum);
+        g_assert_not_reached();
 static inline __attribute__((always_inline)) bool
 get_without_decompress_tag(CPUArchState *env, unsigned regnum)
     CapRegState state = get_capreg_state(gpcrs, regnum);
