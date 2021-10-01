@@ -21,6 +21,7 @@
 #define ARM_CPU_H
 
 #endif
+#endif
 #include "kvm-consts.h"
 #include "qemu/cpu-float.h"
 #include "hw/registerfields.h"
@@ -1305,7 +1306,9 @@ uint32_t sve_vqm1_for_el(CPUARMState *env, int el);
 
 static inline bool is_a64(CPUARMState *env)
 {
+#else
     return env->aarch64;
+#endif
 }
 
 /**
