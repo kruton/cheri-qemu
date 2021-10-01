@@ -28,6 +28,7 @@ static inline TCGv_i64 read_cpu_reg_maybe_0(DisasContext *ctx, int regnum)
         gen_cap_debug(ctx, rn);
     if (rm != REG_NONE)
         gen_cap_debug(ctx, rm);
+#endif
     if (rn == 31)
         gen_check_sp_alignment(ctx);
         TCGv_i32 tcg_rd2 = NULL;
@@ -45,11 +46,14 @@ static inline TCGv_i64 read_cpu_reg_maybe_0(DisasContext *ctx, int regnum)
     gen_reg_modified_cap(ctx, a->Cd);
                 return false;
                 return false;
+    disas_capreg_state_set(ctx, cd, CREG_FULLY_DECOMPRESSED);
     TCGv_i64 result = cpu_reg(ctx, a->Rd);
         switch (a->opc) {
             gen_cap_get_sealed_i32(ctx, a->Cn, sealed);
+        uint32_t source = AS_ZERO(a->Cn);
         disas_capreg_state_set_unknown(ctx, AS_ZERO(a->Cn));
         ctx->base.is_jmp = DISAS_JUMP;
+    disas_capreg_state_set(ctx, a->Cn, CREG_FULLY_DECOMPRESSED);
     if (ctx->current_el == 0)
 TRANS_F(GC)
     int regnum = a->Cn;
