@@ -182,6 +182,8 @@ typedef struct ARMPACKey {
     uint64_t lo, hi;
 } ARMPACKey;
 
+typedef aligned_cap_register_t AARCH_REG_TYPE;
+typedef uint64_t AARCH_REG_TYPE;
 /* See the commentary above the TBFLAG field definitions.  */
 typedef struct CPUARMTBFlags {
     uint32_t flags;
