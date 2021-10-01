@@ -1448,6 +1448,18 @@ void pmu_init(ARMCPU *cpu);
 #define SCTLR2_CPTM (1ULL << 11) /* FEAT_CPA2 */
 #define SCTLR2_CPTM0 (1ULL << 12) /* FEAT_CAP2 */
 
+#define CPTR_TTA_EL2  (1U << 28)
+#define CPTR_FPEN     (0b11U << 20)
+#define CPTR_FPEN_LO  (1U << 20)
+#define CPTR_FPEN_HI  (1U << 21)
+#define CPTR_CEN      (0b11U << 18)
+#define CPTR_CEN_LO   (1U << 18)
+#define CPTR_CEN_HI   (1U << 19)
+#define CPTR_ZEN      (0b11U << 16)
+#define CPTR_ZEN_LO   (1U << 16)
+#define CPTR_ZEN_HI   (1U << 17)
+#define CPTR_EC       (1U << 9)
+#define CPTR_TC       (1U << 9)
 #define CPSR_M (0x1fU)
 #define CPSR_T (1U << 5)
 #define CPSR_F (1U << 6)
