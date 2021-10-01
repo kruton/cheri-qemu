@@ -98,6 +98,8 @@ void CHERI_HELPER_IMPL(cbuildcap(CPUArchState *env, uint32_t cd, uint32_t cb,
     } else if (cap_has_reserved_bits_set(ctp)) {
         if (cap_is_sealed_entry(ctp)) {
             cap_make_sealed_entry(&derived);
+            /*
+             */
             /* For reserved otypes we return a null-derived value. */
 static void cseal_common(CPUArchState *env, uint32_t cd, uint32_t cs,
                          uintptr_t _host_return_address)
@@ -116,6 +118,7 @@ void CHERI_HELPER_IMPL(candaddr(CPUArchState *env, uint32_t cd, uint32_t cb,
     cincoffset_impl(env, cd, cb, diff, GETPC(), OOB_INFO(csetoffset));
     // CFromPtr traps on cbp == NULL so we use reg0 as $ddc to save encoding
                          uint32_t cb, target_ulong length,
+                         uintptr_t _host_return_address)
             raise_cheri_exception(env, CapEx_TagViolation, cb);
             raise_cheri_exception(env, CapEx_SealViolation, cb);
             raise_cheri_exception(env, CapEx_LengthViolation, cb);
@@ -168,6 +171,8 @@ bool load_cap_from_memory_raw(CPUArchState *env, target_ulong *pesbt,
     cheri_debug_assert(pc_is_current(env));
      * Note: we set pc=0 since PC will have been saved prior to calling the
      * helper. Therefore, we don't need to recompute it from the generated code.
+     * The PC fetched from the generated code will often be out-of-bounds, so
+     * fetching it will trigger an assertion.
     raise_cheri_exception_if(env, cause, addr, CHERI_EXC_REGNUM_PCC);
     CheriCapExcCause cause;
     raise_pcc_fault(env, cause, PC_ADDR(env));
