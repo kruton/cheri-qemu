@@ -2431,6 +2431,8 @@ FIELD(TBFLAG_ANY, PSTATE__IL, 11, 1)
 FIELD(TBFLAG_ANY, FGT_ACTIVE, 12, 1)
 FIELD(TBFLAG_ANY, FGT_SVC, 13, 1)
 
+// 1 if capability instructions are trapped
+FIELD(TBFLAG_CHERI, CAP_ENABLED, 10, 1)
 /*
  * Bit usage when in AArch32 state, both A- and M-profile.
  */
