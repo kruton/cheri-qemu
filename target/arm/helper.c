@@ -4286,8 +4286,8 @@ static const ARMCPRegInfo el2_cp_reginfo[] = {
       .access = PL2_RW, .resetvalue = 0,
       .resetvalue = 0,
       .nv2_redirect_offset = 0x90,
-      .fieldoffset = offsetof(CPUARMState, cp15.tpidr_el[2]) },
       .fieldoffset = offsetof(CPUARMState, cp15.tpidr_el[2]),
+      ALIAS_RTPIDR },
     { .name = "TTBR0_EL2", .state = ARM_CP_STATE_AA64,
       .opc0 = 3, .opc1 = 4, .crn = 2, .crm = 0, .opc2 = 0,
       .access = PL2_RW, .resetvalue = 0,
@@ -7550,14 +7550,18 @@ void register_cp_regs_for_features(ARMCPU *cpu)
     define_arm_cp_regs(cpu, claim_cp_reginfo);
     // HCR controls a lot of these LETODO: Also have to pay attention to
     // restricted for RDDC and RSP.
+    /* clang-format off */
         { .name = "DDC", .state = ARM_CP_STATE_AA64,
           .access = PL1_RW | PL_IN_EXECUTIVE | PL_NO_SYSREG,
+          .type = ARM_CP_CAP_ONLY,
           .type = ARM_CP_CAP,
           .fieldoffset = offsetof(CPUARMState, sp_el[4]) },
+          .resetvalue = 0 },
           .resetvalue = 0 },
           .fieldoffset = offsetof(CPUARMState, CCTLR_el[3]),
           .fieldoffset = offsetof(CPUARMState, CCTLR_el[0]),
           .type = ARM_CP_CAP_ON_MORELLO,
+          .fieldoffset = offsetof(CPUARMState, cp15.rtpidr_el0),
     define_pm_cpregs(cpu);
     define_gcs_cpregs(cpu);
 }
