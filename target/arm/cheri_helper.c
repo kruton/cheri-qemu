@@ -15,3 +15,5 @@
         cd_tagged = get_without_decompress_tag(env, cd);
         // Even if there is no store, we possibly need an MMU permission fault
         if (!cd_tagged)
+    assert(!tags || (cheri_is_system(env) &&
+                     !arm_is_tag_setting_disabled(env, arm_current_el(env))));
