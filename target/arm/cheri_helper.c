@@ -18,5 +18,9 @@
         cd_tagged = get_without_decompress_tag(env, cd);
         // Even if there is no store, we possibly need an MMU permission fault
         if (!cd_tagged)
+void helper_swap_cap_via_cap(CPUArchState *env, uint32_t ct, uint32_t cs,
+    // The first two arguments are backwards here as compared to compare and
+    // swap.
+    swap_cap_via_cap_impl(env, cs, ct, cb, addr, false, _host_return_address);
     assert(!tags || (cheri_is_system(env) &&
                      !arm_is_tag_setting_disabled(env, arm_current_el(env))));
