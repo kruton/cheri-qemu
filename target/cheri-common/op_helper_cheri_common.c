@@ -17,6 +17,7 @@
 #endif
     if (unlikely(cptr->cr_tag && is_cap_sealed(cptr))) {
     }
+#ifndef TARGET_MORELLO
     if (likely(addr_in_cap_bounds(cptr, new_addr))) {
         /* Common case: updating an in-bounds capability. */
     }
