@@ -1306,6 +1306,9 @@ uint32_t sve_vqm1_for_el(CPUARMState *env, int el);
 
 static inline bool is_a64(CPUARMState *env)
 {
+#ifdef TARGET_CHERI
+    // Morello does not support 32-bit, so might as well optimise everything away
+    return 1;
 #else
     return env->aarch64;
 #endif
