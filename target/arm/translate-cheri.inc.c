@@ -6,6 +6,7 @@
     return true;
 }
 {
+    }
 }
 }
         break;
@@ -77,4 +78,11 @@ TRANS_F(GC)
     helper(cpu_reg(ctx, a->Rd), tcg_env, cpu_reg(ctx, a->Rn));
     gen_cheri_cap_cap_imm(ctx, a->Cd, a->Cn, length,
                           &gen_helper_csetboundsexact);
+    if (!(a->opc & 2)) {
+        cheri_cap_cap_int_helper *helper = NULL;
+        if (a->opc == 0) {
+            helper = &gen_helper_csetbounds;
+        } else if (a->opc == 1) {
+            helper = &gen_helper_csetboundsexact;
+        return gen_cheri_cap_cap_int(ctx, a->Cd, a->Cn, a->Rm, helper);
     if (a->Rn == 31)
