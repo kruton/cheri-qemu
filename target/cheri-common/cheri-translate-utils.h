@@ -47,6 +47,7 @@
     // Exponent
     tcg_gen_movi_tl(temp, CAP_CC(NULL_EXP));
     tcg_gen_st8_tl(temp, tcg_env, offset + offsetof(cap_register_t, cr_exp));
+        tcg_gen_sync_tl(target_get_gpr_global(ctx, regnum));
     if (!lazy_capreg_number_is_special(regnum))
 // Does addr + offset <= top. If offset non zero, Addr MUST be a multiple of
 // offset.
