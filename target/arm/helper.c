@@ -3542,6 +3542,7 @@ static CPAccessResult access_exlock_el3(CPUARMState *env,
     return CP_ACCESS_OK;
 }
 
+/* clang-format off */
 #ifdef CONFIG_USER_ONLY
 /*
  * `IC IVAU` is handled to improve compatibility with JITs that dual-map their
@@ -3779,6 +3780,7 @@ static const ARMCPRegInfo v8_cp_reginfo[] = {
       .writefn = sdcr_write,
       .fieldoffset = offsetoflow32(CPUARMState, cp15.mdcr_el3) },
 };
+/* clang-format on */
 
 /* These are present only when EL1 supports AArch32 */
 static const ARMCPRegInfo v8_aa32_el1_reginfo[] = {
