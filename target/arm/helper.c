@@ -2743,14 +2743,25 @@ static uint64_t claim_read(CPUARMState *env, const ARMCPRegInfo *ri)
 }
 static void claim_set_write(CPUARMState *env, const ARMCPRegInfo *ri,
                             uint64_t value)
+{
     env->cp15.dbgclaim |= (value & 0xFF);
 static void claim_clear_write(CPUARMState *env, const ARMCPRegInfo *ri,
     env->cp15.dbgclaim &= ~(value & 0xFF);
+/* clang-format off */
 static const ARMCPRegInfo claim_cp_reginfo[] = {
+    { .name = "DBGCLAIMSET", .state = ARM_CP_STATE_BOTH,
+      .cp = 0b1110, .opc0 = 0b10, .crn = 0b0111, .opc1 = 0b000,
+      .crm = 0b1000, .opc2 = 0b110,
       .access = PL1_RW,
       .fieldoffset = offsetof(CPUARMState, cp15.dbgclaim),
+      .readfn = claim_read, .writefn = claim_set_write  },
     { .name = "DBGCLAIMCLR", .state = ARM_CP_STATE_BOTH,
+      .crm = 0b1001, .opc2 = 0b110,
       .access = PL1_RW,
+      .fieldoffset = offsetof(CPUARMState, cp15.dbgclaim),
+      .readfn = claim_read, .writefn = claim_clear_write },
+};
+/* clang-format on */
 static void vmsa_ttbcr_write(CPUARMState *env, const ARMCPRegInfo *ri,
                              uint64_t value)
 {
@@ -3748,6 +3759,7 @@ static const ARMCPRegInfo v8_cp_reginfo[] = {
       .type = ARM_CP_ALIAS,
       .opc0 = 3, .opc1 = 4, .crn = 4, .crm = 3, .opc2 = 2,
       .access = PL2_RW,
+      .access = PL2_RW | PL_NO_SYSREG,
       .fieldoffset = offsetof(CPUARMState, banked_spsr[BANK_UND]) },
     { .name = "SPSR_FIQ", .state = ARM_CP_STATE_AA64,
       .type = ARM_CP_ALIAS,
@@ -7558,14 +7570,20 @@ void register_cp_regs_for_features(ARMCPU *cpu)
         { .name = "DDC", .state = ARM_CP_STATE_AA64,
           .access = PL1_RW | PL_IN_EXECUTIVE | PL_NO_SYSREG,
           .type = ARM_CP_CAP_ONLY,
+          .type = ARM_CP_CAP_ONLY,
+        { .name = "RSP_EL0", .state = ARM_CP_STATE_AA64,
           .type = ARM_CP_CAP,
           .fieldoffset = offsetof(CPUARMState, sp_el[4]) },
+          .fieldoffset = offsetof(CPUARMState, chcr_el2),
           .resetvalue = 0 },
           .resetvalue = 0 },
           .fieldoffset = offsetof(CPUARMState, CCTLR_el[3]),
           .fieldoffset = offsetof(CPUARMState, CCTLR_el[0]),
           .type = ARM_CP_CAP_ON_MORELLO,
           .fieldoffset = offsetof(CPUARMState, cp15.rtpidr_el0),
+          .resetvalue = 0 },
+    };
+    /* clang-format on */
     define_pm_cpregs(cpu);
     define_gcs_cpregs(cpu);
 }
