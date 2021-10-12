@@ -10,6 +10,8 @@ static inline target_ulong cap_get_base(const cap_register_t *c)
 }
 static inline cap_offset_t cap_get_offset(const cap_register_t *c)
 /*
+ */
+    /*
 #endif
 #endif
     return false;
@@ -19,6 +21,11 @@ static inline cap_length_t cap_get_length_full(const cap_register_t *c)
 #ifndef TARGET_AARCH64
     cheri_debug_assert((!c->cr_tag || c->_cr_top >= c->cr_base) &&
                        "Tagged capabilities must be in bounds!");
+    target_ulong otype = CAP_cc(get_otype)(c);
+     * It is impossible to have out-of-range otypes in all targets for the
+     * currently used capability compression schemes.
+    cheri_debug_assert(otype <= CAP_MAX_REPRESENTABLE_OTYPE);
+    return otype;
         return result;
 #ifdef TARGET_AARCH64
     // Invalid exponent caps are always considered out of bounds.
