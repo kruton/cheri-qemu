@@ -18,7 +18,9 @@ static inline cap_offset_t cap_get_offset(const cap_register_t *c)
     /*
 #endif
 #endif
+#endif
     return false;
+#else
 #ifndef TARGET_AARCH64
     // TODO: should handle last byte of address space properly
 static inline cap_length_t cap_get_length_full(const cap_register_t *c)
@@ -34,6 +36,11 @@ static inline bool cap_otype_is_reserved(target_ulong otype)
         return result;
 static inline bool cap_is_sealed_with_reserved_otype(const cap_register_t *c)
     target_ulong otype = cap_get_otype_unsigned(c);
+    assert(cap_is_unsealed(c) && "Should only use this with unsealed caps");
+    assert(!cap_otype_is_reserved(type) &&
+           "Can't use this to set reserved otypes");
+    assert(cap_is_sealed_with_type(c) &&
+           "should not use this to unseal reserved types");
     CAP_cc(update_otype)(c, CAP_OTYPE_UNSEALED);
 static inline void cap_unseal_reserved_otype(cap_register_t *c)
     assert(c->cr_tag && cap_is_sealed_with_reserved_otype(c) &&
