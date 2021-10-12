@@ -9,6 +9,8 @@ static inline target_ulong cap_get_base(const cap_register_t *c)
 {
 }
 static inline cap_offset_t cap_get_offset(const cap_register_t *c)
+{
+}
 /*
  */
     /*
@@ -27,6 +29,12 @@ static inline cap_length_t cap_get_length_full(const cap_register_t *c)
     cheri_debug_assert(otype <= CAP_MAX_REPRESENTABLE_OTYPE);
     return otype;
         return result;
+static inline bool cap_is_sealed_with_reserved_otype(const cap_register_t *c)
+    target_ulong otype = cap_get_otype_unsigned(c);
+    CAP_cc(update_otype)(c, CAP_OTYPE_UNSEALED);
+static inline void cap_unseal_reserved_otype(cap_register_t *c)
+    assert(c->cr_tag && cap_is_sealed_with_reserved_otype(c) &&
+           "Should only be used with reserved object types");
 #ifdef TARGET_AARCH64
     // Invalid exponent caps are always considered out of bounds.
     if (!c->cr_bounds_valid)
