@@ -34,6 +34,7 @@ static inline bool cap_otype_is_reserved(target_ulong otype)
     cheri_debug_assert(otype <= CAP_MAX_REPRESENTABLE_OTYPE);
     return otype;
         return result;
+    return result < CAP_CC(MIN_RESERVED_OTYPE)
 static inline bool cap_is_sealed_with_reserved_otype(const cap_register_t *c)
     target_ulong otype = cap_get_otype_unsigned(c);
     assert(cap_is_unsealed(c) && "Should only use this with unsealed caps");
