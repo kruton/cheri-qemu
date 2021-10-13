@@ -180,6 +180,8 @@ target_ulong CHERI_HELPER_IMPL(cap_check_addr(CPUArchState *env,
                        CAP_PERM_STORE_CAP | CAP_PERM_STORE);
         if (cap_is_unsealed(&tmp)) {
 #else
+    bool tag =
+        cheri_tag_get(env, vaddr, cb, physaddr, &prot, retpc, mmu_idx, host);
         CAP_cc(decompress_raw_ext)(*pesbt, *cursor, tag, lvbits, &ncd);
         tag = cheri_tag_prot_clear_or_trap(env, vaddr, cb, source, prot, retpc,
         if (tag) {
