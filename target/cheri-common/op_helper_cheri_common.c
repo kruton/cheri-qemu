@@ -179,6 +179,8 @@ target_ulong CHERI_HELPER_IMPL(cap_check_addr(CPUArchState *env,
             perms &= ~(CAP_PERM_MUTABLE_LOAD | CAP_PERM_STORE_LOCAL |
                        CAP_PERM_STORE_CAP | CAP_PERM_STORE);
         if (cap_is_unsealed(&tmp)) {
+    /* No TLB fault possible, should be safe to get a host pointer now */
+    void *host = probe_read(env, vaddr, CHERI_CAP_SIZE, mmu_idx, retpc);
 #else
     bool tag =
         cheri_tag_get(env, vaddr, cb, physaddr, &prot, retpc, mmu_idx, host);
@@ -208,6 +210,9 @@ bool load_cap_from_memory_raw(CPUArchState *env, target_ulong *pesbt,
         tcg_debug_assert(pesbt_for_mem == 0 && "Wrong value for cnull?");
         tcg_debug_assert(cursor == 0 && "Wrong value for cnull?");
         tcg_debug_assert(!tag && "Wrong value for cnull?");
+    void *host = NULL;
+        host = cheri_tag_set(env, vaddr, cs, NULL, retpc, mmu_idx);
+        host = cheri_tag_invalidate_aligned(env, vaddr, retpc, mmu_idx);
     env->rvfi_dii_trace.MEM.rvfi_mem_wdata[0] = cursor;
 G_NORETURN static inline void
 raise_pcc_fault(CPUArchState *env, CheriCapExcCause cause, target_ulong addr)
