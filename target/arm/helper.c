@@ -2155,7 +2155,7 @@ static const ARMCPRegInfo generic_timer_cp_reginfo[] = {
     },
     { .name = "CNTVCT_EL0", .state = ARM_CP_STATE_AA64,
       .opc0 = 3, .opc1 = 3, .crn = 14, .crm = 0, .opc2 = 2,
-      .access = PL0_R, .type = ARM_CP_NO_RAW | ARM_CP_IO,
+      .access = PL0_R | PL_NO_SYSREG, .type = ARM_CP_NO_RAW | ARM_CP_IO,
       .accessfn = gt_vct_access, .readfn = gt_virt_cnt_read,
     },
     /* Comparison value, indicating when the timer goes off */
@@ -3664,7 +3664,7 @@ static const ARMCPRegInfo v8_cp_reginfo[] = {
       .accessfn = access_tocu },
     { .name = "DC_CIVAC", .state = ARM_CP_STATE_AA64,
       .opc0 = 1, .opc1 = 3, .crn = 7, .crm = 14, .opc2 = 1,
-      .access = PL0_W, .type = ARM_CP_NOP,
+      .access = PL0_W | PL_NO_SYSREG, .type = ARM_CP_IC_OR_DC_VA,
       .fgt = FGT_DCCIVAC,
       .accessfn = aa64_cacheop_poc_access },
     { .name = "DC_CISW", .state = ARM_CP_STATE_AA64,
@@ -5482,7 +5482,7 @@ static const ARMCPRegInfo dcpop_reg[] = {
 static const ARMCPRegInfo dcpodp_reg[] = {
     { .name = "DC_CVADP", .state = ARM_CP_STATE_AA64,
       .opc0 = 1, .opc1 = 3, .crn = 7, .crm = 13, .opc2 = 1,
-      .access = PL0_W, .type = ARM_CP_NO_RAW | ARM_CP_SUPPRESS_TB_END,
+      .access = PL0_W | PL_NO_SYSREG, .type = ARM_CP_NO_RAW | ARM_CP_SUPPRESS_TB_END,
       .fgt = FGT_DCCVADP,
       .accessfn = aa64_cacheop_poc_access, .writefn = dccvap_writefn },
 };
@@ -5600,7 +5600,7 @@ static const ARMCPRegInfo mte_reginfo[] = {
       .access = PL0_RW | PL_NO_SYSREG, .readfn = tco_read, .writefn = tco_write },
     { .name = "DC_IGVAC", .state = ARM_CP_STATE_AA64,
       .opc0 = 1, .opc1 = 0, .crn = 7, .crm = 6, .opc2 = 3,
-      .type = ARM_CP_NOP, .access = PL1_W,
+      .type = ARM_CP_NOP, .access = PL1_W | PL_NO_SYSREG,
       .fgt = FGT_DCIVAC,
       .accessfn = aa64_cacheop_poc_access },
     { .name = "DC_IGSW", .state = ARM_CP_STATE_AA64,
@@ -5643,7 +5643,7 @@ static const ARMCPRegInfo mte_tco_ro_reginfo[] = {
 static const ARMCPRegInfo mte_el0_cacheop_reginfo[] = {
     { .name = "DC_CGVAC", .state = ARM_CP_STATE_AA64,
       .opc0 = 1, .opc1 = 3, .crn = 7, .crm = 10, .opc2 = 3,
-      .type = ARM_CP_NOP, .access = PL0_W,
+      .type = ARM_CP_NOP, .access = PL0_W | PL_NO_SYSREG,
       .fgt = FGT_DCCVAC,
       .accessfn = aa64_cacheop_poc_access },
     { .name = "DC_CGDVAC", .state = ARM_CP_STATE_AA64,
@@ -5683,7 +5683,7 @@ static const ARMCPRegInfo mte_el0_cacheop_reginfo[] = {
       .accessfn = aa64_cacheop_poc_access },
     { .name = "DC_GVA", .state = ARM_CP_STATE_AA64,
       .opc0 = 1, .opc1 = 3, .crn = 7, .crm = 4, .opc2 = 3,
-      .access = PL0_W, .type = ARM_CP_DC_GVA,
+      .access = PL0_W | PL_NO_SYSREG, .type = ARM_CP_DC_GVA,
 #ifndef CONFIG_USER_ONLY
       /* Avoid overhead of an access check that always passes in user-mode */
       .accessfn = aa64_zva_access,
@@ -5692,7 +5692,7 @@ static const ARMCPRegInfo mte_el0_cacheop_reginfo[] = {
     },
     { .name = "DC_GZVA", .state = ARM_CP_STATE_AA64,
       .opc0 = 1, .opc1 = 3, .crn = 7, .crm = 4, .opc2 = 4,
-      .access = PL0_W, .type = ARM_CP_DC_GZVA,
+      .access = PL0_W | PL_NO_SYSREG, .type = ARM_CP_DC_GZVA,
 #ifndef CONFIG_USER_ONLY
       /* Avoid overhead of an access check that always passes in user-mode */
       .accessfn = aa64_zva_access,
