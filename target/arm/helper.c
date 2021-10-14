@@ -8668,6 +8668,7 @@ void aarch64_sync_32_to_64(CPUARMState *env)
     }
 
     env->pc = env->regs[15];
+#endif
 }
 
 /*
@@ -9305,6 +9306,7 @@ static void arm_cpu_do_interrupt_aarch64(CPUState *cs)
 
     const char *ESR_NAMES[] = {"ESR_EL0", "ESR_EL1", "ESR_EL2", "ESR_EL3"};
     const char *FAR_NAMES[] = {"FAR_EL0", "FAR_EL1", "FAR_EL2", "FAR_EL3"};
+#ifdef TARGET_CHERI
     const char *ELR_NAMES[] = {"ELR_EL0", "ELR_EL1", "ELR_EL2", "ELR_EL3"};
     const char *SPSR_NAMES[] = {"SPSR_EL0", "SPSR_EL1", "SPSR_EL2", "SPSR_EL3"};
     bool cap_exception = is_access_to_capabilities_enabled_at_el(env, new_el);
