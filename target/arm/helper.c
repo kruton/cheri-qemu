@@ -61,6 +61,12 @@ int compare_u64(const void *a, const void *b)
 #define CPREG_FIELD64(env, ri) \
     (*(uint64_t *)((char *)(env) + (ri)->fieldoffset))
 
+{
+    }
+cap_register_t read_raw_cp_reg_cap(CPUARMState *env, const ARMCPRegInfo *ri)
+    cap_register_t result;
+    raw_read_cap(env, ri, &result);
+    return result;
 uint64_t raw_read(CPUARMState *env, const ARMCPRegInfo *ri)
 {
     assert(ri->fieldoffset);
@@ -101,6 +107,8 @@ uint64_t read_raw_cp_reg(CPUARMState *env, const ARMCPRegInfo *ri)
 {
     /* Raw read of a coprocessor register (as needed for migration, etc). */
     if (ri->type & ARM_CP_CONST) {
+        assert(!cpreg_field_is_cap(ri) &&
+               "There are no constant cap cpregs (yet?).");
         return ri->resetvalue;
     } else if (ri->raw_readfn) {
         return ri->raw_readfn(env, ri);
@@ -7572,9 +7580,11 @@ void register_cp_regs_for_features(ARMCPU *cpu)
     set_max_perms_capability(env, &max_cap, 0);
     /* clang-format off */
         { .name = "DDC", .state = ARM_CP_STATE_AA64,
+          CAPRESETVALUE(max_cap) },
           .access = PL1_RW | PL_IN_EXECUTIVE | PL_NO_SYSREG,
           .type = ARM_CP_CAP_ONLY,
           .type = ARM_CP_CAP_ONLY,
+          .fieldoffset = offsetof(CPUARMState, DDCs[4]),
         { .name = "RSP_EL0", .state = ARM_CP_STATE_AA64,
           .type = ARM_CP_CAP,
           .fieldoffset = offsetof(CPUARMState, sp_el[4]) },
@@ -7583,6 +7593,7 @@ void register_cp_regs_for_features(ARMCPU *cpu)
           .resetvalue = 0 },
           .fieldoffset = offsetof(CPUARMState, CCTLR_el[3]),
           .fieldoffset = offsetof(CPUARMState, CCTLR_el[0]),
+          .fieldoffset = offsetof(CPUARMState, cid_el0) },
           .type = ARM_CP_CAP_ON_MORELLO,
           .fieldoffset = offsetof(CPUARMState, cp15.rtpidr_el0),
           .resetvalue = 0 },
