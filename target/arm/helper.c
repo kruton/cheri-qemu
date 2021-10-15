@@ -7568,6 +7568,8 @@ void register_cp_regs_for_features(ARMCPU *cpu)
     define_arm_cp_regs(cpu, claim_cp_reginfo);
     // HCR controls a lot of these LETODO: Also have to pay attention to
     // restricted for RDDC and RSP.
+    cap_register_t max_cap;
+    set_max_perms_capability(env, &max_cap, 0);
     /* clang-format off */
         { .name = "DDC", .state = ARM_CP_STATE_AA64,
           .access = PL1_RW | PL_IN_EXECUTIVE | PL_NO_SYSREG,
