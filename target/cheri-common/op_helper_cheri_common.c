@@ -102,8 +102,11 @@ void CHERI_HELPER_IMPL(cjalr(CPUArchState *env, uint32_t cd,
 {
 }
 {
+    }
+    return result;
 void CHERI_HELPER_IMPL(cbuildcap(CPUArchState *env, uint32_t cd, uint32_t cb,
                                  uint32_t ct))
+{
     cap_register_t result = *ctp;
     if (cb == 0) {
         result.cr_tag = false;
@@ -140,6 +143,7 @@ cincoffset_impl(CPUArchState *env, uint32_t cd, uint32_t cb, target_ulong rt,
 void CHERI_HELPER_IMPL(candaddr(CPUArchState *env, uint32_t cd, uint32_t cb,
     target_ulong cursor = get_capreg_cursor(env, cb);
     target_ulong target_addr = cursor & rt;
+    cap_register_t result;
     cincoffset_impl(env, cd, cb, diff, GETPC(), OOB_INFO(csetoffset));
     GET_HOST_RETPC();
     // CFromPtr traps on cbp == NULL so we use reg0 as $ddc to save encoding
@@ -202,7 +206,13 @@ bool load_cap_from_memory_raw_tag(CPUArchState *env, target_ulong *pesbt,
                                   hwaddr *physaddr, bool *raw_tag)
 bool load_cap_from_memory_raw(CPUArchState *env, target_ulong *pesbt,
                               const cap_register_t *source, target_ulong vaddr,
+cap_register_t load_and_decompress_cap_from_memory_raw(
+    CPUArchState *env, uint32_t cb, const cap_register_t *source,
     target_ulong vaddr, uintptr_t retpc, hwaddr *physaddr)
+    target_ulong pesbt, cursor;
+    bool tag = load_cap_from_memory_raw(env, &pesbt, &cursor, cb, source, vaddr,
+                                        retpc, physaddr);
+    CAP_cc(decompress_raw_ext)(pesbt, cursor, tag, lvbits, &result);
     target_ulong pesbt_for_mem = get_capreg_pesbt(env, cs) ^ CAP_MEM_XOR_MASK;
 #ifdef CONFIG_DEBUG_TCG
     if (get_capreg_state(cheri_get_gpcrs(env), cs) == CREG_INTEGER) {
