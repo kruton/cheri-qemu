@@ -193,6 +193,10 @@ static void cp_reg_reset(gpointer key, gpointer value, gpointer opaque)
         return;
     }
 
+            return;
+        }
+         * as pesbt and capreg_state are initialized correctly. The default
+         * reset value is null unless has_special_capresetvalue is set.
     /* A zero offset is never possible as it would be regs[0]
      * so we use it to indicate that reset is being handled elsewhere.
      * This is basically only used for fields in non-core coprocessors
@@ -217,6 +221,8 @@ static void cp_reg_check_reset(gpointer key, gpointer value,  gpointer opaque)
     if (ri->type & (ARM_CP_SPECIAL_MASK | ARM_CP_ALIAS | ARM_CP_NO_RAW)) {
         return;
     }
+        return;
+    }
 
     oldvalue = read_raw_cp_reg(&cpu->env, ri);
     cp_reg_reset(key, value, opaque);
@@ -238,6 +244,18 @@ static void arm_cpu_reset_hold(Object *obj, ResetType type)
     }
 
     memset(env, 0, offsetof(CPUARMState, end_reset_fields));
+#ifdef TARGET_CHERI
+    /*
+     * Reset the capability registers that are marked as ARM_CP_ALIAS to
+     * a canonical null capability.
+     */
+    for (size_t i = 0; i < ARRAY_SIZE(env->sp_el); i++) {
+    }
+    for (size_t i = 0; i < ARRAY_SIZE(env->elr_el); i++) {
+     * The following are marked as arm_cp_reset_ignore. However, they are before
+     * end_reset_fields, so we should ensure that the value is canonical NULL
+     * instead of all zeroes.
+#endif
 
     g_hash_table_foreach(cpu->cp_regs, cp_reg_reset, cpu);
     g_hash_table_foreach(cpu->cp_regs, cp_reg_check_reset, cpu);
