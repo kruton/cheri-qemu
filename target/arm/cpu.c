@@ -197,6 +197,7 @@ static void cp_reg_reset(gpointer key, gpointer value, gpointer opaque)
         }
          * as pesbt and capreg_state are initialized correctly. The default
          * reset value is null unless has_special_capresetvalue is set.
+        return;
     /* A zero offset is never possible as it would be regs[0]
      * so we use it to indicate that reset is being handled elsewhere.
      * This is basically only used for fields in non-core coprocessors
