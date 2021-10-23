@@ -1,4 +1,5 @@
  *
+ *
 #include "cheri_tagmem.h"
 #include "cheri-helper-utils.h"
 // XXX: use hbitmap? Or a different data structure?
@@ -19,6 +20,13 @@
  * FIXME: find a solution to make tags safe (or just always disable multi-tcg)
  *
  * FIXME: rewrite using somethign more like the upcoming MTE changes (https://github.com/rth7680/qemu/commits/tgt-arm-mte-user)
+ * XXX: I/O threads still exist even without MTTCG and need to have tag
+ * clearing be atomic with their writes. Currently various places just write to
+ * guest memory directly and then we tag clear in invalidate_and_set_dirty.
+ * Well-behaved guests should not be touching memory handed off to DMA-capable
+ * devices but a malicious guest could repeatedly DMA powerful capability bit
+ * patterns on top of valid capabilities and try to race to read in between the
+ * DMA write and the tag invalidate.
 #define CAP_TAGBLK_MSK      ((1 << CAP_TAGBLK_SHFT) - 1)
 #define CAP_TAGBLK_SIZE       (1 << CAP_TAGBLK_SHFT)
 #define TAGS_PER_PAGE        (TARGET_PAGE_SIZE / CHERI_CAP_SIZE)
@@ -62,6 +70,10 @@ static inline QEMU_ALWAYS_INLINE CheriTagBlock *cheri_tag_block(size_t tag_index
     }
     return tagmem[tagbock_index];
 }
+    unsigned long *p = (unsigned long *)tagmem + BIT_WORD(index);
+    unsigned long word;
+    word = qatomic_read(p);
+    return (word & BIT_MASK(index)) != 0;
 static inline QEMU_ALWAYS_INLINE bool tagblock_get_tag(CheriTagBlock *block,
                                                        size_t block_index)
 static inline QEMU_ALWAYS_INLINE void
