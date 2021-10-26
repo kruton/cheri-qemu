@@ -1,10 +1,23 @@
 #else
 #endif
+#define CHERI_DECLARE_ALIGNED_CC_CAP_T(suffix) \
+    typedef struct cc##suffix##_aligned_cap_t {                       \
+        cc##suffix##_cap_t cap;                                       \
+    } QEMU_ALIGNED(32) cc##suffix##_aligned_cap_t;                    \
+    _Static_assert(sizeof(cc##suffix##_aligned_cap_t) % 32 == 0,      \
+                   "QEMU_ALIGNED() broken?");                         \
+    _Static_assert(offsetof(cc##suffix##_aligned_cap_t, cap) == 0,    \
+                   "QEMU_ALIGNED() broken?");
+CHERI_DECLARE_ALIGNED_CC_CAP_T(64)
+CHERI_DECLARE_ALIGNED_CC_CAP_T(128)
+CHERI_DECLARE_ALIGNED_CC_CAP_T(128m)
 #  define CHERI_CAP_SIZE 8
 #  define CHERI_CAP_SIZE 16
 #else
+#endif
 #  define CHERI_MEM_OFFSET_METADATA 0
 #  define CHERI_MEM_OFFSET_CURSOR 0
+#ifdef TARGET_MORELLO
 #define CAP_PERMS_ALL CAP_CC(PERMS_ALL)
 #define CAP_UPERMS_ALL CAP_CC(UPERMS_ALL)
 #define CAP_UPERMS_SHFT CAP_CC(UPERMS_SHFT)
