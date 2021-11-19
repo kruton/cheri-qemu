@@ -1312,6 +1312,8 @@ static int get_physical_address(CPURISCVState *env, hwaddr *physical,
         masked_msbs = (addr >> (va_bits - 1)) & mask;
 
         if (masked_msbs != 0 && masked_msbs != mask) {
+            qemu_log_mask(CPU_LOG_MMU,
+                          __func__);
             return TRANSLATE_FAIL;
         }
     } else {
@@ -1386,6 +1388,10 @@ static int get_physical_address(CPURISCVState *env, hwaddr *physical,
         }
 
         if (res != MEMTX_OK) {
+            qemu_log_mask(
+                CPU_LOG_MMU,
+                "%s Translate fail: could not load pte at " HWADDR_FMT_plx "\n",
+                __func__, pte_addr);
             return TRANSLATE_FAIL;
         }
 
@@ -1422,6 +1428,8 @@ static int get_physical_address(CPURISCVState *env, hwaddr *physical,
 
         if (!(pte & PTE_V)) {
             /* Invalid PTE */
+            qemu_log_mask(CPU_LOG_MMU, "%s Translate fail: V not set\n",
+                          __func__);
             return TRANSLATE_FAIL;
         }
 
@@ -1441,6 +1449,7 @@ static int get_physical_address(CPURISCVState *env, hwaddr *physical,
     }
 
     /* No leaf pte at any translation level. */
+    qemu_log_mask(CPU_LOG_MMU, "%s Translate fail: no leaf PTE found (fall through)\n", __func__);
     return TRANSLATE_FAIL;
 
  leaf:
@@ -1464,6 +1473,8 @@ static int get_physical_address(CPURISCVState *env, hwaddr *physical,
     /* Check for reserved combinations of RWX flags. */
     switch (rwx) {
     case PTE_W | PTE_X:
+        qemu_log_mask(CPU_LOG_MMU, "%s Translate fail: Reserved WRX 011\n",
+                      __func__);
         return TRANSLATE_FAIL;
     case PTE_W:
         /* if bcfi enabled, PTE_W is not reserved and shadow stack page */
@@ -1536,6 +1547,8 @@ static int get_physical_address(CPURISCVState *env, hwaddr *physical,
     if (pte & PTE_U) {
         if (mode != PRV_U) {
             if (!mmuidx_sum(mmu_idx)) {
+                qemu_log_mask(CPU_LOG_MMU,
+                              __func__);
                 return TRANSLATE_FAIL;
             }
             /* SUM allows only read+write, not execute. */
@@ -1543,6 +1556,9 @@ static int get_physical_address(CPURISCVState *env, hwaddr *physical,
         }
     } else if (mode != PRV_S) {
         /* Supervisor PTE flags when not S mode */
+        qemu_log_mask(CPU_LOG_MMU,
+                      "%s Translate fail: user accessing non user page\n",
+                      __func__);
         return TRANSLATE_FAIL;
     }
 
@@ -1551,6 +1567,7 @@ static int get_physical_address(CPURISCVState *env, hwaddr *physical,
          * Access check failed, access check failures for shadow stack are
          * access faults.
          */
+            qemu_log_mask(CPU_LOG_MMU, "%s Translate fail: X bit not set\n", __func__);
         return sstack_page ? TRANSLATE_PMP_FAIL : TRANSLATE_FAIL;
     }
 
@@ -1610,6 +1627,9 @@ static int get_physical_address(CPURISCVState *env, hwaddr *physical,
              * Misconfigured PTE in ROM (AD bits are not preset) or
              * PTE is in IO space and can't be updated atomically.
              */
+            qemu_log_mask(CPU_LOG_MMU,
+                          "%s Translate fail: PTE in IO space\n",
+                          __func__);
             return TRANSLATE_FAIL;
         }
     }
