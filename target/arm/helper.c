@@ -7580,6 +7580,7 @@ void register_cp_regs_for_features(ARMCPU *cpu)
     set_max_perms_capability(env, &max_cap, 0);
     /* clang-format off */
         { .name = "DDC", .state = ARM_CP_STATE_AA64,
+          .opc0 = 3, .opc1 = 3, .crn = 4, .crm = 1, .opc2 = 1,
           CAPRESETVALUE(max_cap) },
           .access = PL1_RW | PL_IN_EXECUTIVE | PL_NO_SYSREG,
           .type = ARM_CP_CAP_ONLY,
@@ -7590,10 +7591,13 @@ void register_cp_regs_for_features(ARMCPU *cpu)
           .fieldoffset = offsetof(CPUARMState, sp_el[4]) },
           .fieldoffset = offsetof(CPUARMState, chcr_el2),
           .resetvalue = 0 },
+          .fieldoffset = offsetof(CPUARMState, cscr_el3),
           .resetvalue = 0 },
           .fieldoffset = offsetof(CPUARMState, CCTLR_el[3]),
           .fieldoffset = offsetof(CPUARMState, CCTLR_el[0]),
           .fieldoffset = offsetof(CPUARMState, cid_el0) },
+        { .name = "RTPIDR_EL0", .state = ARM_CP_STATE_AA64,
+          .opc0 = 3, .opc1 = 3, .crn = 13, .crm = 0, .opc2 = 4,
           .type = ARM_CP_CAP_ON_MORELLO,
           .fieldoffset = offsetof(CPUARMState, cp15.rtpidr_el0),
           .resetvalue = 0 },
