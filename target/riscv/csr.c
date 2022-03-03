@@ -5880,6 +5880,8 @@ static inline RISCVException riscv_csrrw_check(CPURISCVState *env,
     RISCVException ret = csr_ops[csrno].predicate(env, csrno);
     if (ret != RISCV_EXCP_NONE) {
         return ret;
+            return RISCV_EXCP_ILLEGAL_INST;
+        }
     }
 
 #if !defined(CONFIG_USER_ONLY)
