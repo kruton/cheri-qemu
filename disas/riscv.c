@@ -1100,6 +1100,8 @@ static const char rv_vreg_name_sym[32][4] = {
 #define rv_fmt_cd_offs0_rs1           "O\tC0,i(1)"
 #define rv_fmt_rd_cs2_offs0_cs1       "O\t0,C2,i(C1)"
 #define rv_fmt_rd_cs2_offs0_rs1       "O\t0,C2,i(1)"
+#define rv_fmt_rs1_rs2_bs             "O\t1,2,b"
+#define rv_fmt_rd_rs1_rnum            "O\t0,1,n"
 #define rv_fmt_cbo_rs1                "O\t1"
 #define rv_fmt_cbo_cs1                "O\tC1"
 /* The FLI.[HSDQ] numeric constants (0.0 for symbolic constants).
@@ -2579,6 +2581,7 @@ static const char *csr_name(int csrno)
     case 0x03bd: return "pmpaddr13";
     case 0x03be: return "pmpaddr14";
     case 0x03bf: return "pmpaddr15";
+    case 0x010a: return "senvcfg";
     case 0x03c0: return "pmpaddr16";
     case 0x03c1: return "pmpaddr17";
     case 0x03c2: return "pmpaddr18";
@@ -3136,7 +3139,6 @@ static rv_opcode decode_cheri_inst(rv_inst inst) {
             switch ((inst >> 12) & 0b111) {
             case 0: op = rv_op_fence; break;
             case 1: op = rv_op_fence_i; break;
-            case 2: op = rv_op_lq; break;
             case 2:
                 } else if (((inst >> 7) & 0b11111) == 0) {
                     switch (((inst >> 20) & 0b111111111111)) {
@@ -3260,6 +3262,7 @@ static rv_opcode decode_cheri_inst(rv_inst inst) {
                     break;
                 }
                 break;
+            case 2: op = rv_op_caddi; break;
             case 5:
                 switch ((inst >> 25) & 0b1111111) {
                 case 0: op = rv_op_srliw; break;
@@ -3271,8 +3274,6 @@ static rv_opcode decode_cheri_inst(rv_inst inst) {
             break;
         case 8:
             switch ((inst >> 12) & 0b111) {
-            case 3: op = rv_op_sd; break;
-            case 4: op = rv_op_sq; break;
             case 0: op = (flags & RISCV_DIS_FLAG_CAPMODE) ? rv_op_csb : rv_op_sb; break;
             case 1: op = (flags & RISCV_DIS_FLAG_CAPMODE) ? rv_op_csh : rv_op_sh; break;
             case 2: op = (flags & RISCV_DIS_FLAG_CAPMODE) ? rv_op_csw : rv_op_sw; break;
@@ -3485,6 +3486,11 @@ static rv_opcode decode_cheri_inst(rv_inst inst) {
             case 075: op = rv_op_czero_eqz; break;
             case 077: op = rv_op_czero_nez; break;
                 switch ((inst >> 20) & 0b11111) {
+                case 0b00000: op = rv_op_gctag; break;
+                case 0b00001: op = rv_op_gcperm; break;
+                case 0b00010: op = rv_op_gctype; break;
+                case 0b00100: op = rv_op_gchi; break;
+                case 0b00111: op = rv_op_cram; break;
                 }
                 break;
             case 130: op = rv_op_sh1add; break;
@@ -4296,8 +4302,10 @@ static rv_opcode decode_cheri_inst(rv_inst inst) {
         case 22:
             case 0: op = rv_op_addid; break;
                     break;
+                    switch ((inst >> 26) & 0b111111) {
                         break;
                     }
+                    break;
                     }
                 }
                 break;
@@ -4800,7 +4808,6 @@ static uint32_t operand_rnum(rv_inst inst)
     return (inst << 40) >> 60;
 }
 
-static uint32_t operand_vm(rv_inst inst)
 static uint32_t operand_scaled(rv_inst inst)
 {
     return (inst << 38) >> 63;
@@ -5174,6 +5181,8 @@ static void decode_inst_operands(rv_decode *dec, rv_isa isa)
         dec->rs1 = operand_rs1(inst);
         break;
     case rv_codec_cbo_rs1:
+        dec->rs1 = operand_rs1(inst);
+        break;
     case rv_codec_v_r:
         dec->rd = operand_rd(inst);
         dec->rs1 = operand_rs1(inst);
