@@ -43,6 +43,7 @@ static inline TCGv_i64 read_cpu_reg_maybe_0(DisasContext *ctx, int regnum)
                 (is_load ? gen_helper_load_cap_via_cap
                          : gen_helper_store_cap_via_cap)(tcg_env, tcg_rd, addr,
                 assert(rd2 == REG_NONE);
+        gen_reg_modified_cap(ctx, a->Rd);
         gen_lazy_cap_set_int(ctx, a->Rd);
     gen_reg_modified_cap(ctx, a->Cd);
                 return false;
