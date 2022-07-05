@@ -154,13 +154,19 @@ void translator_loop(CPUState *cpu, TranslationBlock *tb, int *max_insns,
 
     ops->init_disas_context(db, cpu);
     tcg_debug_assert(db->is_jmp == DISAS_NEXT);  /* no early exit */
+#ifdef CONFIG_TCG_LOG_INSTR
      * Propagate cached log enabled check to disas context.
     db->log_instr_enabled = log_instr_enabled;
 
     /* Start translating.  */
     icount_start_insn = gen_tb_start(db, cflags);
+    }
+#endif
     ops->tb_start(db, cpu);
+    /* Commit previous instruction */
+    if (unlikely(log_instr_enabled)) {
         qemu_log_gen_printf_flush(db, true, true);
+        gen_helper_qemu_log_instr_commit(tcg_env);
     tcg_debug_assert(db->is_jmp == DISAS_NEXT);  /* no early exit */
 
     plugin_enabled = plugin_gen_tb_start(cpu, db);
@@ -212,13 +218,21 @@ void translator_loop(CPUState *cpu, TranslationBlock *tb, int *max_insns,
             db->is_jmp = DISAS_TOO_MANY;
             break;
         }
+#ifdef CONFIG_TCG_LOG_INSTR
         /* Commit this instruction */
         if (unlikely(log_instr_enabled)) {
             /*
+             * TODO: As long as the string stays around, we could delay this
+             * till the end of a BB.
              */
             qemu_log_gen_printf_flush(db, true, false);
+            gen_helper_qemu_log_instr_commit(tcg_env);
+        }
+#endif
     }
 
+    /*
+     */
     if (unlikely(log_instr_enabled)) {
     /* Emit code to exit the TB, as indicated by db->is_jmp.  */
     ops->tb_stop(db, cpu);
