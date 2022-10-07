@@ -356,6 +356,11 @@ const VMStateInfo vmstate_info_fd = {
  * contrib) we shouldn't be pulling in cheri_defs.h where the aligned versions
  * are defined since that's a layering violation and vmstate is part of a
  * target-independent library that gets reused for each target.
+ * TODO: We probably shouldn't be serialising cr_extra, since that's not
+ * architectural state, and should instead always be creating fully
+ * decompressed capabilities, but using knowledge of the lazy capregs
+ * implementation would be a layering violation if the states aren't factored
+ * out to somewhere else.
 static int get_nullptr(QEMUFile *f, void *pv, size_t size,
                        const VMStateField *field)
 
