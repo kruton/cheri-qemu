@@ -347,6 +347,15 @@ const VMStateInfo vmstate_info_fd = {
     .put  = put_fd,
 };
 
+ *
+ * NB: The size assertions aren't strict to allow for ccX_aligned_cap_t arrays
+ * where field->size will be greater than an individual capability to ensure
+ * the right stride is used. Whilst we're happy to peek into the header-only
+ * library in target/cheri-common/cheri-compressed-cap to get the compression
+ * routines (which at this point means it probably belongs somewhere more like
+ * contrib) we shouldn't be pulling in cheri_defs.h where the aligned versions
+ * are defined since that's a layering violation and vmstate is part of a
+ * target-independent library that gets reused for each target.
 static int get_nullptr(QEMUFile *f, void *pv, size_t size,
                        const VMStateField *field)
 
