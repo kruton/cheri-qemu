@@ -260,6 +260,7 @@ static int riscv_gdb_set_virtual(CPUState *cs, uint8_t *mem_buf, int n)
 #define CHERI_GDB_NUM_GP_CAPREGS 32
 #define CHERI_GDB_NUM_SPECIAL_CAPREGS 2
 #define CHERI_GDB_NUM_CAPREGS (CHERI_GDB_NUM_GP_CAPREGS + CHERI_GDB_NUM_SPECIAL_CAPREGS)
+#define CHERI_GDB_NUM_REGS (CHERI_GDB_NUM_CAPREGS)
 static int riscv_gdb_get_cheri_reg(CPUState *cs, GByteArray *buf, int n)
 {
     if (n < 0)
