@@ -10013,37 +10013,3 @@ void gen_intermediate_code(CPUState *cpu, TranslationBlock *tb, int max_insns,
 
     translator_loop(cpu, tb, max_insns, pc, host_pc, ops, &dc.base);
 }
-
-void restore_state_to_opc(CPUARMState *env, TranslationBlock *tb,
-                          target_ulong *data)
-{
-    if (is_a64(env)) {
-#ifdef TARGET_CHERI
-        target_ulong new_pc;
-        if (TARGET_TB_PCREL) {
-            new_pc = (env->pc.cap._cr_cursor & TARGET_PAGE_MASK) | data[0];
-        } else {
-            new_pc = data[0];
-        }
-        assert(cap_is_in_bounds(_cheri_get_pcc_unchecked(env), new_pc, 4));
-        env->pc.cap._cr_cursor = new_pc;
-#else
-        if (TARGET_TB_PCREL) {
-            target_ulong new_pc = (env->pc & TARGET_PAGE_MASK) | data[0];
-            set_aarch_reg_to_x(env, &env->pc, new_pc);
-        } else {
-            set_aarch_reg_to_x(env, &env->pc, data[0]);
-        }
-#endif
-        env->condexec_bits = 0;
-        env->exception.syndrome = data[2] << ARM_INSN_START_WORD2_SHIFT;
-    } else {
-        if (TARGET_TB_PCREL) {
-            env->regs[15] = (env->regs[15] & TARGET_PAGE_MASK) | data[0];
-        } else {
-            env->regs[15] = data[0];
-        }
-        env->condexec_bits = data[1];
-        env->exception.syndrome = data[2] << ARM_INSN_START_WORD2_SHIFT;
-    }
-}

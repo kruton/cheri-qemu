@@ -665,9 +665,14 @@ static bool riscv_cpu_has_work(CPUState *cs)
 #endif
 }
 
-void restore_state_to_opc(CPURISCVState *env, TranslationBlock *tb,
-                          target_ulong *data)
+static void riscv_restore_state_to_opc(CPUState *cs,
+                                       const TranslationBlock *tb,
+                                       const uint64_t *data)
 {
+    RISCVCPU *cpu = RISCV_CPU(cs);
+    CPURISCVState *env = &cpu->env;
+    RISCVMXL xl = FIELD_EX32(tb->flags, TB_FLAGS, XL);
+
 #ifdef TARGET_CHERI
     assert(cap_is_in_bounds(&env->pcc, data[0], 1));
     if (unlikely(env->pcc._cr_cursor != data[0])) {
@@ -676,7 +681,7 @@ void restore_state_to_opc(CPURISCVState *env, TranslationBlock *tb,
             __func__, (target_ulong)env->pcc._cr_cursor, data[0]);
     }
 #endif
-    RISCVMXL xl = FIELD_EX32(tb->flags, TB_FLAGS, XL);
+
     riscv_update_pc(env, data[0], xl, /*can_be_unrepresentable=*/false);
     env->bins = data[1];
 }
@@ -1776,6 +1781,7 @@ static const struct SysemuCPUOps riscv_sysemu_ops = {
 static const struct TCGCPUOps riscv_tcg_ops = {
     .initialize = riscv_translate_init,
     .synchronize_from_tb = riscv_cpu_synchronize_from_tb,
+    .restore_state_to_opc = riscv_restore_state_to_opc,
     .debug_excp_handler = riscv_debug_excp_handler,
 
 #ifndef CONFIG_USER_ONLY
