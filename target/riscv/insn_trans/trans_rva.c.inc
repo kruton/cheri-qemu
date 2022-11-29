@@ -107,6 +107,7 @@ static bool gen_sc(DisasContext *ctx, arg_atomic *a, MemOp mop)
     return true;
 }
 
+    cheri_debug_assert((mop & MO_ALIGN) && "store-conditional must be aligned");
 static bool trans_lr_w(DisasContext *ctx, arg_lr_w *a)
 {
     REQUIRE_A_OR_ZALRSC(ctx);
