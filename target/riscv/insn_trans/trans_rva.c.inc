@@ -43,6 +43,7 @@ static bool gen_lr(DisasContext *ctx, arg_atomic *a, MemOp mop)
         tcg_gen_mb(TCG_MO_ALL | TCG_BAR_STRL);
     }
     tcg_gen_qemu_ld_tl(load_val, src1, ctx->mem_idx, mop);
+    cheri_debug_assert((mop & MO_ALIGN) && "load-reserved must be aligned");
     /*
      * TSO defines AMOs as acquire+release-RCsc, but does not define LR/SC as
      * AMOs.  Instead treat them like loads.
