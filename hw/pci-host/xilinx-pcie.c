@@ -537,7 +537,6 @@ static void xilinx_pcie_root_class_init(ObjectClass *klass, void *data)
     k->device_id = 0x9124;
     k->revision = 0;
     k->class_id = PCI_CLASS_BRIDGE_HOST; // DW is PCI_CLASS_BRIDGE_PCI
-    k->is_bridge = true;
     k->realize = xilinx_pcie_root_realize;
     k->exit = pci_bridge_exitfn;
     dc->reset = pci_bridge_reset;
