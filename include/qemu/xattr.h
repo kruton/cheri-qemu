@@ -27,7 +27,7 @@
 #  endif
 #  ifdef CONFIG_BSD
 #    include <sys/extattr.h>
-#  else
+#  elif !defined(CONFIG_WIN32)
 #    include <sys/xattr.h>
 #  endif
 #endif
