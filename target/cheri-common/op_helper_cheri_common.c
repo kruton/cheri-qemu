@@ -85,6 +85,7 @@ void CHERI_HELPER_IMPL(cjalr(CPUArchState *env, uint32_t cd,
     } else if (!cap_has_perms(code_cap, CAP_PERM_CINVOKE)) {
     } else if (!cap_has_perms(data_cap, CAP_PERM_CINVOKE)) {
     } else if (!cap_has_perms(code_cap, CAP_PERM_EXECUTE)) {
+    GET_HOST_RETPC_IF_TRAPPING_CHERI_ARCH();
     } else if (!cap_is_unsealed(csp)) {
     cap_register_t result = *csp;
                                   target_ulong rt))
@@ -111,6 +112,7 @@ void CHERI_HELPER_IMPL(cjalr(CPUArchState *env, uint32_t cd,
 void CHERI_HELPER_IMPL(cbuildcap(CPUArchState *env, uint32_t cd, uint32_t cb,
                                  uint32_t ct))
 {
+    DEFINE_RESULT_VALID;
     cap_register_t result = *ctp;
     if (cb == 0) {
         result.cr_tag = false;
