@@ -1,0 +1,1 @@
+#define CHERI_TAG_CLEAR_ON_INVALID(env)   0
