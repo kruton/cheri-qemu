@@ -10,6 +10,8 @@
                     "runtime. Call the _impl variant instead"))) helper_##name
 #endif
 /*
+ * These semantics are used for Morello and CHERI-RISC-V, whereas (legacy)
+ * CHERI-MIPS raises exceptions on invalid modifications.
  */
 {
 }
