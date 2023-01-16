@@ -16,6 +16,7 @@
 {
 }
 {
+    DEFINE_RESULT_VALID;
 #endif
     if (unlikely(cptr->cr_tag && is_cap_sealed(cptr))) {
         raise_cheri_exception_or_invalidate_impl(env, CapEx_SealViolation,
@@ -138,6 +139,8 @@ void CHERI_HELPER_IMPL(cbuildcap(CPUArchState *env, uint32_t cd, uint32_t cb,
     if (cb == 0) {
         result.cr_tag = false;
         update_capreg(env, cd, &result);
+        return;
+    }
 #endif
     const cap_register_t *cbp = get_capreg_0_is_ddc(env, cb);
         raise_cheri_exception_or_invalidate(env, CapEx_TagViolation, cb);
@@ -152,6 +155,8 @@ void CHERI_HELPER_IMPL(cbuildcap(CPUArchState *env, uint32_t cd, uint32_t cb,
                cap_get_all_perms(ctp)) {
         raise_cheri_exception_or_invalidate(env, CapEx_UserDefViolation, cb);
     } else if (cap_has_reserved_bits_set(ctp)) {
+        raise_cheri_exception_or_invalidate(env, CapEx_LengthViolation, ct);
+    if (!RESULT_VALID) {
     } else {
 #ifndef TARGET_AARCH64
 #endif
@@ -160,6 +165,7 @@ void CHERI_HELPER_IMPL(cbuildcap(CPUArchState *env, uint32_t cd, uint32_t cb,
             /*
              */
             result.cr_tag = 0;
+    update_capreg(env, cd, &result);
     GET_HOST_RETPC_IF_TRAPPING_CHERI_ARCH();
     DEFINE_RESULT_VALID;
             RESULT_VALID = false;
@@ -170,12 +176,23 @@ static void cseal_common(CPUArchState *env, uint32_t cd, uint32_t cs,
     DEFINE_RESULT_VALID;
     /*
      */
+        if (conditional) {
             update_capreg(env, cd, csp);
+        raise_cheri_exception_or_invalidate(env, CapEx_TagViolation, ct);
+        raise_cheri_exception_or_invalidate(env, CapEx_TagViolation, cs);
     } else if (conditional && !cap_is_unsealed(csp)) {
     } else if (conditional && !cap_cursor_in_bounds(ctp)) {
+    } else if (conditional &&
+               cap_get_cursor(ctp) == CAP_OTYPE_UNSEALED_SIGNED) {
     } else if (!conditional && !cap_is_unsealed(csp)) {
+        raise_cheri_exception_or_invalidate(env, CapEx_SealViolation, cs);
+        raise_cheri_exception_or_invalidate(env, CapEx_SealViolation, ct);
         raise_cheri_exception_or_invalidate(env, CapEx_PermitSealViolation, ct);
     } else if (!conditional && !cap_cursor_in_bounds(ctp)) {
+    } else if (!is_representable_cap_with_addr(csp, cap_get_cursor(csp))) {
+        raise_cheri_exception_or_invalidate(env, CapEx_InexactBounds, cs);
+    cap_register_t result = *csp;
+        result.cr_tag = false;
     /*
      */
     GET_HOST_RETPC_IF_TRAPPING_CHERI_ARCH();
