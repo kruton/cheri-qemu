@@ -122,6 +122,7 @@ void CHERI_HELPER_IMPL(cjalr(CPUArchState *env, uint32_t cd,
 {
     }
     return result;
+}
 void CHERI_HELPER_IMPL(cbuildcap(CPUArchState *env, uint32_t cd, uint32_t cb,
                                  uint32_t ct))
 {
@@ -130,26 +131,37 @@ void CHERI_HELPER_IMPL(cbuildcap(CPUArchState *env, uint32_t cd, uint32_t cb,
     cap_register_t result = *ctp;
     if (cb == 0) {
         result.cr_tag = false;
+        update_capreg(env, cd, &result);
 #endif
     const cap_register_t *cbp = get_capreg_0_is_ddc(env, cb);
+        raise_cheri_exception_or_invalidate(env, CapEx_TagViolation, cb);
+        raise_cheri_exception_or_invalidate(env, CapEx_LengthViolation, cb);
+        raise_cheri_exception_or_invalidate(env, CapEx_SealViolation, cb);
     } else if (cap_get_base(ctp) < cap_get_base(cbp)) {
     } else if (cap_get_top_full(ctp) > cap_get_top_full(cbp)) {
     } else if (cap_get_base(ctp) > cap_get_top_full(ctp)) {
         // check for length < 0 - possible because cs2 might be untagged
+        raise_cheri_exception_or_invalidate(env, CapEx_LengthViolation, ct);
     } else if ((cap_get_all_perms(ctp) & cap_get_all_perms(cbp)) !=
                cap_get_all_perms(ctp)) {
+        raise_cheri_exception_or_invalidate(env, CapEx_UserDefViolation, cb);
     } else if (cap_has_reserved_bits_set(ctp)) {
+    } else {
 #ifndef TARGET_AARCH64
 #endif
         if (cap_is_sealed_entry(ctp)) {
             cap_make_sealed_entry(&derived);
             /*
              */
+            result.cr_tag = 0;
+    GET_HOST_RETPC_IF_TRAPPING_CHERI_ARCH();
     DEFINE_RESULT_VALID;
             RESULT_VALID = false;
             /* For reserved otypes we return a null-derived value. */
+    cap_register_t result = *cbp;
 static void cseal_common(CPUArchState *env, uint32_t cd, uint32_t cs,
                          uintptr_t _host_return_address)
+    DEFINE_RESULT_VALID;
     /*
      */
             update_capreg(env, cd, csp);
@@ -158,6 +170,10 @@ static void cseal_common(CPUArchState *env, uint32_t cd, uint32_t cs,
     } else if (!conditional && !cap_is_unsealed(csp)) {
         raise_cheri_exception_or_invalidate(env, CapEx_PermitSealViolation, ct);
     } else if (!conditional && !cap_cursor_in_bounds(ctp)) {
+    /*
+     */
+        CAP_cc(update_otype)(&result, CAP_OTYPE_UNSEALED);
+#endif
 static inline QEMU_ALWAYS_INLINE void
 cincoffset_impl(CPUArchState *env, uint32_t cd, uint32_t cb, target_ulong rt,
                 uintptr_t retpc, struct oob_stats_info *oob_info)
@@ -196,6 +212,7 @@ void CHERI_HELPER_IMPL(candaddr(CPUArchState *env, uint32_t cd, uint32_t cb,
     return cap_check_common(CAP_PERM_LOAD | CAP_PERM_STORE, env, cb, offset,
 target_ulong CHERI_HELPER_IMPL(cap_check_addr(CPUArchState *env,
                                               uint32_t required_perms))
+    GET_HOST_RETPC();
     GET_HOST_RETPC();
     const cap_register_t *ddc = cheri_get_ddc(env);
     const target_ulong checked_addr =
@@ -245,6 +262,7 @@ cap_register_t load_and_decompress_cap_from_memory_raw(
     void *host = NULL;
         host = cheri_tag_set(env, vaddr, cs, NULL, retpc, mmu_idx);
         host = cheri_tag_invalidate_aligned(env, vaddr, retpc, mmu_idx);
+#else
     env->rvfi_dii_trace.MEM.rvfi_mem_wdata[0] = cursor;
 G_NORETURN static inline void
 raise_pcc_fault(CPUArchState *env, CheriCapExcCause cause, target_ulong addr)
