@@ -18,6 +18,7 @@
 {
 #endif
     if (unlikely(cptr->cr_tag && is_cap_sealed(cptr))) {
+        raise_cheri_exception_or_invalidate_impl(env, CapEx_SealViolation,
     }
 #ifndef TARGET_MORELLO
     if (likely(addr_in_cap_bounds(cptr, new_addr))) {
@@ -26,6 +27,8 @@
     /* Result is out-of-bounds, check if it's representable. */
 #endif
         }
+        cap_register_t result = *cptr;
+    } else {
         /* (Possibly) out-of-bounds but still representable. */
         check_out_of_bounds_stat(env, oob_info,
                                  get_readonly_capreg(env, regnum_dst),
@@ -55,9 +58,11 @@ void CHERI_HELPER_IMPL(pcc_check_bounds(CPUArchState *env, target_ulong addr,
 {
 }
 }
+}
      * CGetBase: Move Base to a General-Purpose Register.
     return (target_ulong)cap_get_base(get_readonly_capreg(env, cb));
     const cap_register_t *cbp = get_readonly_capreg(env, cb);
+    target_ulong perms = cap_get_all_perms(cbp);
                        "Unknown permission bits set!");
 #endif
      * CGetTag: Move Tag to a General-Purpose Register
@@ -82,12 +87,20 @@ void CHERI_HELPER_IMPL(cjalr(CPUArchState *env, uint32_t cd,
     const target_ulong cursor = cap_get_cursor(cbp);
     GET_HOST_RETPC();
         raise_cheri_exception_branch(env, CapEx_SealViolation, data_regnum);
+        raise_cheri_exception_branch(env, CapEx_TypeViolation, code_regnum);
     } else if (!cap_has_perms(code_cap, CAP_PERM_CINVOKE)) {
     } else if (!cap_has_perms(data_cap, CAP_PERM_CINVOKE)) {
     } else if (!cap_has_perms(code_cap, CAP_PERM_EXECUTE)) {
+        raise_cheri_exception_branch(env, CapEx_LengthViolation, code_regnum);
     GET_HOST_RETPC_IF_TRAPPING_CHERI_ARCH();
+        raise_cheri_exception_or_invalidate(env, CapEx_TagViolation, cs);
     } else if (!cap_is_unsealed(csp)) {
+        raise_cheri_exception_or_invalidate(env, CapEx_SealViolation, cs);
+        raise_cheri_exception(env, CapEx_PermitExecuteViolation, cs);
     cap_register_t result = *csp;
+    if (!RESULT_VALID) {
+    CAP_cc(update_otype)(&result, CAP_OTYPE_SENTRY);
+    update_capreg(env, cd, &result);
                                   target_ulong rt))
         raise_cheri_exception(env, CapEx_TagViolation, cs);
     } else if ((cap_get_all_perms(csp) & rt) != rt) {
@@ -112,6 +125,7 @@ void CHERI_HELPER_IMPL(cjalr(CPUArchState *env, uint32_t cd,
 void CHERI_HELPER_IMPL(cbuildcap(CPUArchState *env, uint32_t cd, uint32_t cb,
                                  uint32_t ct))
 {
+    GET_HOST_RETPC_IF_TRAPPING_CHERI_ARCH();
     DEFINE_RESULT_VALID;
     cap_register_t result = *ctp;
     if (cb == 0) {
@@ -131,6 +145,7 @@ void CHERI_HELPER_IMPL(cbuildcap(CPUArchState *env, uint32_t cd, uint32_t cb,
             cap_make_sealed_entry(&derived);
             /*
              */
+    DEFINE_RESULT_VALID;
             RESULT_VALID = false;
             /* For reserved otypes we return a null-derived value. */
 static void cseal_common(CPUArchState *env, uint32_t cd, uint32_t cs,
@@ -181,6 +196,7 @@ void CHERI_HELPER_IMPL(candaddr(CPUArchState *env, uint32_t cd, uint32_t cb,
     return cap_check_common(CAP_PERM_LOAD | CAP_PERM_STORE, env, cb, offset,
 target_ulong CHERI_HELPER_IMPL(cap_check_addr(CPUArchState *env,
                                               uint32_t required_perms))
+    GET_HOST_RETPC();
     const cap_register_t *ddc = cheri_get_ddc(env);
     const target_ulong checked_addr =
     if (tag && (prot & PAGE_LC_CLEAR)) {
