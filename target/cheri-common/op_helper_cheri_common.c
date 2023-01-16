@@ -59,6 +59,7 @@ void CHERI_HELPER_IMPL(pcc_check_bounds(CPUArchState *env, target_ulong addr,
 }
 }
 }
+}
      * CGetBase: Move Base to a General-Purpose Register.
     return (target_ulong)cap_get_base(get_readonly_capreg(env, cb));
     const cap_register_t *cbp = get_readonly_capreg(env, cb);
@@ -68,6 +69,7 @@ void CHERI_HELPER_IMPL(pcc_check_bounds(CPUArchState *env, target_ulong addr,
      * CGetTag: Move Tag to a General-Purpose Register
     const target_long otype = cap_get_otype_signext(cbp);
 #else
+#endif
     cap_register_t result = *cbp;
     result.cr_tag = 0;
     update_capreg(env, cd, &result);
@@ -83,9 +85,11 @@ void CHERI_HELPER_IMPL(pcc_check_bounds(CPUArchState *env, target_ulong addr,
             cap_make_sealed_entry(&result);
                                  uintptr_t _host_return_address)
 #ifdef TARGET_RISCV
+        raise_cheri_exception_branch(env, CapEx_TagViolation, target_reg);
 void CHERI_HELPER_IMPL(cjalr(CPUArchState *env, uint32_t cd,
     const target_ulong cursor = cap_get_cursor(cbp);
     GET_HOST_RETPC();
+    } else if (!data_cap->cr_tag) {
         raise_cheri_exception_branch(env, CapEx_SealViolation, data_regnum);
         raise_cheri_exception_branch(env, CapEx_TypeViolation, code_regnum);
     } else if (!cap_has_perms(code_cap, CAP_PERM_CINVOKE)) {
@@ -93,9 +97,11 @@ void CHERI_HELPER_IMPL(cjalr(CPUArchState *env, uint32_t cd,
     } else if (!cap_has_perms(code_cap, CAP_PERM_EXECUTE)) {
         raise_cheri_exception_branch(env, CapEx_LengthViolation, code_regnum);
     GET_HOST_RETPC_IF_TRAPPING_CHERI_ARCH();
+    if (!csp->cr_tag) {
         raise_cheri_exception_or_invalidate(env, CapEx_TagViolation, cs);
     } else if (!cap_is_unsealed(csp)) {
         raise_cheri_exception_or_invalidate(env, CapEx_SealViolation, cs);
+#ifdef TARGET_MIPS
         raise_cheri_exception(env, CapEx_PermitExecuteViolation, cs);
     cap_register_t result = *csp;
     if (!RESULT_VALID) {
@@ -172,6 +178,7 @@ static void cseal_common(CPUArchState *env, uint32_t cd, uint32_t cs,
     } else if (!conditional && !cap_cursor_in_bounds(ctp)) {
     /*
      */
+    GET_HOST_RETPC_IF_TRAPPING_CHERI_ARCH();
         CAP_cc(update_otype)(&result, CAP_OTYPE_UNSEALED);
 #endif
 static inline QEMU_ALWAYS_INLINE void
@@ -216,6 +223,7 @@ target_ulong CHERI_HELPER_IMPL(cap_check_addr(CPUArchState *env,
     GET_HOST_RETPC();
     const cap_register_t *ddc = cheri_get_ddc(env);
     const target_ulong checked_addr =
+    GET_HOST_RETPC();
     if (tag && (prot & PAGE_LC_CLEAR)) {
     if ((tag && (prot & PAGE_LC_TRAP)) || (prot & PAGE_LC_TRAP_ANY))
     if (!cap_has_perms(source, CAP_PERM_MUTABLE_LOAD)) {
