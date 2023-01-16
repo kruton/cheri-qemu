@@ -160,6 +160,7 @@ void CHERI_HELPER_IMPL(cbuildcap(CPUArchState *env, uint32_t cd, uint32_t cb,
     }
     if (!RESULT_VALID) {
     } else {
+        }
 #ifndef TARGET_AARCH64
 #endif
         if (cap_is_sealed_entry(ctp)) {
@@ -174,6 +175,7 @@ void CHERI_HELPER_IMPL(cbuildcap(CPUArchState *env, uint32_t cd, uint32_t cb,
         raise_cheri_exception_or_invalidate(env, CapEx_TagViolation, cb);
         raise_cheri_exception_or_invalidate(env, CapEx_SealViolation, cb);
             RESULT_VALID = false;
+        } else {
             /* For reserved otypes we return a null-derived value. */
             update_capreg(env, cd, &result);
             return;
@@ -202,19 +204,27 @@ static void cseal_common(CPUArchState *env, uint32_t cd, uint32_t cs,
     } else if (!is_representable_cap_with_addr(csp, cap_get_cursor(csp))) {
         raise_cheri_exception_or_invalidate(env, CapEx_InexactBounds, cs);
     cap_register_t result = *csp;
+    if (!RESULT_VALID) {
         result.cr_tag = false;
+    update_capreg(env, cd, &result);
     /*
      */
     GET_HOST_RETPC_IF_TRAPPING_CHERI_ARCH();
     DEFINE_RESULT_VALID;
+        raise_cheri_exception_or_invalidate(env, CapEx_TagViolation, cs);
+        raise_cheri_exception_or_invalidate(env, CapEx_SealViolation, cs);
     } else if (!cap_is_sealed_with_type(csp)) {
+        raise_cheri_exception_or_invalidate(env, CapEx_PermitUnsealViolation,
+    cap_register_t result = *csp;
         CAP_cc(update_otype)(&result, CAP_OTYPE_UNSEALED);
 #endif
 static inline QEMU_ALWAYS_INLINE void
 cincoffset_impl(CPUArchState *env, uint32_t cd, uint32_t cb, target_ulong rt,
                 uintptr_t retpc, struct oob_stats_info *oob_info)
     GET_HOST_RETPC_IF_TRAPPING_CHERI_ARCH();
+    DEFINE_RESULT_VALID;
     cap_register_t result = *cbp;
+        result.cr_tag = 0;
 void CHERI_HELPER_IMPL(candaddr(CPUArchState *env, uint32_t cd, uint32_t cb,
     target_ulong cursor = get_capreg_cursor(env, cb);
     target_ulong target_addr = cursor & rt;
@@ -231,6 +241,7 @@ void CHERI_HELPER_IMPL(candaddr(CPUArchState *env, uint32_t cd, uint32_t cb,
         assert(cap_get_top_full(&result) <= cap_get_top_full(cbp) &&
 #ifndef TARGET_AARCH64
 /* Morello does not have flags in the capability metadata */
+    GET_HOST_RETPC_IF_TRAPPING_CHERI_ARCH();
     if (cbp->cr_tag && !cap_is_unsealed(cbp)) {
     bool is_subset = false;
     if (cbp->cr_tag == ctp->cr_tag &&
@@ -305,6 +316,7 @@ cap_register_t load_and_decompress_cap_from_memory_raw(
         host = cheri_tag_invalidate_aligned(env, vaddr, retpc, mmu_idx);
 #else
     env->rvfi_dii_trace.MEM.rvfi_mem_wdata[0] = cursor;
+    GET_HOST_RETPC();
 G_NORETURN static inline void
 raise_pcc_fault(CPUArchState *env, CheriCapExcCause cause, target_ulong addr)
     cheri_debug_assert(pc_is_current(env));
