@@ -204,6 +204,7 @@ void CHERI_HELPER_IMPL(cbuildcap(CPUArchState *env, uint32_t cd, uint32_t cb,
     update_capreg(env, cd, &result);
     GET_HOST_RETPC_IF_TRAPPING_CHERI_ARCH();
     DEFINE_RESULT_VALID;
+    if (!cbp->cr_tag) {
         raise_cheri_exception_or_invalidate(env, CapEx_TagViolation, cb);
         raise_cheri_exception_or_invalidate(env, CapEx_SealViolation, cb);
             RESULT_VALID = false;
@@ -212,6 +213,7 @@ void CHERI_HELPER_IMPL(cbuildcap(CPUArchState *env, uint32_t cd, uint32_t cb,
             update_capreg(env, cd, &result);
             return;
     if (cap_get_otype_unsigned(ctp) < cap_get_base(cbp)) {
+        raise_cheri_exception_or_invalidate(env, CapEx_LengthViolation, cb);
     cap_register_t result = *cbp;
     if (!RESULT_VALID) {
         result.cr_tag = 0;
@@ -220,9 +222,11 @@ static void cseal_common(CPUArchState *env, uint32_t cd, uint32_t cs,
     DEFINE_RESULT_VALID;
     /*
      */
+    if (!ctp->cr_tag) {
         if (conditional) {
             update_capreg(env, cd, csp);
         raise_cheri_exception_or_invalidate(env, CapEx_TagViolation, ct);
+    } else if (!csp->cr_tag) {
         raise_cheri_exception_or_invalidate(env, CapEx_TagViolation, cs);
     } else if (conditional && !cap_is_unsealed(csp)) {
     } else if (conditional && !cap_cursor_in_bounds(ctp)) {
