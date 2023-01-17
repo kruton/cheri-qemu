@@ -218,6 +218,9 @@ static void cseal_common(CPUArchState *env, uint32_t cd, uint32_t cs,
     cap_register_t result = *csp;
     if (!RESULT_VALID) {
         result.cr_tag = false;
+        uint32_t new_otype = (uint32_t)ct_base_plus_offset;
+        new_otype &= CAP_OTYPE_ALL_BITS;
+        CAP_cc(update_otype)(&result, new_otype);
     } else {
     update_capreg(env, cd, &result);
     /*
