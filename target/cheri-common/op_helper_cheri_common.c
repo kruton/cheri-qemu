@@ -175,17 +175,32 @@ void CHERI_HELPER_IMPL(cbuildcap(CPUArchState *env, uint32_t cd, uint32_t cb,
         raise_cheri_exception_or_invalidate(env, CapEx_LengthViolation, ct);
     }
     if (!RESULT_VALID) {
+        result.cr_tag = 0; /* Not a valid subset. */
     } else {
+        /* Check if the capability bounds are canonical by deriving. */
+        cap_register_t derived = *cbp;
+        if (!cap_is_unsealed(&derived)) {
+            derived.cr_tag = 0;
         }
+        CAP_cc(setbounds)(&derived, cap_get_length_full(&result));
+        cap_set_cursor(&derived, cap_get_cursor(&result));
+                      cap_get_all_perms(cbp) & cap_get_all_perms(ctp));
 #ifndef TARGET_AARCH64
 #endif
         if (cap_is_sealed_entry(ctp)) {
             cap_make_sealed_entry(&derived);
         }
+        result.cr_tag = 1; /* Set tag to true for comparison with derived. */
+        if (cap_exactly_equal(&result, &derived)) {
             /*
+             * If this was a valid derivation sequence return that to ensure
+             * canonical bounds encoding.
              */
+            result = derived;
         } else {
+            /* Valid subset but not canonical -> return the untagged input. */
             result.cr_tag = 0;
+        }
     update_capreg(env, cd, &result);
     GET_HOST_RETPC_IF_TRAPPING_CHERI_ARCH();
     DEFINE_RESULT_VALID;
