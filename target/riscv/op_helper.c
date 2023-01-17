@@ -297,6 +297,12 @@ target_ulong helper_sret(CPURISCVState *env)
     if (!(env->priv >= PRV_S)) {
         riscv_raise_exception(env, RISCV_EXCP_ILLEGAL_INST, GETPC());
     }
+#ifdef TARGET_CHERI
+    if (!cheri_have_access_sysregs(env)) {
+        raise_cheri_exception_impl(env, CapEx_AccessSystemRegsViolation,
+                                   CHERI_EXC_REGNUM_PCC, 0, true, GETPC());
+    }
+#endif
 
     target_ulong retpc = env->sepc & get_xepc_mask(env);
     if (!riscv_cpu_allow_16bit_insn(&env_archcpu(env)->cfg,
@@ -388,6 +394,12 @@ static void check_ret_from_m_mode(CPURISCVState *env, target_ulong retpc,
     if (!(env->priv >= PRV_M)) {
         riscv_raise_exception(env, RISCV_EXCP_ILLEGAL_INST, ra);
     }
+#ifdef TARGET_CHERI
+    if (!cheri_have_access_sysregs(env)) {
+        raise_cheri_exception_impl(env, CapEx_AccessSystemRegsViolation,
+                                   CHERI_EXC_REGNUM_PCC, 0, true, GETPC());
+    }
+#endif
 
     if (!riscv_cpu_allow_16bit_insn(&env_archcpu(env)->cfg,
                                     env->priv_ver,
