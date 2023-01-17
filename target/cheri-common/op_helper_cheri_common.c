@@ -22,6 +22,8 @@
         raise_cheri_exception_or_invalidate_impl(env, CapEx_SealViolation,
     }
 #ifndef TARGET_MORELLO
+    /*
+     */
     if (likely(addr_in_cap_bounds(cptr, new_addr))) {
         /* Common case: updating an in-bounds capability. */
     }
@@ -60,6 +62,7 @@ void CHERI_HELPER_IMPL(pcc_check_bounds(CPUArchState *env, target_ulong addr,
 }
 }
 }
+    }
 }
      * CGetBase: Move Base to a General-Purpose Register.
     return (target_ulong)cap_get_base(get_readonly_capreg(env, cb));
@@ -77,6 +80,7 @@ void CHERI_HELPER_IMPL(pcc_check_bounds(CPUArchState *env, target_ulong addr,
     update_target_for_jump(env, &next_pcc, cjalr_flags);
 #else
     cheri_debug_assert(cap_is_unsealed(target) || cap_is_sealed_entry(target));
+#endif
     if (next_pcc.cr_tag && cap_is_sealed_entry(&next_pcc)) {
         next_pcc.cr_tag = 0;
     if (link_reg != NULL_CAPREG_INDEX) {
@@ -87,6 +91,7 @@ void CHERI_HELPER_IMPL(pcc_check_bounds(CPUArchState *env, target_ulong addr,
                                  uintptr_t _host_return_address)
 #ifdef TARGET_RISCV
         raise_cheri_exception_branch(env, CapEx_TagViolation, target_reg);
+        raise_cheri_exception_branch(env, CapEx_PermitExecuteViolation,
 void CHERI_HELPER_IMPL(cjalr(CPUArchState *env, uint32_t cd,
     const target_ulong cursor = cap_get_cursor(cbp);
     GET_HOST_RETPC();
@@ -103,6 +108,12 @@ void CHERI_HELPER_IMPL(cjalr(CPUArchState *env, uint32_t cd,
     } else if (!cap_is_unsealed(csp)) {
         raise_cheri_exception_or_invalidate(env, CapEx_SealViolation, cs);
 #ifdef TARGET_MIPS
+     * The legacy MIPS testsuite expects traps when attempting to seal
+     * non-executable capabilities with CSealEntry.
+     * Keep this code rather than fixing the MIPS testsuite. We can GC this
+     * workaround once we completely drop MIPS support (most likely once we
+     * have a CHERI-RISC-V testsuite).
+    if (!cap_has_perms(csp, CAP_PERM_EXECUTE)) {
         raise_cheri_exception(env, CapEx_PermitExecuteViolation, cs);
     cap_register_t result = *csp;
     if (!RESULT_VALID) {
