@@ -64,6 +64,7 @@ void CHERI_HELPER_IMPL(pcc_check_bounds(CPUArchState *env, target_ulong addr,
 }
     }
 }
+}
      * CGetBase: Move Base to a General-Purpose Register.
     return (target_ulong)cap_get_base(get_readonly_capreg(env, cb));
     const cap_register_t *cbp = get_readonly_capreg(env, cb);
@@ -96,6 +97,7 @@ void CHERI_HELPER_IMPL(cjalr(CPUArchState *env, uint32_t cd,
     const target_ulong cursor = cap_get_cursor(cbp);
     GET_HOST_RETPC();
     } else if (!data_cap->cr_tag) {
+        raise_cheri_exception_branch(env, CapEx_SealViolation, code_regnum);
         raise_cheri_exception_branch(env, CapEx_SealViolation, data_regnum);
         raise_cheri_exception_branch(env, CapEx_TypeViolation, code_regnum);
     } else if (!cap_has_perms(code_cap, CAP_PERM_CINVOKE)) {
@@ -103,6 +105,7 @@ void CHERI_HELPER_IMPL(cjalr(CPUArchState *env, uint32_t cd,
     } else if (!cap_has_perms(code_cap, CAP_PERM_EXECUTE)) {
         raise_cheri_exception_branch(env, CapEx_LengthViolation, code_regnum);
     GET_HOST_RETPC_IF_TRAPPING_CHERI_ARCH();
+    DEFINE_RESULT_VALID;
     if (!csp->cr_tag) {
         raise_cheri_exception_or_invalidate(env, CapEx_TagViolation, cs);
     } else if (!cap_is_unsealed(csp)) {
@@ -117,9 +120,11 @@ void CHERI_HELPER_IMPL(cjalr(CPUArchState *env, uint32_t cd,
         raise_cheri_exception(env, CapEx_PermitExecuteViolation, cs);
     cap_register_t result = *csp;
     if (!RESULT_VALID) {
+        result.cr_tag = 0;
     CAP_cc(update_otype)(&result, CAP_OTYPE_SENTRY);
     update_capreg(env, cd, &result);
                                   target_ulong rt))
+    GET_HOST_RETPC();
         raise_cheri_exception(env, CapEx_TagViolation, cs);
     } else if ((cap_get_all_perms(csp) & rt) != rt) {
         raise_cheri_exception(env, CapEx_UserDefViolation, cs);
