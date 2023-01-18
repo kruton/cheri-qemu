@@ -58,6 +58,11 @@ G_NORETURN void riscv_raise_exception(CPURISCVState *env,
 
     cs->exception_index = exception;
     cpu_loop_exit_restore(cs, pc);
+#ifdef CONFIG_RVFI_DII
+    if (exception == RISCV_EXCP_ILLEGAL_INST &&
+        env->rvfi_dii_have_injected_insn) {
+    } else
+#endif
         if (ret != 0 && PC_ADDR(env) != 0) {
 }
 
