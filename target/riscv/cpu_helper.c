@@ -1098,7 +1098,7 @@ restart:
         if (res != MEMTX_OK) {
             qemu_log_mask(
                 CPU_LOG_MMU,
-                "%s Translate fail: could not load pte at " TARGET_FMT_plx "\n",
+                "%s Translate fail: could not load pte at " HWADDR_FMT_plx "\n",
                 __func__, pte_addr);
             return TRANSLATE_FAIL;
         }
@@ -1600,13 +1600,13 @@ static inline int rvfi_dii_check_addr(CPURISCVState *env, int ret, hwaddr *pa,
                    (*pa + size) > RVFI_DII_RAM_END) {
             if (rvfi_debug_output) {
                 fprintf(stderr,
-                        "Rejecting memory access to " TARGET_FMT_plx
+                        "Rejecting memory access to " HWADDR_FMT_plx
                         " since it is outside the RVFI-DII range",
                         address);
             }
             qemu_log_mask(CPU_LOG_MMU,
-                          "%s Translate fail: va=" TARGET_FMT_plx
-                          " pa=" TARGET_FMT_plx
+                          "%s Translate fail: va=" HWADDR_FMT_plx
+                          " pa=" HWADDR_FMT_plx
                           " is outside the RVFI-DII range\n",
                           __func__, address, *pa);
             return TRANSLATE_PMP_FAIL;
@@ -1702,7 +1702,7 @@ bool riscv_cpu_tlb_fill(CPUState *cs, vaddr address, int size,
 
         qemu_log_mask(CPU_LOG_MMU,
                       "%s 1st-stage address=%" VADDR_PRIx " ret %d physical "
-                      TARGET_FMT_plx " prot %d\n",
+                      HWADDR_FMT_plx " prot %d\n",
                       __func__, address, ret, pa, prot);
         ret = rvfi_dii_check_addr(env, ret, &pa, address, size, &prot, access_type);
 
@@ -1716,7 +1716,7 @@ bool riscv_cpu_tlb_fill(CPUState *cs, vaddr address, int size,
 
             qemu_log_mask(CPU_LOG_MMU,
                     "%s 2nd-stage address=%" VADDR_PRIx " ret %d physical "
-                    TARGET_FMT_plx " prot %d\n",
+                    HWADDR_FMT_plx " prot %d\n",
                     __func__, im_address, ret, pa, prot2);
 
             /*
@@ -1751,7 +1751,7 @@ bool riscv_cpu_tlb_fill(CPUState *cs, vaddr address, int size,
                                                size, access_type, mode);
 
                 qemu_log_mask(CPU_LOG_MMU,
-                              "%s PMP address=" TARGET_FMT_plx " ret %d prot"
+                              "%s PMP address=" HWADDR_FMT_plx " ret %d prot"
                               " %d tlb_size " TARGET_FMT_lu "\n",
                               __func__, pa, ret, prot_pmp, tlb_size);
 
@@ -1778,7 +1778,7 @@ bool riscv_cpu_tlb_fill(CPUState *cs, vaddr address, int size,
 
         qemu_log_mask(CPU_LOG_MMU,
                       "%s address=%" VADDR_PRIx " ret %d physical "
-                      TARGET_FMT_plx " prot %d\n",
+                      HWADDR_FMT_plx " prot %d\n",
                       __func__, address, ret, pa, prot);
 
         if (ret == TRANSLATE_SUCCESS) {
@@ -1786,7 +1786,7 @@ bool riscv_cpu_tlb_fill(CPUState *cs, vaddr address, int size,
                                            size, access_type, mode);
 
             qemu_log_mask(CPU_LOG_MMU,
-                          "%s PMP address=" TARGET_FMT_plx " ret %d prot"
+                          "%s PMP address=" HWADDR_FMT_plx " ret %d prot"
                           " %d tlb_size " TARGET_FMT_lu "\n",
                           __func__, pa, ret, prot_pmp, tlb_size);
 

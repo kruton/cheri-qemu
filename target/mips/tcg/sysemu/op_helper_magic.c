@@ -179,8 +179,8 @@ static bool do_magic_memmove(CPUMIPSState *env, uint64_t ra, int dest_regnum, in
         tcg_debug_assert(already_written < len);
         len -= already_written; // update the remaining length
 #if 0
-        fprintf(stderr, "--- %s: Got continuation for 0x" TARGET_FMT_lx " byte access at 0x" TARGET_FMT_plx
-                        " -- current dest = 0x" TARGET_FMT_plx " -- current len = 0x" TARGET_FMT_lx "\r\n",
+        fprintf(stderr, "--- %s: Got continuation for 0x" TARGET_FMT_lx " byte access at 0x" HWADDR_FMT_plx
+                        " -- current dest = 0x" HWADDR_FMT_plx " -- current len = 0x" TARGET_FMT_lx "\r\n",
                         __func__, original_len, original_dest, dest, len);
 #endif
     } else {
@@ -390,8 +390,8 @@ static bool do_magic_memset(CPUMIPSState *env, uint64_t ra, uint pattern_length)
         len_nitems -= already_written / pattern_length; // update the remaining length
         assert((already_written % pattern_length) == 0);
 #if 0
-        fprintf(stderr, "--- %s: Got continuation for 0x" TARGET_FMT_lx " byte access at 0x" TARGET_FMT_plx
-                        " -- current dest = 0x" TARGET_FMT_plx " -- current len = 0x" TARGET_FMT_lx "\r\n",
+        fprintf(stderr, "--- %s: Got continuation for 0x" TARGET_FMT_lx " byte access at 0x" HWADDR_FMT_plx
+                        " -- current dest = 0x" HWADDR_FMT_plx " -- current len = 0x" TARGET_FMT_lx "\r\n",
                         __func__, original_len, original_dest, dest, len_nitems);
 #endif
     } else {
@@ -420,7 +420,7 @@ static bool do_magic_memset(CPUMIPSState *env, uint64_t ra, uint pattern_length)
         const target_ulong total_len_nbytes = len_nitems * pattern_length;
         assert(dest + total_len_nbytes == original_dest + original_len_bytes && "continuation broken?");
         // probing for write access:
-        // fprintf(stderr, "Probing for write access at " TARGET_FMT_plx "\r\n", dest);
+        // fprintf(stderr, "Probing for write access at " HWADDR_FMT_plx "\r\n", dest);
         // fflush(stderr);
         // update $v0 to point to the updated dest in case probe_write_access takes a tlb fault:
         env->active_tc.gpr[MIPS_REGNUM_V0] = dest;
@@ -481,11 +481,11 @@ static bool do_magic_memset(CPUMIPSState *env, uint64_t ra, uint pattern_length)
                         assert(false && "invalid pattern length");
                 }
                 qemu_log_instr_extra(env, "%s: Set " TARGET_FMT_ld
-                    " %d-byte items to 0x%" PRIx64 " at 0x" TARGET_FMT_plx "\n",
+                    " %d-byte items to 0x%" PRIx64 " at 0x" HWADDR_FMT_plx "\n",
                     __func__, l_adj_nitems, pattern_length, value, dest);
             }
 #endif
-            // fprintf(stderr, "%s: Set " TARGET_FMT_ld " bytes to 0x%x at 0x" TARGET_FMT_plx "/%p\r\n", __func__, l_adj, value, dest, hostaddr);
+            // fprintf(stderr, "%s: Set " TARGET_FMT_ld " bytes to 0x%x at 0x" HWADDR_FMT_plx "/%p\r\n", __func__, l_adj, value, dest, hostaddr);
             dest += l_adj_bytes;
             len_nitems -= l_adj_nitems;
         } else {
@@ -520,7 +520,7 @@ static bool do_magic_memset(CPUMIPSState *env, uint64_t ra, uint pattern_length)
                             assert(false && "invalid pattern length");
                     }
                     qemu_log_instr_extra(env, "%s: Set " TARGET_FMT_ld
-                        " %d-byte items to 0x%" PRIx64 " at 0x" TARGET_FMT_plx "\n",
+                        " %d-byte items to 0x%" PRIx64 " at 0x" HWADDR_FMT_plx "\n",
                         __func__, l_adj_nitems, pattern_length, value, dest);
                 }
 #endif
