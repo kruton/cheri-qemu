@@ -67,6 +67,10 @@
 
 #define RV(x) ((target_ulong)1 << (x - 'A'))
 
+/*
+ * Consider updating register_cpu_props() when adding
+ * new MISA bits here.
+ */
 #define RVI RV('I')
 #define RVE RV('E') /* E and I are mutually exclusive */
 #define RVM RV('M')
@@ -257,23 +261,19 @@ struct CPUArchState {
 
 #ifdef TARGET_CHERI
     cap_register_t stvecc;    // SCR 12 Supervisor trap code cap. (STCC)
-    cap_register_t sscratchc; // SCR 14 Supervisor scratch cap. (SScratchC)
     cap_register_t sepcc;     // SCR 15 Supervisor exception PC cap. (SEPCC)
 #else
     target_ulong stvec;
     target_ulong sepc;
-    target_ulong sscratch;
 #endif
     target_ulong scause;
 
 #ifdef TARGET_CHERI
     cap_register_t mtvecc;    // SCR 28 Machine trap code cap. (MTCC)
-    cap_register_t mscratchc; // SCR 30 Machine scratch cap. (MScratchC)
     cap_register_t mepcc;     // SCR 31 Machine exception PC cap. (MEPCC)
 #else
     target_ulong mtvec;
     target_ulong mepc;
-    target_ulong mscratch;
 #endif
     target_ulong mcause;
     target_ulong mtval;  /* since: priv-1.10.0 */
@@ -397,6 +397,14 @@ struct CPUArchState {
 
     /* PMU event selector configured values for RV32*/
     target_ulong mhpmeventh_val[RV_MAX_MHPMEVENTS];
+
+#ifdef TARGET_CHERI
+    cap_register_t sscratchc;
+    cap_register_t mscratchc;
+#else
+    target_ulong sscratch;
+    target_ulong mscratch;
+#endif
 
     /* temporary htif regs */
     uint64_t mfromhost;

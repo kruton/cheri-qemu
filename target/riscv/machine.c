@@ -364,8 +364,8 @@ static const VMStateDescription vmstate_pmu_ctr_state = {
 
 const VMStateDescription vmstate_riscv_cpu = {
     .name = "cpu",
-    .version_id = 5,
-    .minimum_version_id = 5,
+    .version_id = 6,
+    .minimum_version_id = 6,
     .post_load = riscv_cpu_post_load,
     .fields = (VMStateField[]) {
 #ifdef TARGET_CHERI
