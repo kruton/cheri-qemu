@@ -1,6 +1,7 @@
  */
 #include "qemu/osdep.h"
 #include "cheri_tagmem.h"
+#ifndef TARGET_CHERI
 #endif
 #else
 #endif
@@ -85,6 +86,7 @@ void CHERI_HELPER_IMPL(pcc_check_bounds(CPUArchState *env, target_ulong addr,
 #endif
     if (next_pcc.cr_tag && cap_is_sealed_entry(&next_pcc)) {
         next_pcc.cr_tag = 0;
+#endif
     if (link_reg != NULL_CAPREG_INDEX) {
 #ifdef TARGET_AARCH64
         result._cr_cursor = link_pc;
@@ -92,6 +94,7 @@ void CHERI_HELPER_IMPL(pcc_check_bounds(CPUArchState *env, target_ulong addr,
             cap_make_sealed_entry(&result);
                                  uintptr_t _host_return_address)
 #ifdef TARGET_RISCV
+    /* On RISC-V we mask the LSB of the target to match JALR behaviour. */
         raise_cheri_exception_branch(env, CapEx_TagViolation, target_reg);
         raise_cheri_exception_branch(env, CapEx_PermitExecuteViolation,
 void CHERI_HELPER_IMPL(cjalr(CPUArchState *env, uint32_t cd,
