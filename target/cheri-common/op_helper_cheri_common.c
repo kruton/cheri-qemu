@@ -336,6 +336,7 @@ target_ulong CHERI_HELPER_IMPL(cap_check_addr(CPUArchState *env,
 #if defined(TARGET_RISCV) && defined(CONFIG_RVFI_DII)
     env->rvfi_dii_trace.MEM.rvfi_mem_addr = vaddr;
     env->rvfi_dii_trace.MEM.rvfi_mem_rdata[0] = *cursor;
+    env->rvfi_dii_trace.MEM.rvfi_mem_rdata[1] = *pesbt ^ CAP_MEM_XOR_MASK;
     env->rvfi_dii_trace.MEM.rvfi_mem_rdata[2] = tag;
     env->rvfi_dii_trace.MEM.rvfi_mem_rmask = (1 << CHERI_CAP_SIZE) - 1;
     // TODO: Add one extra bit to include the tag?
@@ -366,6 +367,7 @@ cap_register_t load_and_decompress_cap_from_memory_raw(
         host = cheri_tag_invalidate_aligned(env, vaddr, retpc, mmu_idx);
 #else
     env->rvfi_dii_trace.MEM.rvfi_mem_wdata[0] = cursor;
+    env->rvfi_dii_trace.MEM.rvfi_mem_wdata[1] = pesbt_for_mem;
     GET_HOST_RETPC();
 G_NORETURN static inline void
 raise_pcc_fault(CPUArchState *env, CheriCapExcCause cause, target_ulong addr)
