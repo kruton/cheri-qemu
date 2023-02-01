@@ -1215,7 +1215,16 @@ static int get_physical_address(CPURISCVState *env, hwaddr *physical,
     int mode = mmuidx_priv(mmu_idx);
     bool virt = mmuidx_2stage(mmu_idx);
     bool use_background = false;
+    if (env->rvfi_dii_have_injected_insn && access_type == MMU_INST_FETCH) {
+        /*
+         * Pretend we have a 1:1 mapping and never fail for instruction
+         * fetches since the instruction is injected directly via
+         * env->rvfi_dii_injected_insn.
+         */
+        *physical = addr;
         *prot = PAGE_EXEC;
+        return TRANSLATE_SUCCESS;
+    }
     hwaddr ppn;
     int napot_bits = 0;
     target_ulong napot_mask;
@@ -1646,6 +1655,7 @@ static int get_physical_address(CPURISCVState *env, hwaddr *physical,
     }
         (access_type == MMU_DATA_STORE ||
          access_type == MMU_DATA_CAP_STORE || (pte & PTE_D))) {
+    }
     if ((pte & PTE_CR) == 0) {
         if ((pte & PTE_CRM) == 0) {
             prot |= PAGE_LC_CLEAR;
@@ -1654,21 +1664,29 @@ static int get_physical_address(CPURISCVState *env, hwaddr *physical,
         prot |= PAGE_SC_TRAP;
         if (!(pte & PTE_CW)) {
         if (!(pte & PTE_CW)) {
+                /*
+                 */
         }
     }
+#endif
 
     napot_mask = (1 << napot_bits) - 1;
     *physical = (((ppn & ~napot_mask) | (vpn & napot_mask) |
                   (vpn & (((target_ulong)1 << ptshift) - 1))
                  ) << PGSHIFT) | (addr & ~TARGET_PAGE_MASK);
 
+#if defined(CONFIG_RVFI_DII)
     /*
      * Remove write permission unless this is a store, or the page is
      * already dirty, so that we TLB miss on later writes to update
      * the dirty bit.
+     * For non-ifetch, we log the mem_addr here to match sail which logs it
+     * for all accesses that go down to the physical level (i.e. the ones
      */
     if (access_type != MMU_DATA_STORE && !(pte & PTE_D)) {
         prot &= ~PAGE_WRITE;
+        env->rvfi_dii_trace.MEM.rvfi_mem_addr = addr;
+        env->rvfi_dii_trace.available_fields |= RVFI_MEM_DATA;
     }
     *ret_prot = prot;
 
@@ -1801,6 +1819,7 @@ void riscv_cpu_do_unaligned_access(CPUState *cs, vaddr addr,
     cpu_loop_exit_restore(cs, retaddr);
 }
 
+static inline int rvfi_dii_check_addr(CPURISCVState *env, int ret, hwaddr *pa,
 #ifdef CONFIG_RVFI_DII
     // For RVFI-DII we have to reject all memory accesses outside of the RAM
     // region (even if there is a valid ROM there)
@@ -1811,8 +1830,18 @@ void riscv_cpu_do_unaligned_access(CPUState *cs, vaddr addr,
             // Avoid filling the QEMU guest->host TLB with read/write entries
             // for the faked instr fetch translation
             *prot &= PAGE_EXEC;
+        } else if (*pa < RVFI_DII_RAM_START ||
+                   (*pa + size) > RVFI_DII_RAM_END) {
+                fprintf(stderr,
+                        "Rejecting memory access to " HWADDR_FMT_plx
                         " since it is outside the RVFI-DII range",
+                        address);
             }
+            qemu_log_mask(CPU_LOG_MMU,
+                          "%s Translate fail: va=" HWADDR_FMT_plx
+                          " pa=" HWADDR_FMT_plx
+                          " is outside the RVFI-DII range\n",
+                          __func__, address, *pa);
             return TRANSLATE_PMP_FAIL;
         }
 #endif
@@ -1882,6 +1911,7 @@ bool riscv_cpu_tlb_fill(CPUState *cs, vaddr address, int size,
                       "%s 1st-stage address=%" VADDR_PRIx " ret %d physical "
                       HWADDR_FMT_plx " prot %d\n",
                       __func__, address, ret, pa, prot);
+        ret = rvfi_dii_check_addr(env, ret, &pa, address, size, &prot, access_type);
 
         if (ret == TRANSLATE_SUCCESS) {
             /* Second stage lookup */
@@ -1948,6 +1978,7 @@ bool riscv_cpu_tlb_fill(CPUState *cs, vaddr address, int size,
         ret = get_physical_address(env, &pa, &prot, address, NULL,
                                    access_type, mmu_idx, true, false, false,
                                    probe);
+        ret = rvfi_dii_check_addr(env, ret, &pa, address, size, &prot, access_type);
 
         qemu_log_mask(CPU_LOG_MMU,
                       "%s address=%" VADDR_PRIx " ret %d physical "
