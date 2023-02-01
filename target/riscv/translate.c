@@ -1383,6 +1383,7 @@ static void decode_opc(CPURISCVState *env, DisasContext *ctx)
     if (ctx->cur_insn_len == 2) {
         gen_riscv_log_instr16(ctx, opcode);
         gen_check_pcc_bounds_next_inst(ctx, 2);
+        gen_rvfi_dii_set_field_const_i64(INST, insn, opcode);
         ctx->opcode = (uint16_t)opcode;
         /*
          * The Zca extension is added as way to refer to instructions in the C
@@ -1401,6 +1402,7 @@ static void decode_opc(CPURISCVState *env, DisasContext *ctx)
 #ifdef CONFIG_RVFI_DII
             // We have to avoid memory accesses for injected instructions since
             // the PC could point somewhere invalid.
+                              ? (env->rvfi_dii_injected_insn >> 16)
 #else
 #endif
         }
