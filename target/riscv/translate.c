@@ -1353,6 +1353,11 @@ const RISCVDecoder decoder_table[] = {
 
 const size_t decoder_table_size = ARRAY_SIZE(decoder_table);
 
+static bool trans_c_hint(DisasContext *ctx, arg_c_hint *a)
+{
+    return true;
+}
+
 static void decode_opc(CPURISCVState *env, DisasContext *ctx)
 {
     uint32_t opcode;

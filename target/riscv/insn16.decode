@@ -86,6 +86,7 @@
 @c_sdsp    ... . .....  ..... .. &s      imm=%uimm_6bit_sd rs1=2 rs2=%rs2_5
 @c_swsp    ... . .....  ..... .. &s      imm=%uimm_6bit_sw rs1=2 rs2=%rs2_5
 @c_li      ... . .....  ..... .. &i      imm=%imm_ci rs1=0 %rd
+@c_hinti   ... . .....  ..... .. &i      imm=0 rs1=0 %rd
 @c_lui     ... . .....  ..... .. &u      imm=%imm_lui %rd
 @c_jalr    ... . .....  ..... .. &i      imm=0 rs1=%rd
 @c_mv      ... . ..... .....  .. &i      imm=0 rs1=%rs2_5 %rd
@@ -137,7 +138,10 @@ sw                110  ... ... .. ... 00 @cs_w
 }
 
 # *** RV32/64C Standard Extension (Quadrant 1) ***
-addi              000 .  .....  ..... 01 @ci
+{
+  c_hint          000 0  .....  00000 01 @c_hinti
+  addi            000 .  .....  ..... 01 @ci
+}
 addi              010 .  .....  ..... 01 @c_li
 {
   # c.sspush x1 carving out of zcmops
