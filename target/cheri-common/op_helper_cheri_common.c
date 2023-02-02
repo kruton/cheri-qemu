@@ -218,6 +218,9 @@ void CHERI_HELPER_IMPL(cbuildcap(CPUArchState *env, uint32_t cd, uint32_t cb,
     cap_register_t result = *cbp;
     if (!RESULT_VALID) {
         result.cr_tag = 0;
+    try_set_cap_cursor(env, &result, cb, cd, cap_get_otype_signext(ctp),
+                       /*precise_repr_check=*/true, GETPC(),
+                       OOB_INFO(ccopytype));
 static void cseal_common(CPUArchState *env, uint32_t cd, uint32_t cs,
                          uintptr_t _host_return_address)
     DEFINE_RESULT_VALID;
@@ -230,6 +233,7 @@ static void cseal_common(CPUArchState *env, uint32_t cd, uint32_t cs,
     } else if (!csp->cr_tag) {
         raise_cheri_exception_or_invalidate(env, CapEx_TagViolation, cs);
     } else if (conditional && !cap_is_unsealed(csp)) {
+        update_capreg(env, cd, csp);
     } else if (conditional && !cap_cursor_in_bounds(ctp)) {
     } else if (conditional &&
                cap_get_cursor(ctp) == CAP_OTYPE_UNSEALED_SIGNED) {
@@ -247,6 +251,7 @@ static void cseal_common(CPUArchState *env, uint32_t cd, uint32_t cs,
         new_otype &= CAP_OTYPE_ALL_BITS;
         CAP_cc(update_otype)(&result, new_otype);
     } else {
+    }
     update_capreg(env, cd, &result);
     /*
      */
@@ -257,6 +262,7 @@ static void cseal_common(CPUArchState *env, uint32_t cd, uint32_t cs,
     } else if (!cap_is_sealed_with_type(csp)) {
         raise_cheri_exception_or_invalidate(env, CapEx_PermitUnsealViolation,
     cap_register_t result = *csp;
+    } else {
         CAP_cc(update_otype)(&result, CAP_OTYPE_UNSEALED);
     update_capreg(env, cd, &result);
 #endif
@@ -270,6 +276,7 @@ cincoffset_impl(CPUArchState *env, uint32_t cd, uint32_t cb, target_ulong rt,
     cap_register_t result = *cbp;
     if (!RESULT_VALID) {
         result.cr_tag = 0;
+    update_capreg(env, cd, &result);
 void CHERI_HELPER_IMPL(candaddr(CPUArchState *env, uint32_t cd, uint32_t cb,
     target_ulong cursor = get_capreg_cursor(env, cb);
     target_ulong target_addr = cursor & rt;
@@ -278,10 +285,13 @@ void CHERI_HELPER_IMPL(candaddr(CPUArchState *env, uint32_t cd, uint32_t cb,
     GET_HOST_RETPC();
     DEFINE_RESULT_VALID;
     // CFromPtr traps on cbp == NULL so we use reg0 as $ddc to save encoding
+        return;
     cap_register_t result = *cbp;
     if (!is_representable_cap_with_addr(cbp, new_addr)) {
                          uint32_t cb, target_ulong length,
                          uintptr_t _host_return_address)
+    cap_register_t result = *cbp;
+    if (!CHERI_TAG_CLEAR_ON_INVALID(env)) {
             raise_cheri_exception(env, CapEx_TagViolation, cb);
             raise_cheri_exception(env, CapEx_SealViolation, cb);
             raise_cheri_exception(env, CapEx_LengthViolation, cb);
