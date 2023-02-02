@@ -99,6 +99,7 @@
 @c_hintshift    ... . .....  ..... .. &i imm=0 rd=%rs1_3 rs1=%rs1_3
 @c_shift2       ... . .. ... ..... .. \
                 &shift rd=%rd rs1=%rd shamt=%shlimm_6bit
+@c_hintshift2   ... . .....  ..... .. &i imm=0 rd=%rd rs1=%rd
 
 @c_andi         ... . .. ... ..... .. &i imm=%imm_ci rs1=%rs1_3 rd=%rs1_3
 
@@ -178,10 +179,11 @@ subw              100 1 11 ... 00 ... 01 @cs_2
 addw              100 1 11 ... 01 ... 01 @cs_2
 
 # *** RV32/64C Standard Extension (Quadrant 2) ***
-slli              000 .  .....  ..... 10 @c_shift2
 {
   lq              001  ... ... .. ... 10 @c_lqsp
   c_fld           001 .  .....  ..... 10 @c_ldsp
+  c_hint          000 0  .....  00000 10 @c_hintshift2  # c.slli64 is a HINT for rv32/64
+  slli            000 .  .....  ..... 10 @c_shift2
 }
 {
   illegal         010 -  00000  ----- 10 # c.lwsp, RES rd=0
