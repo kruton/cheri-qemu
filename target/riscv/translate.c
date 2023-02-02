@@ -657,6 +657,7 @@ static void gen_jal(DisasContext *ctx, int rd, target_ulong imm)
     TCGv succ_pc = dest_gpr(ctx, rd);
 
     /* check misaligned: */
+        gen_check_branch_target_dynamic(ctx, target_pc);
     } else {
     }
     if (!riscv_cpu_allow_16bit_insn(ctx->cfg_ptr,
