@@ -21,6 +21,7 @@
 static inline bool gen_lr_impl(DisasContext *ctx, TCGv_cap_checked_ptr addr,
                                arg_atomic *a, MemOp mop)
 {
+    decode_save_opc(ctx);
     /* Put addr in load_res, data in load_val.  */
     if (a->rl) {
         tcg_gen_mb(TCG_MO_ALL | TCG_BAR_STRL);
@@ -54,6 +55,7 @@ static inline bool gen_sc_impl(DisasContext *ctx, TCGv_cap_checked_ptr addr,
     TCGLabel *l1 = gen_new_label();
     TCGLabel *l2 = gen_new_label();
 
+    decode_save_opc(ctx);
     /*
      * Alignment must always be checked (even on reservation address mismatch):
      * "If the address is not naturally aligned, an address-misaligned
@@ -126,8 +128,11 @@ static bool gen_amo(DisasContext *ctx, arg_atomic *a,
                     MemOp mop)
 {
     TCGv dest = dest_gpr(ctx, a->rd);
-    TCGv_cap_checked_ptr src1 = get_capmode_dependent_rmw_addr(ctx, a->rs1, 0, mop);
+    TCGv_cap_checked_ptr src1;
     TCGv src2 = get_gpr(ctx, a->rs2, EXT_NONE);
+
+    decode_save_opc(ctx);
+    src1 = get_capmode_dependent_rmw_addr(ctx, a->rs1, 0, mop);
 
     cheri_debug_assert((mop & MO_ALIGN) && "RMW AMOs must be aligned");
     /*
@@ -143,7 +148,6 @@ static bool gen_amo(DisasContext *ctx, arg_atomic *a,
         tcg_temp_free_i32(tcode);
         tcg_temp_free_i32(tmop);
     }
-
     func(dest, src1, src2, ctx->mem_idx, mop);
 
     gen_set_gpr(ctx, a->rd, dest);

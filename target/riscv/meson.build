@@ -4,6 +4,7 @@ dir = meson.current_source_dir()
 gen_nocheri = [
   decodetree.process('insn16.decode', extra_args: ['--static-decode=decode_insn16', '--insnwidth=16']),
   decodetree.process('insn32.decode', extra_args: [dir / 'insn32-rv128.decode', '--static-decode=decode_insn32']),
+  decodetree.process('xthead.decode', extra_args: '--static-decode=decode_xthead'),
   decodetree.process('XVentanaCondOps.decode', extra_args: '--static-decode=decode_XVentanaCodeOps'),
 ]
 
@@ -25,16 +26,19 @@ decodetree_w_cheri_deps = generator(
 gen_xcheri32 = [
   decodetree.process('insn16.decode', extra_args: ['--static-decode=decode_insn16', '--insnwidth=16']),
   decodetree_w_cheri_deps.process('insn32.decode', extra_args: [dir / 'insn32-cheri-v9.decode', dir / 'insn32-cheri-v9-32.decode', '--static-decode=decode_insn32']),
+  decodetree.process('xthead.decode', extra_args: '--static-decode=decode_xthead'),
   decodetree.process('XVentanaCondOps.decode', extra_args: '--static-decode=decode_XVentanaCodeOps'),
 ]
 gen_xcheri64 = [
   decodetree.process('insn16.decode', extra_args: ['--static-decode=decode_insn16', '--insnwidth=16']),
   decodetree_w_cheri_deps.process('insn32.decode', extra_args: [dir / 'insn32-cheri-v9.decode', dir / 'insn32-cheri-v9-64.decode', '--static-decode=decode_insn32']),
+  decodetree.process('xthead.decode', extra_args: '--static-decode=decode_xthead'),
   decodetree.process('XVentanaCondOps.decode', extra_args: '--static-decode=decode_XVentanaCodeOps'),
 ]
 gen_stdcheri = [
   decodetree.process('insn16.decode', extra_args: ['--static-decode=decode_insn16', '--insnwidth=16']),
   decodetree_w_cheri_deps.process('insn32.decode', extra_args: [dir / 'insn32-cheri-std.decode', '--static-decode=decode_insn32']),
+  decodetree.process('xthead.decode', extra_args: '--static-decode=decode_xthead'),
   decodetree.process('XVentanaCondOps.decode', extra_args: '--static-decode=decode_XVentanaCodeOps'),
 ]
 
