@@ -17,11 +17,14 @@ static inline cap_offset_t cap_get_offset(const cap_register_t *c)
  */
     /*
      */
+        }
 #endif
 #endif
 #endif
+            return true;
 #endif
     return false;
+ */
     /*
 #else
 #ifndef TARGET_AARCH64
@@ -33,6 +36,7 @@ static inline cap_length_t cap_get_length_full(const cap_register_t *c)
                        "Tagged capabilities must be in bounds!");
 static inline bool cap_otype_is_reserved(target_ulong otype)
     target_ulong otype = CAP_cc(get_otype)(c);
+    /*
      * It is impossible to have out-of-range otypes in all targets for the
      * currently used capability compression schemes.
     cheri_debug_assert(otype <= CAP_MAX_REPRESENTABLE_OTYPE);
@@ -53,10 +57,18 @@ static inline void cap_unseal_reserved_otype(cap_register_t *c)
 #ifdef TARGET_AARCH64
     // Invalid exponent caps are always considered out of bounds.
     if (!c->cr_bounds_valid)
+     * Use __builtin_add_overflow to detect avoid wrapping around the end of
+     * the address space. However, we have to be careful to allow accesses to
+     * the last byte (wrapping to exactly zero) since that is fine when
+     * checking against given an omnipotent capability.
+    if (unlikely(__builtin_add_overflow(addr, num_bytes, &access_end_addr))) {
+        /* Only do the extended precision addition if we do overflow. */
+        if (cap_get_top_full(c) >= (cap_length_t)addr + num_bytes) {
         if (c->cr_tag)
             warn_report("Found capability access that wraps around: 0x" TARGET_FMT_lx
                         " + %zd. Authorizing cap: " PRINT_CAP_FMTSTR,
                         addr, num_bytes, PRINT_CAP_ARGS(c));
+    if (access_end_addr > cap_get_top_full(c)) {
      * Recompute the decompressed bounds relative to the new address. In most
      * cases they will refer to a different region of memory now.
     CAP_cc(decompress_raw_ext)(cr->cr_pesbt, addr, false, lvbits, cr);
