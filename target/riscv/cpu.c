@@ -48,6 +48,7 @@
 #ifdef TARGET_CHERI
 #include "cheri-lazy-capregs.h"
 #endif
+#include "tcg/tcg.h"
 
 /* RISC-V CPU definitions */
 
@@ -693,7 +694,8 @@ static void riscv_cpu_synchronize_from_tb(CPUState *cs,
     CPURISCVState *env = &cpu->env;
     RISCVMXL xl = FIELD_EX32(tb->flags, TB_FLAGS, XL);
 
-    riscv_update_pc(env, tb_pc(tb), xl, /*can_be_unrepresentable=*/false);
+    tcg_debug_assert(!(cs->tcg_cflags & CF_PCREL));
+    riscv_update_pc(env, tb->pc, xl, /*can_be_unrepresentable=*/false);
 #ifdef TARGET_CHERI
     cheri_debug_assert(tb_in_capmode(tb) == cheri_in_capmode(env));
 #endif

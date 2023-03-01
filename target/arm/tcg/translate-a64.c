@@ -213,7 +213,7 @@ static void reset_btype(DisasContext *s)
 static void gen_pc_plus_diff(DisasContext *s, TCGv_i64 dest, target_long diff)
 {
     assert(s->pc_save != -1);
-    if (TARGET_TB_PCREL) {
+    if (tb_cflags(s->base.tb) & CF_PCREL) {
         tcg_gen_addi_i64(dest, cpu_pc, (s->pc_curr - s->pc_save) + diff);
     } else {
         tcg_gen_movi_i64(dest, s->pc_curr + diff);
@@ -278,7 +278,7 @@ static void gen_a64_set_link_register(DisasContext *s)
         addr -= pcc_reloc(s);
     }
     // Need to correct address
-    if (TARGET_TB_PCREL) {
+    if (tb_cflags(s->base.tb) & CF_PCREL) {
         gen_pc_plus_diff(s, cpu_reg(s, 30), addr - s->pc_curr);
     } else {
         tcg_gen_movi_i64(cpu_reg(s, 30), addr);
@@ -350,7 +350,7 @@ static void gen_a64_set_pc(DisasContext *s, TCGv_i64 src)
     } else {
         // Otherwise skip the relatively expensive
         // gen_helper_set_pcc if in bounds.
-        TCGv_i64 tbi_dst = tcg_temp_local_new_i64();
+        TCGv_i64 tbi_dst = tcg_temp_new_i64();
         TCGv_i64 skip_rep_check = tcg_temp_new_i64();
 
         gen_top_byte_ignore(s, tbi_dst, src, s->tbii);
@@ -490,7 +490,7 @@ TCGv_cap_checked_ptr clean_data_tbi_and_cheri(DisasContext *s, TCGv_i64 addr,
     // Callers expect to be able to use addr again (for pre/post increment
     // mostly), but arm_bounds_checked kills all temps Saving it here avoids
     // refactoring callers
-    TCGv_i64 save = tcg_temp_local_new_i64();
+    TCGv_i64 save = tcg_temp_new_i64();
     tcg_gen_mov_i64(save, addr);
     TCGv_cap_checked_ptr result = arm_bounds_checked(
         s, clean, size, base_reg, is_load, is_store, alternate_base, ddc_base);
@@ -675,12 +675,11 @@ static inline bool use_goto_tb(DisasContext *s, uint64_t dest)
 static void gen_goto_tb(DisasContext *s, int n, int64_t diff)
 {
     if (use_goto_tb(s, s->pc_curr + diff)) {
-        if (TARGET_TB_PCREL) {
+        if (tb_cflags(s->base.tb) & CF_PCREL) {
 #ifdef TARGET_CHERI
             if (!in_pcc_bounds(&s->base, s->pc_curr + diff)) {
-                TCGv_i64 tcgval = tcg_const_i64(s->pc_curr + diff);
+                TCGv_i64 tcgval = tcg_constant_i64(s->pc_curr + diff);
                 gen_helper_set_pcc(cpu_env, tcgval);
-                tcg_temp_free_i64(tcgval);
             } else {
                 gen_a64_update_pc(s, diff);
             }
@@ -690,9 +689,9 @@ static void gen_goto_tb(DisasContext *s, int n, int64_t diff)
             tcg_gen_goto_tb(n);
         } else {
             tcg_gen_goto_tb(n);
-            gen_a64_set_pc_im_safe(s, s->pc_curr + diff);
+            gen_a64_update_pc(s, diff);
+            tcg_gen_exit_tb(s->base.tb, n);
         }
-        tcg_gen_exit_tb(s->base.tb, n);
         s->base.is_jmp = DISAS_NORETURN;
     } else {
         gen_a64_set_pc_im_safe(s, s->pc_curr + diff);
@@ -726,12 +725,6 @@ TCGv_i64 new_tmp_a64(DisasContext *s)
 {
     assert(s->tmp_a64_count < TMP_A64_MAX);
     return s->tmp_a64[s->tmp_a64_count++] = tcg_temp_new_i64();
-}
-
-TCGv_i64 new_tmp_a64_local(DisasContext *s)
-{
-    assert(s->tmp_a64_count < TMP_A64_MAX);
-    return s->tmp_a64[s->tmp_a64_count++] = tcg_temp_local_new_i64();
 }
 
 TCGv_i64 new_tmp_a64_zero(DisasContext *s)
@@ -3132,7 +3125,7 @@ static void gen_store_exclusive(DisasContext *s, int rd, int rt, int rt2,
      */
     TCGLabel *fail_label = gen_new_label();
     TCGLabel *done_label = gen_new_label();
-    TCGv_i64 tmp = tcg_temp_local_new_i64();
+    TCGv_i64 tmp = tcg_temp_new_i64();
     tcg_gen_mov_i64(tmp, (TCGv_i64)addr);
 
     tcg_gen_brcond_i64(TCG_COND_NE, (TCGv_i64)addr, cpu_exclusive_addr,
@@ -4934,7 +4927,7 @@ static void disas_pc_rel_adr(DisasContext *s, uint32_t insn)
     if (page) {
         /* ADRP (page based) */
         offset <<= 12;
-        /* The page offset is ok for TARGET_TB_PCREL. */
+        /* The page offset is ok for CF_PCREL. */
         offset -= s->pc_curr & 0xfff;
     }
 
@@ -15350,7 +15343,7 @@ static bool is_guarded_page(CPUARMState *env, DisasContext *s)
      * arm_cpu_get_phys_page_attrs_debug to re-read the page
      * table entry even for that case.
      */
-    flags = probe_access_full(env, addr, MMU_INST_FETCH, mmu_idx,
+    flags = probe_access_full(env, addr, 0, MMU_INST_FETCH, mmu_idx,
                               false, &host, &full, 0);
     assert(!(flags & TLB_INVALID_MASK));
 
@@ -15515,7 +15508,7 @@ static void aarch64_tr_insn_start(DisasContextBase *dcbase, CPUState *cpu)
     DisasContext *dc = container_of(dcbase, DisasContext, base);
     target_ulong pc_arg = dc->base.pc_next;
 
-    if (TARGET_TB_PCREL) {
+    if (tb_cflags(dcbase->tb) & CF_PCREL) {
         pc_arg &= ~TARGET_PAGE_MASK;
     }
     tcg_gen_insn_start(pc_arg, 0, 0);

@@ -864,9 +864,9 @@ static inline void generate_cstorecond_int(DisasContext *ctx, int32_t rs,
                                            int opcode) {
     check_cop2x(ctx);
     const int size = memop_size(op);
-    TCGv_cap_checked_ptr taddr = tcg_temp_local_new_cap_checked();
+    TCGv_cap_checked_ptr taddr = tcg_temp_new_cap_checked();
     TCGv t0 = tcg_temp_new();
-    TCGv tlf = tcg_temp_local_new();
+    TCGv tlf = tcg_temp_new();
     TCGLabel *l1 = gen_new_label();
 
     generate_cstorecond(taddr, cb, size);
@@ -894,7 +894,7 @@ static inline void generate_cstore(DisasContext *ctx, int32_t rs, int32_t cb,
         int32_t rt, int32_t offset, MemOp op, int opcode)
 {
     const int size = memop_size(op);
-    TCGv_cap_checked_ptr taddr = tcg_temp_local_new_cap_checked();
+    TCGv_cap_checked_ptr taddr = tcg_temp_new_cap_checked();
     TCGv t0 = tcg_temp_new();
 
     gen_load_gpr(t0, rt);  // t0 <- register offset
@@ -982,7 +982,7 @@ static inline void generate_cscc(DisasContext *ctx, int32_t cs, int32_t cb,
 {
     TCGv_i32 tcs = tcg_const_i32(cs);
     TCGv_i32 tcb = tcg_const_i32(cb);
-    TCGv t0 = tcg_temp_local_new();
+    TCGv t0 = tcg_temp_new();
 
     /* Check the cap registers and compute the address. */
     gen_helper_cscc_without_tcg(t0, cpu_env, tcs, tcb);
