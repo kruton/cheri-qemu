@@ -916,10 +916,10 @@ static char *custom_riscv_isa_string(RISCVCPU *cpu, bool is_32_bit)
             g_string_append(result, multi_exts[i].ext);
     }
 
-    if (riscv_feature(&cpu->env, RISCV_FEATURE_CHERI)) {
+    if (riscv_has_cheri(&cpu->env)) {
         g_string_append(result, "_zcheripurecap");
     }
-    if (riscv_feature(&cpu->env, RISCV_FEATURE_CHERI_HYBRID)) {
+    if (riscv_has_cheri_hybrid(&cpu->env)) {
         g_string_append(result, "_zcherihybrid");
     }
 
