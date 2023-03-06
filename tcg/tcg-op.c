@@ -88,6 +88,22 @@ void tcg_gen_op6(TCGOpcode opc, TCGArg a1, TCGArg a2, TCGArg a3,
     op->args[5] = a6;
 }
 
+/* Generic ops.  */
+
+static void add_last_as_label_use(TCGLabel *l)
+{
+    TCGLabelUse *u = tcg_malloc(sizeof(TCGLabelUse));
+
+    u->op = tcg_last_op();
+    QSIMPLEQ_INSERT_TAIL(&l->branches, u, next);
+}
+
+void tcg_gen_br(TCGLabel *l)
+{
+    tcg_gen_op1(INDEX_op_br, label_arg(l));
+    add_last_as_label_use(l);
+}
+
 void tcg_gen_mb(TCGBar mb_type)
 {
 #ifdef CONFIG_USER_ONLY
@@ -232,8 +248,8 @@ void tcg_gen_brcond_i32(TCGCond cond, TCGv_i32 arg1, TCGv_i32 arg2, TCGLabel *l)
     if (cond == TCG_COND_ALWAYS) {
         tcg_gen_br(l);
     } else if (cond != TCG_COND_NEVER) {
-        l->refs++;
         tcg_gen_op4ii_i32(INDEX_op_brcond_i32, arg1, arg2, cond, label_arg(l));
+        add_last_as_label_use(l);
     }
 }
 
@@ -1496,7 +1512,6 @@ void tcg_gen_brcond_i64(TCGCond cond, TCGv_i64 arg1, TCGv_i64 arg2, TCGLabel *l)
     if (cond == TCG_COND_ALWAYS) {
         tcg_gen_br(l);
     } else if (cond != TCG_COND_NEVER) {
-        l->refs++;
         if (TCG_TARGET_REG_BITS == 32) {
             tcg_gen_op6ii_i32(INDEX_op_brcond2_i32, TCGV_LOW(arg1),
                               TCGV_HIGH(arg1), TCGV_LOW(arg2),
@@ -1505,6 +1520,7 @@ void tcg_gen_brcond_i64(TCGCond cond, TCGv_i64 arg1, TCGv_i64 arg2, TCGLabel *l)
             tcg_gen_op4ii_i64(INDEX_op_brcond_i64, arg1, arg2, cond,
                               label_arg(l));
         }
+        add_last_as_label_use(l);
     }
 }
 
@@ -1515,12 +1531,12 @@ void tcg_gen_brcondi_i64(TCGCond cond, TCGv_i64 arg1, int64_t arg2, TCGLabel *l)
     } else if (cond == TCG_COND_ALWAYS) {
         tcg_gen_br(l);
     } else if (cond != TCG_COND_NEVER) {
-        l->refs++;
         tcg_gen_op6ii_i32(INDEX_op_brcond2_i32,
                           TCGV_LOW(arg1), TCGV_HIGH(arg1),
                           tcg_constant_i32(arg2),
                           tcg_constant_i32(arg2 >> 32),
                           cond, label_arg(l));
+        add_last_as_label_use(l);
     }
 }
 

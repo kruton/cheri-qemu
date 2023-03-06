@@ -82,7 +82,7 @@ static inline bool gen_sc_impl(DisasContext *ctx, TCGv_cap_checked_ptr addr,
      * so we can ignore AQ/RL along this path.
      */
     dest = dest_gpr(ctx, a->rd);
-    src1 = temp_new(ctx);
+    src1 = tcg_temp_new();
     src2 = get_gpr(ctx, a->rs2, EXT_NONE);
     tcg_gen_atomic_cmpxchg_tl_with_checked_addr(src1, load_res, load_val, src2,
                                                 ctx->mem_idx, mop);
