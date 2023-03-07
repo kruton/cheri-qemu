@@ -1119,6 +1119,7 @@ static const char rv_fli_name_const[32][9] =
     "0x1p+15", "0x1p+16", "inf", "nan"
 };
 
+#define rv_fmt_rs1_rs2_zce_ldst       "O\t2,i(1)"
 /* pseudo-instruction constraints */
 
 static const rvc_constraint rvcc_jal[] = { rvc_rd_eq_ra, rvc_end };
@@ -3475,8 +3476,17 @@ static rv_opcode decode_cheri_inst(rv_inst inst) {
             case 45: op = rv_op_minu; break;
             case 46: op = rv_op_max; break;
             case 47: op = rv_op_maxu; break;
+            case 48: op = rv_op_cadd; break;
+            case 50: op = rv_op_acperm; break;
+            case 51: op = rv_op_schi; break;
+            case 52: op = rv_op_sceq; break;
+            case 53: op = rv_op_cbld; break;
+            case 55: op = rv_op_scmode; break;
             case 075: op = rv_op_czero_eqz; break;
             case 077: op = rv_op_czero_nez; break;
+                switch ((inst >> 20) & 0b11111) {
+                }
+                break;
             case 130: op = rv_op_sh1add; break;
             case 132: op = rv_op_sh2add; break;
             case 134: op = rv_op_sh3add; break;
@@ -4284,11 +4294,10 @@ static rv_opcode decode_cheri_inst(rv_inst inst) {
             }
             break;
         case 22:
-            switch ((inst >> 12) & 0b111) {
             case 0: op = rv_op_addid; break;
-            case 1:
-                case 0: op = rv_op_sllid; break;
                     break;
+                        break;
+                    }
                     }
                 }
                 break;
@@ -4812,6 +4821,10 @@ static uint32_t operand_uimm_c_lh(rv_inst inst)
     return (((inst << 58) >> 63) << 1);
 }
 
+static uint32_t operand_vm(rv_inst inst)
+{
+    return (inst << 38) >> 63;
+}
 static uint32_t operand_zcmp_spimm(rv_inst inst)
 {
     return ((inst << 60) >> 62) << 4;
@@ -5157,6 +5170,9 @@ static void decode_inst_operands(rv_decode *dec, rv_isa isa)
         dec->rnum = operand_rnum(inst);
         break;
     case rv_codec_scbndsi:
+        dec->rd = operand_rd(inst);
+        dec->rs1 = operand_rs1(inst);
+        break;
     case rv_codec_cbo_rs1:
     case rv_codec_v_r:
         dec->rd = operand_rd(inst);
