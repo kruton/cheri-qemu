@@ -272,7 +272,7 @@ void helper_cbo_zero_cap(CPURISCVState *env, uint32_t addr_reg)
     address &= ~(cbozlen - 1);
 
     if (!cap_is_in_bounds(auth_cap, address, cbozlen)) {
-        raise_cheri_exception(env, CapEx_LengthViolation, addr_reg);
+        raise_cheri_exception(env, CapEx_LengthViolation, auth_reg);
     }
 
     do_cbo_zero(env, address, _host_return_address);
@@ -376,9 +376,9 @@ void helper_cbo_clean_flush_cap(CPURISCVState *env, uint32_t addr_reg)
     /* Mask off low-bits to align-down to the cache-block. */
     address &= ~(cbomlen - 1);
 
-    /* Check if any of the bytes are outside the bounds */
-    if ((cap_get_top_full(auth_cap) < address) ||
-        (cap_get_base(auth_cap) > (address + cbomlen))) {
+    /* Check if the block is entirely outside the bounds */
+    if ((address >= cap_get_top_full(auth_cap)) ||
+        (cap_get_base(auth_cap) >= (cap_length_t)address + cbomlen)) {
         raise_cheri_exception(env, CapEx_LengthViolation, auth_reg);
     }
     check_zicbom_access(env, address, _host_return_address);
@@ -429,14 +429,15 @@ void helper_cbo_inval_cap(CPURISCVState *env, uint32_t addr_reg)
     /* Mask off low-bits to align-down to the cache-block. */
     address &= ~(cbomlen - 1);
 
-    /* Check if any of the bytes are outside the bounds */
-    if ((cap_get_top_full(auth_cap) < address) ||
-        (cap_get_base(auth_cap) > (address + cbomlen))) {
-        raise_cheri_exception(env, CapEx_LengthViolation, addr_reg);
+    /* Check if the block is entirely outside the bounds */
+    if ((address >= cap_get_top_full(auth_cap)) ||
+        (cap_get_base(auth_cap) >= (cap_length_t)address + cbomlen)) {
+        raise_cheri_exception(env, CapEx_LengthViolation, auth_reg);
     }
     check_zicbom_access(env, address, _host_return_address);
 }
 #endif
+
 #ifndef CONFIG_USER_ONLY
 
 target_ulong helper_sret(CPURISCVState *env)

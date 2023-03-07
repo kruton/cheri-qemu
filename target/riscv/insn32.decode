@@ -99,6 +99,9 @@
 # Formats 64:
 @sh5     .......  ..... .....  ... ..... ....... &shift  shamt=%sh5      %rs1 %rd
 
+# Formats 128:
+@sh6       ...... ...... ..... ... ..... ....... &shift shamt=%sh6 %rs1 %rd
+
 # *** Privileged Instructions ***
 ecall       000000000000     00000 000 00000 1110011
 ebreak      000000000001     00000 000 00000 1110011
@@ -132,6 +135,7 @@ addi     ............     ..... 000 ..... 0010011 @i
 slti     ............     ..... 010 ..... 0010011 @i
 sltiu    ............     ..... 011 ..... 0010011 @i
 xori     ............     ..... 100 ..... 0010011 @i
+# cbo.prefetch_{i,r,m} instructions are ori with rd=x0 and not decoded.
 ori      ............     ..... 110 ..... 0010011 @i
 andi     ............     ..... 111 ..... 0010011 @i
 slli     000000 ......    ..... 001 ..... 0010011 @sh
@@ -182,12 +186,8 @@ subw     0100000 .....  ..... 000 ..... 0111011 @r
 sllw     0000000 .....  ..... 001 ..... 0111011 @r
 srlw     0000000 .....  ..... 101 ..... 0111011 @r
 sraw     0100000 .....  ..... 101 ..... 0111011 @r
-
+# *** RV128I Base Instruction Set (in addition to RV64I) ***
 {
-  # RV128 lq conflicts with the CMO instructions
-  lq       ............   ..... 010 ..... 0001111 @i
-  # The V9 previous encoding of LC conflicts with the cbo instructions.
-  lc       ............   ..... 010 ..... 0001111 @i ?pred_xcheri
   [
     # *** RV32 Zicbom Standard Extension ***
     cbo_clean  0000000 00001 ..... 010 00000 0001111 @sfence_vm
@@ -197,7 +197,23 @@ sraw     0100000 .....  ..... 101 ..... 0111011 @r
     # *** RV32 Zicboz Standard Extension ***
     cbo_zero   0000000 00100 ..... 010 00000 0001111 @sfence_vm
   ]
+  # The V9 previous encoding of LC conflicts with the cbo instructions.
+  lc       ............   ..... 010 ..... 0001111 @i ?pred_xcheri
+  # RV128 lq conflicts with the CMO instructions
+  lq       ............   ..... 010 ..... 0001111 @i
 }
+{
+  # CHERI standard and V9 LC (100 funct3)
+  lc       ............   ..... 100 ..... 0001111 @i ?pred_cre
+  lc       ............   ..... 100 ..... 0001111 @i ?pred_xcheri
+}
+{
+  # CHERI standard and V9 SC (100 funct3) conflict with RV128 SQ
+  sc       ....... .....  ..... 100 ..... 0100011 @s ?pred_cre
+  sc       ....... .....  ..... 100 ..... 0100011 @s ?pred_xcheri
+  sq       ............   ..... 100 ..... 0100011 @s
+}
+
 
 # *** RV32M Standard Extension ***
 mul      0000001 .....  ..... 000 ..... 0110011 @r

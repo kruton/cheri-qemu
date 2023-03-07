@@ -1277,6 +1277,11 @@ restart:
             /* Page table updates need to be atomic with MTTCG enabled */
             if (updated_pte != pte) {
                 if (!hade) {
+#if defined(TARGET_CHERI_RISCV_V9) && !defined(TARGET_RISCV32)
+                    if ((updated_pte & PTE_CD) != (pte & PTE_CD)) {
+                        return TRANSLATE_CHERI_FAIL;
+                    }
+#endif
                     return TRANSLATE_FAIL;
                 }
 
@@ -1370,7 +1375,8 @@ restart:
                     }
                 }
             }
-            if ((pte & PTE_CW) == 0) {
+            if ((pte & PTE_CW) == 0 ||
+                (((pte & PTE_CD) == 0) && access_type != MMU_DATA_CAP_STORE)) {
                 *prot |= PAGE_SC_TRAP;
             }
 #elif defined(TARGET_CHERI_RISCV_STD_093) && !defined(TARGET_RISCV32)

@@ -91,9 +91,7 @@ caddi         ............   ..... 010 ..... 0011011 @cci ?pred_cre
 scbndsi       000001 . ..... ..... 101 ..... 0010011 @is_unsigned ?pred_cre
 
 
-# Loads and stores
-lc       ............   ..... 100 ..... 0001111 @i ?pred_cre
-sc       ....... .....  ..... 100 ..... 0100011 @s ?pred_cre
+
 
 # Atomic instructions
 amoswap_c 00001 . . ..... ..... 100 ..... 0101111 @atom_st ?pred_cre

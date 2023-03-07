@@ -976,12 +976,14 @@ static bool pred_hybrid(DisasContext *ctx)
 }
 #endif
 
-#ifdef TARGET_CHERI_RISCV_STD
 static bool pred_cre(DisasContext *ctx)
 {
+#ifdef TARGET_CHERI_RISCV_STD
     return ctx->cre;
-}
+#else
+    return false;
 #endif
+}
 
 /* Include the auto-generated decoder for 32 bit insn */
 #include "decode-insn32.c.inc"
