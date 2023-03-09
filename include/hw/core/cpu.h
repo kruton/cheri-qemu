@@ -108,6 +108,8 @@ struct SysemuCPUOps;
  * @reset_dump_flags: #CPUDumpFlags to use for reset logging.
  * @has_work: Callback for checking if there is work to do.
  * @memory_rw_debug: Callback for GDB memory access.
+ * @memory_readcap_debug: Callback for GDB capability memory access.
+ * @cheri_cap_size: Size of a CHERI capability in bytes.
  * @dump_state: Callback for dumping state.
  * @get_arch_id: Callback for getting architecture-dependent CPU ID.
  * @set_pc: Callback for setting the Program Counter register. This
@@ -153,6 +155,9 @@ struct CPUClass {
     bool (*has_work)(CPUState *cpu);
     int (*memory_rw_debug)(CPUState *cpu, vaddr addr,
                            uint8_t *buf, int len, bool is_write);
+    int (*memory_readcap_debug)(CPUState *cpu, vaddr addr,
+                                uint8_t *buf, int len);
+    int cheri_cap_size;
     void (*dump_state)(CPUState *cpu, FILE *, int flags);
     int64_t (*get_arch_id)(CPUState *cpu);
     void (*set_pc)(CPUState *cpu, vaddr value);

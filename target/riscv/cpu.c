@@ -2197,6 +2197,14 @@ static const struct TCGCPUOps riscv_tcg_ops = {
 #endif /* !CONFIG_USER_ONLY */
 };
 
+#ifdef TARGET_CHERI
+static int riscv_cpu_memory_readcap_debug(CPUState *cpu, vaddr addr,
+                                          uint8_t *buf, int len)
+{
+    return cpu_memory_readcap_debug(cpu, addr, buf, len);
+}
+#endif
+
 static void riscv_cpu_class_init(ObjectClass *c, void *data)
 {
     RISCVCPUClass *mcc = RISCV_CPU_CLASS(c);
@@ -2219,6 +2227,10 @@ static void riscv_cpu_class_init(ObjectClass *c, void *data)
     cc->gdb_write_register = riscv_cpu_gdb_write_register;
     cc->gdb_num_core_regs = 33;
     cc->gdb_stop_before_watchpoint = true;
+#ifdef TARGET_CHERI
+    cc->memory_readcap_debug = riscv_cpu_memory_readcap_debug;
+    cc->cheri_cap_size = CHERI_CAP_SIZE;
+#endif
     cc->disas_set_info = riscv_cpu_disas_set_info;
 #ifndef CONFIG_USER_ONLY
     cc->sysemu_ops = &riscv_sysemu_ops;
