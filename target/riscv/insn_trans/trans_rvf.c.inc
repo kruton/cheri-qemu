@@ -52,7 +52,6 @@ static bool trans_flw(DisasContext *ctx, arg_flw *a)
     tcg_gen_qemu_ld_i64_with_checked_addr(dest, addr, ctx->mem_idx, mop);
     gen_nanbox_s(dest, dest);
 
-    tcg_temp_free_cap_checked(addr);
     mark_fs_dirty(ctx);
     return true;
 }
@@ -69,7 +68,6 @@ static bool trans_fsw(DisasContext *ctx, arg_fsw *a)
     tcg_gen_qemu_st_i64_with_checked_addr(cpu_fpr[a->rs2], addr, ctx->mem_idx,
                                           mop);
 
-    tcg_temp_free_cap_checked(addr);
     return true;
 }
 

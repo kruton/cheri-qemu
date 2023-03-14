@@ -44,7 +44,6 @@ static inline bool gen_lr(DisasContext *ctx, arg_atomic *a, MemOp mop)
     TCGv_cap_checked_ptr addr =
         get_capmode_dependent_load_addr(ctx, a->rs1, 0, mop);
     bool result = gen_lr_impl(ctx, addr, a, mop);
-    tcg_temp_free_cap_checked(addr);
     return result;
 }
 
@@ -68,11 +67,9 @@ static inline bool gen_sc_impl(DisasContext *ctx, TCGv_cap_checked_ptr addr,
      */
     cheri_debug_assert((mop & MO_ALIGN) && "store-conditional must be aligned");
     if (memop_size(mop) > 1) {
-        TCGv_i32 tmop = tcg_const_i32(mop);
-        TCGv_i32 tcode = tcg_const_i32(RISCV_EXCP_STORE_AMO_ADDR_MIS);
+        TCGv_i32 tmop = tcg_constant_i32(mop);
+        TCGv_i32 tcode = tcg_constant_i32(RISCV_EXCP_STORE_AMO_ADDR_MIS);
         gen_helper_check_alignment(cpu_env, (TCGv)addr, tmop, tcode);
-        tcg_temp_free_i32(tcode);
-        tcg_temp_free_i32(tmop);
     }
 
     tcg_gen_brcond_cap_checked(TCG_COND_NE, load_res, addr, l1);
@@ -119,7 +116,6 @@ static inline bool gen_sc(DisasContext *ctx, arg_atomic *a, MemOp mop)
         get_capmode_dependent_load_addr(ctx, a->rs1, 0, mop);
     cheri_debug_assert((mop & MO_ALIGN) && "store-conditional must be aligned");
     bool result = gen_sc_impl(ctx, addr, a, mop);
-    tcg_temp_free_cap_checked(addr);
     return result;
 }
 
@@ -142,16 +138,13 @@ static bool gen_amo(DisasContext *ctx, arg_atomic *a,
      * get a load fault rather than the spec-mandated store/amo fault.
      */
     if (memop_size(mop) > 1) {
-        TCGv_i32 tmop = tcg_const_i32(mop);
-        TCGv_i32 tcode = tcg_const_i32(RISCV_EXCP_STORE_AMO_ADDR_MIS);
+        TCGv_i32 tmop = tcg_constant_i32(mop);
+        TCGv_i32 tcode = tcg_constant_i32(RISCV_EXCP_STORE_AMO_ADDR_MIS);
         gen_helper_check_alignment(cpu_env, (TCGv)src1, tmop, tcode);
-        tcg_temp_free_i32(tcode);
-        tcg_temp_free_i32(tmop);
     }
     func(dest, src1, src2, ctx->mem_idx, mop);
 
     gen_set_gpr(ctx, a->rd, dest);
-    tcg_temp_free_cap_checked(src1);
     return true;
 }
 

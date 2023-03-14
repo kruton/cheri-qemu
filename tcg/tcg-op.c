@@ -25,6 +25,7 @@
 #include "qemu/osdep.h"
 #include "exec/exec-all.h"
 #include "tcg/tcg.h"
+#include "tcg/tcg-temp-internal.h"
 #include "tcg/tcg-op.h"
 #include "tcg/tcg-mo.h"
 #include "exec/plugin-gen.h"
@@ -1584,9 +1585,7 @@ void tcg_gen_muli_i64(TCGv_i64 ret, TCGv_i64 arg1, int64_t arg2)
     } else if (is_power_of_2(arg2)) {
         tcg_gen_shli_i64(ret, arg1, ctz64(arg2));
     } else {
-        TCGv_i64 t0 = tcg_const_i64(arg2);
-        tcg_gen_mul_i64(ret, arg1, t0);
-        tcg_temp_free_i64(t0);
+        tcg_gen_mul_i64(ret, arg1, tcg_constant_i64(arg2));
     }
 }
 
@@ -1983,9 +1982,7 @@ void tcg_gen_clzi_i64(TCGv_i64 ret, TCGv_i64 arg1, uint64_t arg2)
         tcg_gen_movi_i32(TCGV_HIGH(ret), 0);
         tcg_temp_free_i32(t);
     } else {
-        TCGv_i64 t0 = tcg_const_i64(arg2);
-        tcg_gen_clz_i64(ret, arg1, t0);
-        tcg_temp_free_i64(t0);
+        tcg_gen_clz_i64(ret, arg1, tcg_constant_i64(arg2));
     }
 }
 
@@ -2037,9 +2034,7 @@ void tcg_gen_ctzi_i64(TCGv_i64 ret, TCGv_i64 arg1, uint64_t arg2)
         tcg_gen_ctpop_i64(ret, t);
         tcg_temp_free_i64(t);
     } else {
-        TCGv_i64 t0 = tcg_const_i64(arg2);
-        tcg_gen_ctz_i64(ret, arg1, t0);
-        tcg_temp_free_i64(t0);
+        tcg_gen_ctz_i64(ret, arg1, tcg_constant_i64(arg2));
     }
 }
 
@@ -3034,11 +3029,10 @@ void tcg_gen_qemu_ld_i32_with_checked_addr(TCGv_i32 val, TCGv_cap_checked_ptr ad
         }
     }
 #if defined(CONFIG_TCG_LOG_INSTR)
-    TCGv_i32 tcoi = tcg_const_i32(make_memop_idx(memop, idx));
+    TCGv_i32 tcoi = tcg_constant_i32(make_memop_idx(memop, idx));
     if (tcg_ctx_logging_enabled) {
         gen_helper_qemu_log_instr_load32(cpu_env, saved_load_addr, val, tcoi);
     }
-    tcg_temp_free_i32(tcoi);
     // Free the saved address if we needed it
     if (saved_load_addr != addr)
         tcg_temp_free_cap_checked(saved_load_addr);
@@ -3050,11 +3044,10 @@ void handle_conditional_invalidate(TCGv_cap_checked_ptr checked_addr,
                                    TCGv_i32 store_happens)
 {
 #if defined(TARGET_CHERI)
-    TCGv_i32 oi = tcg_const_i32(make_memop_idx(memop, mmu_idx));
+    TCGv_i32 oi = tcg_constant_i32(make_memop_idx(memop, mmu_idx));
     /* Condition is handled in helper */
     gen_helper_cheri_invalidate_tags_condition(cpu_env, checked_addr, oi,
                                                store_happens);
-    tcg_temp_free_i32(oi);
 #endif
 #if defined(TARGET_MIPS) || defined(TARGET_RISCV)
     gen_cheri_break_loadlink(checked_addr);
@@ -3097,7 +3090,7 @@ static void tcg_gen_qemu_st_i32_with_checked_addr_cond_invalidate(
     gen_rvfi_dii_set_mem_data_i32(w, addr, val, memop);
     plugin_gen_mem_callbacks(addr, oi, QEMU_PLUGIN_MEM_W);
 #if defined(TARGET_CHERI) || defined(CONFIG_TCG_LOG_INSTR)
-    TCGv_i32 tcoi = tcg_const_i32(make_memop_idx(memop, idx));
+    TCGv_i32 tcoi = tcg_constant_i32(make_memop_idx(memop, idx));
 #if defined(CONFIG_TCG_LOG_INSTR)
     if (tcg_ctx_logging_enabled) {
         gen_helper_qemu_log_instr_store32(cpu_env, addr, val, tcoi);
@@ -3108,7 +3101,6 @@ static void tcg_gen_qemu_st_i32_with_checked_addr_cond_invalidate(
         gen_helper_cheri_invalidate_tags(cpu_env, addr, tcoi);
     }
 #endif
-    tcg_temp_free_i32(tcoi);
 #endif
 #if defined(TARGET_MIPS) || defined(TARGET_RISCV)
     if (invalidate) {
@@ -3191,11 +3183,10 @@ void tcg_gen_qemu_ld_i64_with_checked_addr(TCGv_i64 val, TCGv_cap_checked_ptr ad
         }
     }
 #if defined(CONFIG_TCG_LOG_INSTR)
-    TCGv_i32 tcop = tcg_const_i32(make_memop_idx(memop, idx));
+    TCGv_i32 tcop = tcg_constant_i32(make_memop_idx(memop, idx));
     if (tcg_ctx_logging_enabled) {
         gen_helper_qemu_log_instr_load64(cpu_env, saved_load_addr, val, tcop);
     }
-    tcg_temp_free_i32(tcop);
     // Free the saved address if we needed it
     if (saved_load_addr != addr)
         tcg_temp_free_cap_checked(saved_load_addr);
@@ -3244,7 +3235,7 @@ void tcg_gen_qemu_st_i64_with_checked_addr_cond_invalidate(
     plugin_gen_mem_callbacks(addr, oi, QEMU_PLUGIN_MEM_W);
 
 #if defined(TARGET_CHERI) || defined(CONFIG_TCG_LOG_INSTR)
-    TCGv_i32 tcoi = tcg_const_i32(make_memop_idx(memop, idx));
+    TCGv_i32 tcoi = tcg_constant_i32(make_memop_idx(memop, idx));
 #if defined(CONFIG_TCG_LOG_INSTR)
     if (tcg_ctx_logging_enabled) {
         gen_helper_qemu_log_instr_store64(cpu_env, addr, val, tcoi);
@@ -3255,7 +3246,6 @@ void tcg_gen_qemu_st_i64_with_checked_addr_cond_invalidate(
         gen_helper_cheri_invalidate_tags(cpu_env, addr, tcoi);
     }
 #endif
-    tcg_temp_free_i32(tcoi);
 #endif
 #if defined(TARGET_MIPS) || defined(TARGET_RISCV)
     if (invalidate) {
@@ -3762,9 +3752,8 @@ static void do_atomic_op_i32(TCGv_i32 ret, TCGv_cap_checked_ptr checked_addr,
     oi = make_memop_idx(memop & ~MO_SIGN, idx);
     gen(ret, cpu_env, (TCGv)checked_addr, val, tcg_constant_i32(oi));
 #if defined(TARGET_CHERI)
-    TCGv_i32 tcoi = tcg_const_i32(make_memop_idx(memop, idx));
+    TCGv_i32 tcoi = tcg_constant_i32(make_memop_idx(memop, idx));
     gen_helper_cheri_invalidate_tags(cpu_env, checked_addr, tcoi);
-    tcg_temp_free_i32(tcoi);
 #endif
 #if defined(TARGET_MIPS) || defined(TARGET_RISCV)
     gen_cheri_break_loadlink(checked_addr);
@@ -3835,9 +3824,8 @@ static void do_atomic_op_i64(TCGv_i64 ret, TCGv_cap_checked_ptr checked_addr,
         }
     }
 #if defined(TARGET_CHERI)
-    TCGv_i32 tcoi = tcg_const_i32(make_memop_idx(memop, idx));
+    TCGv_i32 tcoi = tcg_constant_i32(make_memop_idx(memop, idx));
     gen_helper_cheri_invalidate_tags(cpu_env, checked_addr, tcoi);
-    tcg_temp_free_i32(tcoi);
 #endif
 #if defined(TARGET_MIPS) || defined(TARGET_RISCV)
     gen_cheri_break_loadlink(checked_addr);

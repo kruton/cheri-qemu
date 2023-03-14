@@ -307,7 +307,8 @@ static bool S1_ptw_translate(CPUARMState *env, S1Translate *ptw,
 #endif
     }
 
-    if (regime_is_stage2(s2_mmu_idx)) {
+    if (regime_is_stage2(s2_mmu_idx) &&
+        !regime_translation_disabled(env, s2_mmu_idx, is_secure)) {
         uint64_t hcr = arm_hcr_el2_eff_secstate(env, is_secure);
 
         if ((hcr & HCR_PTW) && S2_attrs_are_device(hcr, pte_attrs)) {
@@ -2835,6 +2836,17 @@ static bool get_phys_addr_twostage(CPUARMState *env, S1Translate *ptw,
     s1_lgpgsz = result->f.lg_page_size;
     cacheattrs1 = result->cacheattrs;
 
+    if (regime_translation_disabled(env, ptw->in_mmu_idx, s2walk_secure)) {
+        /* Stage 2 is disabled, identity map IPA -> PA (already in result) */
+        /* Check if IPA translates to secure or non-secure PA space. */
+        result->f.attrs.secure =
+            (is_secure
+             && !(env->cp15.vstcr_el2 & (VSTCR_SA | VSTCR_SW))
+             && (ipa_secure
+                 || !(env->cp15.vtcr_el2 & (VTCR_NSA | VTCR_NSW))));
+        return false;
+    }
+
     memset(result, 0, sizeof(*result));
     if (arm_feature(env, ARM_FEATURE_PMSA)) {
         ret = get_phys_addr_pmsav8(env, ipa, access_type,
@@ -2950,8 +2962,7 @@ static bool get_phys_addr_with_struct(CPUARMState *env, S1Translate *ptw,
          * Otherwise, a stage1+stage2 translation is just stage 1.
          */
         ptw->in_mmu_idx = mmu_idx = s1_mmu_idx;
-        if (arm_feature(env, ARM_FEATURE_EL2) &&
-            !regime_translation_disabled(env, ARMMMUIdx_Stage2, is_secure)) {
+        if (arm_feature(env, ARM_FEATURE_EL2)) {
             return get_phys_addr_twostage(env, ptw, address, access_type,
                                           result, fi);
         }
@@ -3079,23 +3090,6 @@ bool get_phys_addr(CPUARMState *env, target_ulong address,
     }
     bool ret = get_phys_addr_with_secure(env, address, access_type, mmu_idx,
                                          is_secure, result, fi);
-
-    /*
-     * If translation succeeded, EL2 is present, and we did a 2-stage regime
-     * but Stage 2 was disabled (so we bypassed get_phys_addr_twostage),
-     * we must still apply the Stage 2 bypass security space correction.
-     */
-    if (!ret && arm_feature(env, ARM_FEATURE_EL2) &&
-        (mmu_idx == ARMMMUIdx_E10_0 || mmu_idx == ARMMMUIdx_E10_1 || mmu_idx == ARMMMUIdx_E10_1_PAN)) {
-        if (regime_translation_disabled(env, ARMMMUIdx_Stage2, is_secure)) {
-            bool ipa_secure = result->f.attrs.secure;
-            result->f.attrs.secure =
-                (is_secure
-                 && !(env->cp15.vstcr_el2 & (VSTCR_SA | VSTCR_SW))
-                 && (ipa_secure
-                     || !(env->cp15.vtcr_el2 & (VTCR_NSA | VTCR_NSW))));
-        }
-    }
 
     return ret;
 }

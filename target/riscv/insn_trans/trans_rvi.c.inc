@@ -474,14 +474,13 @@ static bool trans_slti(DisasContext *ctx, arg_slti *a)
      * from next instruction.
      */
     if (unlikely(a->rd == 0)) {
-        TCGv tpc = tcg_const_tl(ctx->base.pc_next);
+        TCGv tpc = tcg_constant_tl(ctx->base.pc_next);
         TCGv_i32 ttmp;
 
         switch (a->imm) {
         case 0x01: case 0x02:
-            ttmp = tcg_const_i32(a->imm == 0x01);
+            ttmp = tcg_constant_i32(a->imm == 0x01);
             gen_helper_qemu_log_instr_buffered_mode(cpu_env, ttmp);
-            tcg_temp_free_i32(ttmp);
             break;
         case 0x03:
             gen_helper_qemu_log_instr_buffer_flush(cpu_env);
@@ -503,7 +502,6 @@ static bool trans_slti(DisasContext *ctx, arg_slti *a)
             ctx->base.is_jmp = DISAS_NORETURN;
             break;
         }
-        tcg_temp_free(tpc);
 
         if (ctx->base.is_jmp != DISAS_NEXT) {
             gen_set_pc_imm(ctx, ctx->pc_succ_insn);

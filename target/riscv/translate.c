@@ -505,12 +505,11 @@ static inline void gen_riscv_log_instr(DisasContext *ctx, uint32_t opcode,
                                        int width)
 {
     if (qemu_ctx_logging_enabled(ctx)) {
-        TCGv tpc = tcg_const_tl(ctx->base.pc_next);
+        TCGv tpc = tcg_constant_tl(ctx->base.pc_next);
         TCGv_i32 topc = tcg_constant_i32(opcode);
         TCGv_i32 twidth = tcg_constant_i32(width);
         // TODO(am2419): bswap opcode if target byte-order != host byte-order
         gen_helper_riscv_log_instr(cpu_env, tpc, topc, twidth);
-        tcg_temp_free(tpc);
     }
 }
 
@@ -718,8 +717,6 @@ static void gen_jalr(DisasContext *ctx, int rd, int rs1, target_ulong imm)
         gen_exception_inst_addr_mis(ctx);
     }
     ctx->base.is_jmp = DISAS_NORETURN;
-
-    tcg_temp_free(t0);
 }
 
 /* Compute a canonical address from a register plus offset. */

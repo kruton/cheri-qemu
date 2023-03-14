@@ -53,7 +53,6 @@ static bool trans_fld(DisasContext *ctx, arg_fld *a)
                                           mop);
 
     mark_fs_dirty(ctx);
-    tcg_temp_free_cap_checked(addr);
     return true;
 }
 
@@ -69,7 +68,6 @@ static bool trans_fsd(DisasContext *ctx, arg_fsd *a)
 
     tcg_gen_qemu_st_i64_with_checked_addr(cpu_fpr[a->rs2], addr, ctx->mem_idx,
                                           mop);
-    tcg_temp_free_cap_checked(addr);
     return true;
 }
 
