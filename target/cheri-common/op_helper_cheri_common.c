@@ -82,9 +82,11 @@ void CHERI_HELPER_IMPL(cjalr(CPUArchState *env, uint32_t cd,
         raise_cheri_exception_branch(env, CapEx_SealViolation, data_regnum);
     } else if (!cap_has_perms(code_cap, CAP_PERM_CINVOKE)) {
     } else if (!cap_has_perms(data_cap, CAP_PERM_CINVOKE)) {
+    } else if (!cap_has_perms(code_cap, CAP_PERM_EXECUTE)) {
     } else if (!cap_is_unsealed(csp)) {
     cap_register_t result = *csp;
                                   target_ulong rt))
+        raise_cheri_exception(env, CapEx_TagViolation, cs);
     } else if ((cap_get_all_perms(csp) & rt) != rt) {
         raise_cheri_exception(env, CapEx_UserDefViolation, cs);
     // Previously QEMU return (1<<64)-1 for a representable length of 1<<64
