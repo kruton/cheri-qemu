@@ -871,12 +871,23 @@ static char *custom_riscv_isa_string(RISCVCPU *cpu, bool is_32_bit)
         const char *ext;
     } ext_map_t;
     bool enable = true;
+
+    bool has_i = riscv_has_ext(&cpu->env, RVI);
+    bool has_m = riscv_has_ext(&cpu->env, RVM);
+    bool has_a = riscv_has_ext(&cpu->env, RVA);
+    bool has_f = riscv_has_ext(&cpu->env, RVF);
+    bool has_d = riscv_has_ext(&cpu->env, RVD);
+    bool has_c = riscv_has_ext(&cpu->env, RVC);
+    bool has_h = riscv_has_ext(&cpu->env, RVH);
+    bool has_j = riscv_has_ext(&cpu->env, RVJ);
+    bool has_v = riscv_has_ext(&cpu->env, RVV);
+
     ext_map_t base_exts[] = {
-        { &cpu->cfg.ext_i, "i" }, { &cpu->cfg.ext_m, "m" },
-        { &cpu->cfg.ext_a, "a" }, { &cpu->cfg.ext_f, "f" },
-        { &cpu->cfg.ext_d, "d" }, { &cpu->cfg.ext_c, "c" },
-        { &cpu->cfg.ext_h, "h" }, { &cpu->cfg.ext_j, "j" },
-        { &cpu->cfg.ext_v, "v" }
+        { &has_i, "i" }, { &has_m, "m" },
+        { &has_a, "a" }, { &has_f, "f" },
+        { &has_d, "d" }, { &has_c, "c" },
+        { &has_h, "h" }, { &has_j, "j" },
+        { &has_v, "v" }
     };
 
     ext_map_t multi_exts[] = {
