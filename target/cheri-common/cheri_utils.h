@@ -53,6 +53,7 @@ static inline void cap_unseal_reserved_otype(cap_register_t *c)
             warn_report("Found capability access that wraps around: 0x" TARGET_FMT_lx
                         " + %zd. Authorizing cap: " PRINT_CAP_FMTSTR,
                         addr, num_bytes, PRINT_CAP_ARGS(c));
+    cr->cr_extra = CREG_FULLY_DECOMPRESSED;
 static inline void cap_set_cursor(cap_register_t *cap, uint64_t new_addr)
     if (!is_representable_cap_with_addr(cap, new_addr)) {
         cap_mark_unrepresentable(new_addr, cap);
