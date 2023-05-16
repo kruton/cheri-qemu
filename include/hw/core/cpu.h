@@ -111,6 +111,9 @@ struct SysemuCPUOps;
  * @memory_readcap_debug: Callback for GDB capability memory access.
  * @cheri_cap_size: Size of a CHERI capability in bytes.
  * @dump_state: Callback for dumping state.
+ * @query_cpu_fast:
+ *       Fill in target specific information for the "query-cpus-fast"
+ *       QAPI call.
  * @get_arch_id: Callback for getting architecture-dependent CPU ID.
  * @set_pc: Callback for setting the Program Counter register. This
  *       should have the semantics used by the target architecture when
@@ -159,6 +162,7 @@ struct CPUClass {
                                 uint8_t *buf, int len);
     int cheri_cap_size;
     void (*dump_state)(CPUState *cpu, FILE *, int flags);
+    void (*query_cpu_fast)(CPUState *cpu, CpuInfoFast *value);
     int64_t (*get_arch_id)(CPUState *cpu);
     void (*set_pc)(CPUState *cpu, vaddr value);
     vaddr (*get_pc)(CPUState *cpu);
@@ -1023,6 +1027,8 @@ void cpu_exec_unrealizefn(CPUState *cpu);
  * what you are doing!
  */
 bool target_words_bigendian(void);
+
+const char *target_name(void);
 
 void page_size_init(void);
 
