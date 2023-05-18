@@ -40,7 +40,7 @@
 
 
 # ADR, ADRP, ADRP, ADRDP
-ADR ...10000........................ @op_ADR
+ADR_cheri ...10000........................ @op_ADR
 {
   
   # ADD, SUB
