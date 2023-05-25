@@ -964,6 +964,8 @@ typedef enum {
     rv_op_cm_mvsa01 = 786,
     rv_op_cm_jt = 787,
     rv_op_cm_jalt = 788,
+    rv_op_czero_eqz = 789,
+    rv_op_czero_nez = 790,
     // CHERI:
     rv_op_auipcc,
     rv_op_lc,
@@ -2439,6 +2441,8 @@ const rv_opcode_data opcode_data[] = {
     { "cm.mvsa01", rv_codec_zcmp_cm_mv, rv_fmt_rd_rs2, NULL, 0, 0, 0 },
     { "cm.jt", rv_codec_zcmt_jt, rv_fmt_zcmt_index, NULL, 0 },
     { "cm.jalt", rv_codec_zcmt_jt, rv_fmt_zcmt_index, NULL, 0 },
+    { "czero.eqz", rv_codec_r, rv_fmt_rd_rs1_rs2, NULL, 0, 0, 0 },
+    { "czero.nez", rv_codec_r, rv_fmt_rd_rs1_rs2, NULL, 0, 0, 0 },
 };
 
 /* CSR names */
@@ -3395,6 +3399,8 @@ static void decode_inst_opcode(rv_decode *dec, rv_isa isa, int flags)
             case 55: op = rv_op_scmode; break;
             case 56: op = rv_op_scbnds; break;
             case 57: op = rv_op_scbndsr; break;
+            case 075: op = rv_op_czero_eqz; break;
+            case 077: op = rv_op_czero_nez; break;
             case 64:
                 switch ((inst >> 20) & 0b11111) {
                 case 0b00000: op = rv_op_gctag; break;
