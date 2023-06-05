@@ -34,6 +34,10 @@
 #include "instmap.h"
 #include "internals.h"
 
+#define HELPER_H "helper.h"
+#include "exec/helper-info.c.inc"
+#undef  HELPER_H
+
 /* global register indices */
 #ifdef TARGET_CHERI
 #include "cheri-lazy-capregs.h"
@@ -52,8 +56,6 @@ static TCGv load_val;
 /* globals for PM CSRs */
 static TCGv pm_mask;
 static TCGv pm_base;
-
-#include "exec/gen-icount.h"
 
 /*
  * If an operation is being performed on less than TARGET_LONG_BITS,

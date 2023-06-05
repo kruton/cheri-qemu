@@ -12461,7 +12461,7 @@ void HELPER(arm_log_instr)(CPUARMState *env, uint64_t pc, uint32_t opcode,
             uint16_t opcode16 = opcode;
             qemu_log_instr(env, pc, (char *)&opcode16, opcode_size);
         } else {
-            tcg_debug_assert(opcode_size == 4);
+            g_assert(opcode_size == 4);
             qemu_log_instr(env, pc, (char *)&opcode, opcode_size);
         }
     }

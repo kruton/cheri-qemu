@@ -1236,7 +1236,7 @@ void mips_cpu_do_interrupt(CPUState *cs)
 {
     MIPSCPU *cpu = MIPS_CPU(cs);
     CPUMIPSState *env = &cpu->env;
-    tcg_debug_assert(pc_is_current(env));
+    cheri_debug_assert(pc_is_current(env));
     bool update_badinstr = 0;
     target_ulong offset;
     int cause = -1;

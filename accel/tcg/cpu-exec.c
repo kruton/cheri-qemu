@@ -319,8 +319,8 @@ static void log_cpu_exec(target_ulong pc, CPUState *cpu,
 {
     if (qemu_log_in_addr_range(pc)) {
         qemu_log_mask(CPU_LOG_EXEC,
-                      "Trace %d: %p [" TARGET_FMT_lx "/" TARGET_FMT_lx
-                      "/" TARGET_FMT_lx "-" TARGET_FMT_lx
+                      "Trace %d: %p [%08" PRIx64 "/" TARGET_FMT_lx
+                      "/%016" VADDR_PRIx "-%016" VADDR_PRIx
                       "/%08x/%08x/%08x] %s\n",
                       cpu->cpu_index, tb->tc.ptr, tb->cs_base, pc,
                       tb->pcc_base, tb->pcc_top, tb->cheri_flags,

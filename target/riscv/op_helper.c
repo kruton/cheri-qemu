@@ -22,6 +22,7 @@
 #include "cpu.h"
 #include "internals.h"
 #include "qemu/main-loop.h"
+#include "qemu/error-report.h"
 #include "exec/exec-all.h"
 #include "exec/helper-proto.h"
 #ifdef TARGET_CHERI

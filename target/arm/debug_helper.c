@@ -397,7 +397,7 @@ bool arm_debug_check_breakpoint(CPUState *cs)
     /*
      * PC alignment faults have priority over breakpoint exceptions.
      */
-    tcg_debug_assert(pc_is_current(env));
+    cheri_debug_assert(pc_is_current(env));
     pc = cpu_get_recent_pc(env);
     if ((is_a64(env) || !env->thumb) && (pc & 3) != 0) {
         return false;

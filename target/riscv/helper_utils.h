@@ -39,6 +39,7 @@
 #ifdef TARGET_CHERI
 #include "cheri-lazy-capregs.h"
 #endif
+#include "exec/helper-proto.h"
 
 static inline void gpr_set_int_value(CPUArchState *env, unsigned reg,
                                      target_ulong value)

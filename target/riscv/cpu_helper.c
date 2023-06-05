@@ -49,6 +49,7 @@
 #endif
 #include "cpu_bits.h"
 #include "debug.h"
+#include "tcg/oversized-guest.h"
 
 int riscv_cpu_mmu_index(CPURISCVState *env, bool ifetch)
 {
@@ -2074,7 +2075,7 @@ void riscv_cpu_do_interrupt(CPUState *cs)
     RISCVCPU *cpu = RISCV_CPU(cs);
     CPURISCVState *env = &cpu->env;
     bool write_gva = false;
-    tcg_debug_assert(pc_is_current(env));
+    cheri_debug_assert(pc_is_current(env));
     uint64_t s;
 
     /*

@@ -120,6 +120,7 @@ GEN_ATOMIC_HELPERS(xchg)
 
 #undef GEN_ATOMIC_HELPERS
 
+#ifdef NEED_CPU_H
 #ifdef TARGET_CHERI
 // Check that the second arg (addr) + third arg (num_bytes) is within the bounds
 // of DDC and raise an exception otherwise. Tag+usealed+load/store perms must
@@ -136,6 +137,7 @@ DEF_HELPER_3(cheri_invalidate_tags, void, env, cap_checked_ptr, memop_idx)
 DEF_HELPER_4(cheri_invalidate_tags_condition, void, env, cap_checked_ptr,
              memop_idx, i32)
 
+#endif
 #endif
 
 DEF_HELPER_FLAGS_3(gvec_mov, TCG_CALL_NO_RWG, void, ptr, ptr, i32)
@@ -320,14 +322,17 @@ DEF_HELPER_FLAGS_5(gvec_bitsel, TCG_CALL_NO_RWG, void, ptr, ptr, ptr, ptr, i32)
 #ifdef CONFIG_TCG_LOG_INSTR
 DEF_HELPER_FLAGS_2(qemu_log_instr_buffered_mode, TCG_CALL_NO_RWG, void, env, i32)
 DEF_HELPER_FLAGS_1(qemu_log_instr_buffer_flush, TCG_CALL_NO_RWG, void, env)
-DEF_HELPER_FLAGS_2(qemu_log_instr_start, TCG_CALL_NO_WG, void, env, tl)
 DEF_HELPER_FLAGS_1(qemu_log_printf_dump, TCG_CALL_NO_WG, void, env)
-DEF_HELPER_FLAGS_2(qemu_log_instr_user_start, TCG_CALL_NO_WG, void, env, tl)
-DEF_HELPER_FLAGS_2(qemu_log_instr_stop, TCG_CALL_NO_WG, void, env, tl)
 DEF_HELPER_FLAGS_0(qemu_log_instr_allcpu_start, TCG_CALL_NO_WG, void)
 DEF_HELPER_FLAGS_0(qemu_log_instr_allcpu_user_start, TCG_CALL_NO_WG, void)
 DEF_HELPER_FLAGS_0(qemu_log_instr_allcpu_stop, TCG_CALL_NO_WG, void)
 DEF_HELPER_FLAGS_1(qemu_log_instr_commit, TCG_CALL_NO_WG, void, env)
+DEF_HELPER_FLAGS_3(log_value, TCG_CALL_NO_WG, void, env, cptr, i64)
+
+#ifdef NEED_CPU_H
+DEF_HELPER_FLAGS_2(qemu_log_instr_start, TCG_CALL_NO_WG, void, env, tl)
+DEF_HELPER_FLAGS_2(qemu_log_instr_user_start, TCG_CALL_NO_WG, void, env, tl)
+DEF_HELPER_FLAGS_2(qemu_log_instr_stop, TCG_CALL_NO_WG, void, env, tl)
 DEF_HELPER_FLAGS_4(qemu_log_instr_load64, TCG_CALL_NO_WG, void, env,
                    cap_checked_ptr, i64, memop_idx)
 DEF_HELPER_FLAGS_4(qemu_log_instr_store64, TCG_CALL_NO_WG, void, env,
@@ -342,5 +347,5 @@ DEF_HELPER_FLAGS_5(qemu_log_instr_reg, TCG_CALL_NO_WG, void, env, cptr, tl, i32,
 DEF_HELPER_FLAGS_5(qemu_log_instr_cap, TCG_CALL_NO_WG, void, env, cptr, cptr,
                    i32, i32)
 #endif
-DEF_HELPER_FLAGS_3(log_value, TCG_CALL_NO_WG, void, env, cptr, i64)
+#endif /* NEED_CPU_H */
 #endif
