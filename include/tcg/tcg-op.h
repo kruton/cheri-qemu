@@ -492,6 +492,7 @@ DEF_ATOMIC2(tcg_gen_atomic_umax_fetch, i64)
 
 #endif /* TARGET_LONG_BITS == 64 */
 
+#ifdef TARGET_CHERI
 static inline void tcg_gen_mov_cap_checked(TCGv_cap_checked_ptr ret,
                                            TCGv_cap_checked_ptr arg)
 {
@@ -504,6 +505,7 @@ static inline void tcg_gen_brcond_cap_checked(TCGCond cond,
 {
     tcg_gen_brcond_tl(cond, (TCGv)arg1, (TCGv)arg2, label);
 }
+#endif
 
 #if defined(TARGET_MIPS) || defined(TARGET_RISCV)
 void gen_cheri_break_loadlink(TCGv_cap_checked_ptr out_addr);

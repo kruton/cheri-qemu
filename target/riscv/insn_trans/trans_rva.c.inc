@@ -33,7 +33,11 @@ static inline bool gen_lr_impl(DisasContext *ctx, TCGv_cap_checked_ptr addr,
     if (a->aq) {
         tcg_gen_mb(TCG_MO_ALL | TCG_BAR_LDAQ);
     }
+#ifdef TARGET_CHERI
     tcg_gen_mov_cap_checked(load_res, addr);
+#else
+    tcg_gen_mov_tl(load_res, addr);
+#endif
     gen_set_gpr(ctx, a->rd, load_val);
 
     return true;
@@ -72,7 +76,11 @@ static inline bool gen_sc_impl(DisasContext *ctx, TCGv_cap_checked_ptr addr,
         gen_helper_check_alignment(cpu_env, (TCGv)addr, tmop, tcode);
     }
 
+#ifdef TARGET_CHERI
     tcg_gen_brcond_cap_checked(TCG_COND_NE, load_res, addr, l1);
+#else
+    tcg_gen_brcond_tl(TCG_COND_NE, load_res, addr, l1);
+#endif
 
     /*
      * Note that the TCG atomic primitives are SC,

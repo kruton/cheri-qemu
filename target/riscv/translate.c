@@ -1335,7 +1335,7 @@ static inline TCGv_cap_checked_ptr _get_capmode_dependent_addr(
     }
 #else
     TCGv tmp = get_address(ctx, reg_num, regoffs);
-    tcg_gen_mov_cap_checked(result, (TCGv_cap_checked_ptr)tmp);
+    tcg_gen_mov_tl(result, tmp);
 #endif
     return result;
 }
