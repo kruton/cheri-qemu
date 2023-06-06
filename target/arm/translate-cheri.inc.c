@@ -427,11 +427,11 @@ static inline __attribute__((always_inline)) bool load_store_implementation(
             uint32_t rd2_0 = STANDARD_ZERO(rd2);
 
             if (is_load) {
-                gen_load_exclusive(ctx, rd_0, rd2_0, checked, size,
-                                   rd2 != REG_NONE);
+                gen_load_exclusive(ctx, rd_0, rd2_0, rn, size,
+                                   rd2 != REG_NONE, false, alternate_base, !pcc_base);
             } else {
                 gen_store_exclusive(ctx, STANDARD_ZERO(rm), rd_0, rd2_0,
-                                    checked, size, rd2 != REG_NONE);
+                                    rn, size, rd2 != REG_NONE, false, alternate_base, !pcc_base);
             }
         } else if (!vector) {
             MemOp memop = ctx->be_data + size;
