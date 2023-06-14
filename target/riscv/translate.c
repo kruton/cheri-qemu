@@ -70,7 +70,8 @@ typedef enum {
 
 typedef struct DisasContext {
     DisasContextBase base;
-    /* pc_succ_insn points to the instruction following base.pc_next */
+    target_ulong cur_insn_len;
+    target_ulong pc_save;
     target_ulong pc_succ_insn;
     target_ulong priv_ver;
     RISCVMXL misa_mxl_max;
@@ -134,6 +135,8 @@ typedef struct DisasContext {
     /* TCG of the current insn_start */
     TCGOp *insn_start;
 } DisasContext;
+
+static inline void gen_check_branch_target_dynamic(DisasContext *ctx, TCGv addr);
 
 #ifdef CONFIG_DEBUG_TCG
 #define gen_mark_pc_updated() tcg_gen_movi_tl(_pc_is_current, 1)
@@ -249,28 +252,46 @@ static void decode_save_opc(DisasContext *ctx)
     ctx->insn_start = NULL;
 }
 
-static void gen_set_pc_imm(DisasContext *ctx, target_ulong dest)
+static void gen_pc_plus_diff(TCGv target, DisasContext *ctx,
+                             target_long diff)
 {
-    if (get_xl(ctx) == MXL_RV32) {
-        dest = (int32_t)dest;
+    target_ulong dest = ctx->base.pc_next + diff;
+
+    assert(ctx->pc_save != -1);
+    if (tb_cflags(ctx->base.tb) & CF_PCREL) {
+        tcg_gen_addi_tl(target, cpu_pc, dest - ctx->pc_save);
+        if (get_xl(ctx) == MXL_RV32) {
+            tcg_gen_ext32s_tl(target, target);
+        }
+    } else {
+        if (get_xl(ctx) == MXL_RV32) {
+            dest = (int32_t)dest;
+        }
+        tcg_gen_movi_tl(target, dest);
     }
-    tcg_gen_movi_tl(cpu_pc, dest);
+
+}
+
+static void gen_update_pc(DisasContext *ctx, target_long diff)
+{
+    gen_pc_plus_diff(cpu_pc, ctx, diff);
     gen_mark_pc_updated();
+    ctx->pc_save = ctx->base.pc_next + diff;
 }
 
 static void gen_set_pc(DisasContext *ctx, TCGv dest)
 {
-    if (get_xl(ctx) == MXL_RV32) {
-        tcg_gen_ext32s_tl(cpu_pc, dest);
-    } else {
-        tcg_gen_mov_tl(cpu_pc, dest);
-    }
-    gen_mark_pc_updated();
+    tcg_gen_mov_tl(cpu_pc, dest);
+}
+
+static void gen_set_pc_imm(DisasContext *ctx, target_ulong dest)
+{
+    gen_update_pc(ctx, dest - ctx->base.pc_next);
 }
 
 static void generate_exception(DisasContext *ctx, int excp)
 {
-    gen_set_pc_imm(ctx, ctx->base.pc_next);
+    gen_update_pc(ctx, 0);
     gen_helper_raise_exception(cpu_env, tcg_constant_i32(excp));
     ctx->base.is_jmp = DISAS_NORETURN;
 }
@@ -286,9 +307,9 @@ static void gen_exception_illegal(DisasContext *ctx)
     }
 }
 
-static void gen_exception_inst_addr_mis(DisasContext *ctx)
+static void gen_exception_inst_addr_mis(DisasContext *ctx, TCGv target)
 {
-    tcg_gen_st_tl(cpu_pc, cpu_env, offsetof(CPURISCVState, badaddr));
+    tcg_gen_st_tl(target, cpu_env, offsetof(CPURISCVState, badaddr));
     generate_exception(ctx, RISCV_EXCP_INST_ADDR_MIS);
 }
 
@@ -314,19 +335,53 @@ static void exit_tb(DisasContext *ctx)
     tcg_gen_exit_tb(NULL, 0);
 }
 
-static void gen_goto_tb(DisasContext *ctx, int n, target_ulong dest,
+static void gen_goto_tb(DisasContext *ctx, int n, target_long diff,
                         bool bounds_check)
 {
+    target_ulong dest = ctx->base.pc_next + diff;
     if (bounds_check) {
-        gen_check_branch_target(ctx, dest);
+#ifdef TARGET_CHERI
+        if (tb_cflags(ctx->base.tb) & CF_PCREL) {
+            TCGv target_pc = tcg_temp_new();
+            gen_pc_plus_diff(target_pc, ctx, diff);
+            gen_check_branch_target_dynamic(ctx, target_pc);
+        } else {
+            gen_check_branch_target(ctx, dest);
+        }
+#else
+        if (tb_cflags(ctx->base.tb) & CF_PCREL) {
+            TCGv target_pc = tcg_temp_new();
+            gen_pc_plus_diff(target_pc, ctx, diff);
+            gen_check_branch_target_dynamic(ctx, target_pc);
+        } else {
+            gen_check_branch_target(ctx, dest);
+        }
+#endif
     }
 
+     /*
+      * Under itrigger, instruction executes one by one like singlestep,
+      * direct block chain benefits will be small.
+      */
     if (translator_use_goto_tb(&ctx->base, dest) && !ctx->itrigger) {
-        tcg_gen_goto_tb(n);
-        gen_set_pc_imm(ctx, dest);
+        /*
+         * For pcrel, the pc must always be up-to-date on entry to
+         * the linked TB, so that it can use simple additions for all
+         * further adjustments.  For !pcrel, the linked TB is compiled
+         * to know its full virtual address, so we can delay the
+         * update to pc to the unlinked path.  A long chain of links
+         * can thus avoid many updates to the PC.
+         */
+        if (tb_cflags(ctx->base.tb) & CF_PCREL) {
+            gen_update_pc(ctx, diff);
+            tcg_gen_goto_tb(n);
+        } else {
+            gen_update_pc(ctx, diff);
+            tcg_gen_goto_tb(n);
+        }
         tcg_gen_exit_tb(ctx->base.tb, n);
     } else {
-        gen_set_pc_imm(ctx, dest);
+        gen_update_pc(ctx, diff);
         lookup_and_goto_ptr(ctx);
     }
 }
@@ -668,21 +723,40 @@ static void gen_set_fpr_d(DisasContext *ctx, int reg_num, TCGv_i64 t)
 
 static void gen_jal(DisasContext *ctx, int rd, target_ulong imm)
 {
-    target_ulong next_pc;
+    TCGv succ_pc = dest_gpr(ctx, rd);
 
     /* check misaligned: */
-    next_pc = ctx->base.pc_next + imm;
-    gen_check_branch_target(ctx, next_pc);
-    if (!ctx->cfg_ptr->ext_zca) {
-        if ((next_pc & 0x3) != 0) {
-            gen_exception_inst_addr_mis(ctx);
+    TCGv target_pc = NULL;
+#ifdef TARGET_CHERI
+    if (tb_cflags(ctx->base.tb) & CF_PCREL) {
+        target_pc = tcg_temp_new();
+        gen_pc_plus_diff(target_pc, ctx, imm);
+        gen_check_branch_target_dynamic(ctx, target_pc);
+    } else {
+        gen_check_branch_target(ctx, ctx->base.pc_next + imm);
+    }
+#endif
+    if (!has_ext(ctx, RVC) && !ctx->cfg_ptr->ext_zca) {
+        if ((imm & 0x3) != 0) {
+            if (!target_pc) {
+                target_pc = tcg_temp_new();
+                gen_pc_plus_diff(target_pc, ctx, imm);
+            }
+            gen_exception_inst_addr_mis(ctx, target_pc);
             return;
         }
     }
     /* For CHERI ISAv8 the result is an offset relative to PCC.base */
-    gen_set_gpr_const(ctx, rd, ctx->pc_succ_insn - pcc_reloc(ctx));
+    if (pcc_reloc(ctx) != 0) {
+        gen_set_gpr_const(ctx, rd, ctx->pc_succ_insn - pcc_reloc(ctx));
+    } else if (tb_cflags(ctx->base.tb) & CF_PCREL) {
+        gen_pc_plus_diff(succ_pc, ctx, ctx->cur_insn_len);
+        gen_set_gpr(ctx, rd, succ_pc);
+    } else {
+        gen_set_gpr_const(ctx, rd, ctx->pc_succ_insn);
+    }
 
-    gen_goto_tb(ctx, 0, ctx->base.pc_next + imm, /*bounds_check=*/true); /* must use this for safety */
+    gen_goto_tb(ctx, 0, imm, /*bounds_check=*/true); /* must use this for safety */
     ctx->base.is_jmp = DISAS_NORETURN;
 }
 
@@ -699,6 +773,18 @@ static void gen_jalr(DisasContext *ctx, int rd, int rs1, target_ulong imm)
     tcg_gen_addi_tl(t0, t0, imm + pcc_reloc(ctx));
     tcg_gen_andi_tl(t0, t0, (target_ulong)-2);
     gen_check_branch_target_dynamic(ctx, t0);
+
+    /* For CHERI ISAv8 the result is an offset relative to PCC.base */
+    if (pcc_reloc(ctx) != 0) {
+        gen_set_gpri(ctx, rd, ctx->pc_succ_insn - pcc_reloc(ctx));
+    } else if (tb_cflags(ctx->base.tb) & CF_PCREL) {
+        TCGv succ_pc = dest_gpr(ctx, rd);
+        gen_pc_plus_diff(succ_pc, ctx, ctx->cur_insn_len);
+        gen_set_gpr(ctx, rd, succ_pc);
+    } else {
+        gen_set_gpri(ctx, rd, ctx->pc_succ_insn);
+    }
+
     // Note: Only update cpu_pc after a successful bounds check to avoid
     // representability issues caused by directly modifying PCC.cursor.
     gen_set_pc(ctx, t0);
@@ -709,14 +795,12 @@ static void gen_jalr(DisasContext *ctx, int rd, int rs1, target_ulong imm)
         tcg_gen_brcondi_tl(TCG_COND_NE, t0, 0x0, misaligned);
     }
 
-    /* For CHERI ISAv8 the result is an offset relative to PCC.base */
-    gen_set_gpri(ctx, rd, ctx->pc_succ_insn - pcc_reloc(ctx));
     /* No chaining with JALR. */
     lookup_and_goto_ptr(ctx);
 
     if (misaligned) {
         gen_set_label(misaligned);
-        gen_exception_inst_addr_mis(ctx);
+        gen_exception_inst_addr_mis(ctx, cpu_pc);
     }
     ctx->base.is_jmp = DISAS_NORETURN;
 }
@@ -1452,19 +1536,20 @@ static void decode_opc(CPURISCVState *env, DisasContext *ctx, uint16_t opcode)
     };
 
     ctx->virt_inst_excp = false;
+    ctx->cur_insn_len = insn_len(opcode);
     /* Check for compressed insn */
-    if (insn_len(opcode) == 2) {
+    if (ctx->cur_insn_len == 2) {
         gen_riscv_log_instr16(ctx, opcode);
         gen_check_pcc_bounds_next_inst(ctx, 2);
         gen_rvfi_dii_set_field_const_i64(INST, insn, opcode);
-
         ctx->opcode = opcode;
         ctx->pc_succ_insn = ctx->base.pc_next + 2;
         /*
          * The Zca extension is added as way to refer to instructions in the C
          * extension that do not include the floating-point loads and stores
          */
-        if (ctx->cfg_ptr->ext_zca && decode_insn16(ctx, opcode)) {
+        if ((has_ext(ctx, RVC) || ctx->cfg_ptr->ext_zca) &&
+            decode_insn16(ctx, opcode)) {
             return;
         }
     } else {
@@ -1505,7 +1590,7 @@ static void riscv_tr_init_disas_context(DisasContextBase *dcbase, CPUState *cs)
     RISCVCPU *cpu = RISCV_CPU(cs);
     uint32_t tb_flags = ctx->base.tb->flags;
 
-    ctx->pc_succ_insn = ctx->base.pc_first;
+    ctx->pc_save = ctx->base.pc_first;
     ctx->priv = FIELD_EX32(tb_flags, TB_FLAGS, PRIV);
     ctx->mem_idx = FIELD_EX32(tb_flags, TB_FLAGS, MEM_IDX);
     ctx->mstatus_fs = FIELD_EX32(tb_flags, TB_FLAGS, FS);
@@ -1548,8 +1633,13 @@ static void riscv_tr_tb_start(DisasContextBase *db, CPUState *cpu)
 static void riscv_tr_insn_start(DisasContextBase *dcbase, CPUState *cpu)
 {
     DisasContext *ctx = container_of(dcbase, DisasContext, base);
+    target_ulong pc_next = ctx->base.pc_next;
 
-    tcg_gen_insn_start(ctx->base.pc_next, 0);
+    if (tb_cflags(dcbase->tb) & CF_PCREL) {
+        pc_next &= ~TARGET_PAGE_MASK;
+    }
+
+    tcg_gen_insn_start(pc_next, 0);
     ctx->insn_start = tcg_last_op();
 }
 
@@ -1570,7 +1660,7 @@ static void riscv_tr_translate_insn(DisasContextBase *dcbase, CPUState *cpu)
 
     ctx->ol = ctx->xl;
     decode_opc(env, ctx, opcode16);
-    ctx->base.pc_next = ctx->pc_succ_insn;
+    ctx->base.pc_next += ctx->cur_insn_len;
     gen_rvfi_dii_set_field_const_i64(PC, pc_wdata, ctx->base.pc_next);
 
     /* Only the first insn within a TB is allowed to cross a page boundary. */
@@ -1599,7 +1689,7 @@ static void riscv_tr_tb_stop(DisasContextBase *dcbase, CPUState *cpu)
     switch (ctx->base.is_jmp) {
     case DISAS_TOO_MANY:
         /* CHERI PCC bounds check done on next ifetch. */
-        gen_goto_tb(ctx, 0, ctx->base.pc_next, /*bounds_check=*/false);
+        gen_goto_tb(ctx, 0, 0, /*bounds_check=*/false);
         break;
     case DISAS_NORETURN:
         break;

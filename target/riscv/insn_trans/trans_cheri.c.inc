@@ -174,7 +174,7 @@ static void gen_cjal(DisasContext *ctx, int rd, target_ulong imm)
     gen_helper_cjal(cpu_env, tcg_constant_i32(rd), target_addr, link_addr);
 
     /* No bounds check needed here since we did it in helper_cjal(). */
-    gen_goto_tb(ctx, 0, next_pc, false);
+    gen_goto_tb(ctx, 0, next_pc - ctx->base.pc_next, false);
     ctx->base.is_jmp = DISAS_NORETURN;
 }
 

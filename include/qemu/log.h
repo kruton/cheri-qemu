@@ -34,11 +34,12 @@ bool qemu_log_separate(void);
 #define CPU_LOG_PLUGIN     (1 << 18)
 /* LOG_STRACE is used for user-mode strace logging. */
 #define LOG_STRACE         (1 << 19)
-#define LOG_PER_THREAD          (1 << 20)
-#define CPU_LOG_INSTR           (1 << 21)
-#define CPU_LOG_INSTR_U         (1 << 22)
-#define CPU_LOG_CHERI_BOUNDS (1 << 23)
-#define CPU_LOG_GUEST_DEBUG_MSG (1 << 24)
+#define LOG_PER_THREAD     (1 << 20)
+#define CPU_LOG_TB_VPU     (1 << 21)
+#define CPU_LOG_INSTR      (1 << 22)
+#define CPU_LOG_INSTR_U    (1 << 23)
+#define CPU_LOG_CHERI_BOUNDS (1 << 24)
+#define CPU_LOG_GUEST_DEBUG_MSG (1 << 25)
 
 /* Lock/unlock output. */
 

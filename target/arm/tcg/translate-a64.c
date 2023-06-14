@@ -761,22 +761,13 @@ static void gen_goto_tb(DisasContext *s, int n, int64_t diff)
 {
     if (use_goto_tb(s, s->pc_curr + diff)) {
         if (tb_cflags(s->base.tb) & CF_PCREL) {
-#ifdef TARGET_CHERI
-            if (!in_pcc_bounds(&s->base, s->pc_curr + diff)) {
-                TCGv_i64 tcgval = tcg_constant_i64(s->pc_curr + diff);
-                gen_helper_set_pcc(cpu_env, tcgval);
-            } else {
-                gen_a64_update_pc(s, diff);
-            }
-#else
-            gen_a64_update_pc(s, diff);
-#endif
+            gen_a64_set_pc_im_safe(s, s->pc_curr + diff);
             tcg_gen_goto_tb(n);
         } else {
             tcg_gen_goto_tb(n);
-            gen_a64_update_pc(s, diff);
-            tcg_gen_exit_tb(s->base.tb, n);
+            gen_a64_set_pc_im_safe(s, s->pc_curr + diff);
         }
+        tcg_gen_exit_tb(s->base.tb, n);
         s->base.is_jmp = DISAS_NORETURN;
     } else {
         gen_a64_set_pc_im_safe(s, s->pc_curr + diff);
@@ -3023,7 +3014,7 @@ static void gen_load_exclusive(DisasContext *s, int rt, int rt2, int rn,
         } else {
             /* The pair must be single-copy atomic for *each* doubleword, not
                the entire quadword, however it must be quadword aligned.  */
-            memop |= MO_64;
+            memop = (memop & ~MO_SIZE) | MO_64;
             tcg_gen_qemu_ld_i64_with_checked_addr(cpu_exclusive_val, clean_addr, idx,
                                                   memop | MO_ALIGN_16);
 
