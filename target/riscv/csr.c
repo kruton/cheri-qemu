@@ -5494,6 +5494,7 @@ static RISCVException stid(CPURISCVState *env, int csrno)
 
 #endif
     ccsr = set_field(ccsr, XCCSR_ENABLE, cpu->cfg.ext_cheri);
+    /* Read-only feature bits. */
 #if !defined(TARGET_RISCV32)
     if (csrno == CSR_SCCSR)
         ccsr |= env->sccsr;
