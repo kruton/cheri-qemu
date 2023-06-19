@@ -1212,7 +1212,7 @@ TRANS_F(CHK)
     return true;
 }
 
-TRANS_F(CAS)
+TRANS_F(CAS_cheri)
 {
     if (capabilities_enabled_exception(ctx))
         return true;
@@ -1591,7 +1591,7 @@ TRANS_F(LDPBR)
     return true;
 }
 
-TRANS_F(LDR)
+TRANS_F(LDR_cheri)
 {
     if (capabilities_enabled_exception(ctx))
         return true;
@@ -1674,7 +1674,7 @@ TRANS_F(MRS_MSR)
     // global SYNC before the operation, and discard after.
     // FIXME: Bit of a hack doing this here
     tcg_gen_sync_i64(ddc_interposition);
-    handle_sys(ctx, 0x1 << 25, a->L, a->o0 + 2, a->op1, a->op2, a->CRn, a->CRm,
+    handle_sys(ctx, true, a->L, a->o0 + 2, a->op1, a->op2, a->CRn, a->CRm,
                a->Ct);
     tcg_gen_discard_i64(ddc_interposition);
     return true;
@@ -1761,7 +1761,7 @@ TRANS_F(CVT3)
     return cvt_impl_cap_to_ptr(ctx, a->Rd, a->Cn, AS_ZERO(a->Cm), false);
 }
 
-TRANS_F(SWP)
+TRANS_F(SWP_cheri)
 {
     if (capabilities_enabled_exception(ctx))
         return true;
@@ -1938,7 +1938,7 @@ TRANS_F(CT)
     return true;
 }
 
-TRANS_F(LDAPR)
+TRANS_F(LDAPR_cheri)
 {
     if (capabilities_enabled_exception(ctx))
         return true;
