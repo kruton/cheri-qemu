@@ -15,6 +15,7 @@
  */
 {
 }
+                   bool precise_repr_check, uintptr_t retpc,
 {
     DEFINE_RESULT_VALID;
 #endif
@@ -278,6 +279,7 @@ void CHERI_HELPER_IMPL(candaddr(CPUArchState *env, uint32_t cd, uint32_t cb,
     DEFINE_RESULT_VALID;
     // CFromPtr traps on cbp == NULL so we use reg0 as $ddc to save encoding
     cap_register_t result = *cbp;
+    if (!is_representable_cap_with_addr(cbp, new_addr)) {
                          uint32_t cb, target_ulong length,
                          uintptr_t _host_return_address)
             raise_cheri_exception(env, CapEx_TagViolation, cb);
