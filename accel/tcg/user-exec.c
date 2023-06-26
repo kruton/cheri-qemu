@@ -723,7 +723,7 @@ int page_unprotect(target_ulong address, uintptr_t pc)
 }
 
 static QEMU_ALWAYS_INLINE int
-probe_access_internal(CPUArchState *env, target_ulong addr, int fault_size,
+probe_access_internal(CPUArchState *env, vaddr addr, int fault_size,
                       MMUAccessType access_type, bool nonfault, uintptr_t ra)
 {
     int acc_flag;
@@ -760,7 +760,7 @@ probe_access_internal(CPUArchState *env, target_ulong addr, int fault_size,
     cpu_loop_exit_sigsegv(env_cpu(env), addr, access_type, maperr, ra);
 }
 
-int probe_access_flags(CPUArchState *env, target_ulong addr, int size,
+int probe_access_flags(CPUArchState *env, vaddr addr, int size,
                        MMUAccessType access_type, int mmu_idx,
                        bool nonfault, void **phost, uintptr_t ra)
 {
@@ -773,7 +773,7 @@ int probe_access_flags(CPUArchState *env, target_ulong addr, int size,
 }
 
 static inline QEMU_ALWAYS_INLINE void *
-probe_access_inlined(CPUArchState *env, target_ulong addr, int size,
+probe_access_inlined(CPUArchState *env, vaddr addr, int size,
                      MMUAccessType access_type, int mmu_idx, uintptr_t ra)
 {
     int flags;
@@ -787,7 +787,7 @@ probe_access_inlined(CPUArchState *env, target_ulong addr, int size,
 
 #include "probe-access.inc.c"
 
-tb_page_addr_t get_page_addr_code_hostp(CPUArchState *env, target_ulong addr,
+tb_page_addr_t get_page_addr_code_hostp(CPUArchState *env, vaddr addr,
                                         void **hostp)
 {
     int flags;
@@ -893,7 +893,7 @@ void page_reset_target_data(target_ulong start, target_ulong last) { }
 
 /* The softmmu versions of these helpers are in cputlb.c.  */
 
-static void *cpu_mmu_lookup(CPUArchState *env, abi_ptr addr,
+static void *cpu_mmu_lookup(CPUArchState *env, vaddr addr,
                             MemOp mop, uintptr_t ra, MMUAccessType type)
 {
     int a_bits = get_alignment_bits(mop);
@@ -918,6 +918,7 @@ static uint8_t do_ld1_mmu(CPUArchState *env, abi_ptr addr,
     uint8_t ret;
 
     tcg_debug_assert((mop & MO_SIZE) == MO_8);
+    cpu_req_mo(TCG_MO_LD_LD | TCG_MO_ST_LD);
     haddr = cpu_mmu_lookup(env, addr, mop, ra, MMU_DATA_LOAD);
     ret = ldub_p(haddr);
     clear_helper_retaddr();
@@ -951,6 +952,7 @@ static uint16_t do_ld2_mmu(CPUArchState *env, abi_ptr addr,
     uint16_t ret;
 
     tcg_debug_assert((mop & MO_SIZE) == MO_16);
+    cpu_req_mo(TCG_MO_LD_LD | TCG_MO_ST_LD);
     haddr = cpu_mmu_lookup(env, addr, mop, ra, MMU_DATA_LOAD);
     ret = load_atom_2(env, ra, haddr, mop);
     clear_helper_retaddr();
@@ -988,6 +990,7 @@ static uint32_t do_ld4_mmu(CPUArchState *env, abi_ptr addr,
     uint32_t ret;
 
     tcg_debug_assert((mop & MO_SIZE) == MO_32);
+    cpu_req_mo(TCG_MO_LD_LD | TCG_MO_ST_LD);
     haddr = cpu_mmu_lookup(env, addr, mop, ra, MMU_DATA_LOAD);
     ret = load_atom_4(env, ra, haddr, mop);
     clear_helper_retaddr();
@@ -1025,6 +1028,7 @@ static uint64_t do_ld8_mmu(CPUArchState *env, abi_ptr addr,
     uint64_t ret;
 
     tcg_debug_assert((mop & MO_SIZE) == MO_64);
+    cpu_req_mo(TCG_MO_LD_LD | TCG_MO_ST_LD);
     haddr = cpu_mmu_lookup(env, addr, mop, ra, MMU_DATA_LOAD);
     ret = load_atom_8(env, ra, haddr, mop);
     clear_helper_retaddr();
@@ -1056,6 +1060,7 @@ static Int128 do_ld16_mmu(CPUArchState *env, abi_ptr addr,
     Int128 ret;
 
     tcg_debug_assert((mop & MO_SIZE) == MO_128);
+    cpu_req_mo(TCG_MO_LD_LD | TCG_MO_ST_LD);
     haddr = cpu_mmu_lookup(env, addr, mop, ra, MMU_DATA_LOAD);
     ret = load_atom_16(env, ra, haddr, mop);
     clear_helper_retaddr();
@@ -1091,6 +1096,7 @@ static void do_st1_mmu(CPUArchState *env, abi_ptr addr, uint8_t val,
     void *haddr;
 
     tcg_debug_assert((mop & MO_SIZE) == MO_8);
+    cpu_req_mo(TCG_MO_LD_ST | TCG_MO_ST_ST);
     haddr = cpu_mmu_lookup(env, addr, mop, ra, MMU_DATA_STORE);
     stb_p(haddr, val);
     clear_helper_retaddr();
@@ -1115,6 +1121,7 @@ static void do_st2_mmu(CPUArchState *env, abi_ptr addr, uint16_t val,
     void *haddr;
 
     tcg_debug_assert((mop & MO_SIZE) == MO_16);
+    cpu_req_mo(TCG_MO_LD_ST | TCG_MO_ST_ST);
     haddr = cpu_mmu_lookup(env, addr, mop, ra, MMU_DATA_STORE);
 
     if (mop & MO_BSWAP) {
@@ -1143,6 +1150,7 @@ static void do_st4_mmu(CPUArchState *env, abi_ptr addr, uint32_t val,
     void *haddr;
 
     tcg_debug_assert((mop & MO_SIZE) == MO_32);
+    cpu_req_mo(TCG_MO_LD_ST | TCG_MO_ST_ST);
     haddr = cpu_mmu_lookup(env, addr, mop, ra, MMU_DATA_STORE);
 
     if (mop & MO_BSWAP) {
@@ -1171,6 +1179,7 @@ static void do_st8_mmu(CPUArchState *env, abi_ptr addr, uint64_t val,
     void *haddr;
 
     tcg_debug_assert((mop & MO_SIZE) == MO_64);
+    cpu_req_mo(TCG_MO_LD_ST | TCG_MO_ST_ST);
     haddr = cpu_mmu_lookup(env, addr, mop, ra, MMU_DATA_STORE);
 
     if (mop & MO_BSWAP) {
@@ -1199,6 +1208,7 @@ static void do_st16_mmu(CPUArchState *env, abi_ptr addr, Int128 val,
     void *haddr;
 
     tcg_debug_assert((mop & MO_SIZE) == MO_128);
+    cpu_req_mo(TCG_MO_LD_ST | TCG_MO_ST_ST);
     haddr = cpu_mmu_lookup(env, addr, mop, ra, MMU_DATA_STORE);
 
     if (mop & MO_BSWAP) {
@@ -1328,8 +1338,8 @@ uint64_t cpu_ldq_code_mmu(CPUArchState *env, abi_ptr addr,
 /*
  * Do not allow unaligned operations to proceed.  Return the host address.
  */
-static void *atomic_mmu_lookup(CPUArchState *env, target_ulong addr,
-                               MemOpIdx oi, int size, uintptr_t retaddr)
+static void *atomic_mmu_lookup(CPUArchState *env, vaddr addr, MemOpIdx oi,
+                               int size, uintptr_t retaddr)
 {
     MemOp mop = get_memop(oi);
     int a_bits = get_alignment_bits(mop);
