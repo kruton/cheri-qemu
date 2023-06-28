@@ -3392,8 +3392,8 @@ FIELD(TBFLAG_A64, NAA, 30, 1)
 #define EX_TBFLAG_M32(IN, WHICH)   FIELD_EX32(IN.flags2, TBFLAG_M32, WHICH)
 #define EX_TBFLAG_AM32(IN, WHICH)  FIELD_EX32(IN.flags2, TBFLAG_AM32, WHICH)
 
-extern void aarch_cpu_get_tb_cpu_state(CPUARMState *env, target_ulong *pc,
-                                       target_ulong *cs_base,
+extern void aarch_cpu_get_tb_cpu_state(CPUARMState *env, vaddr *pc,
+                                       uint64_t *cs_base,
                                        target_ulong *pcc_base,
                                        target_ulong *pcc_top,
                                        uint32_t *cheri_flags, uint32_t *pflags);

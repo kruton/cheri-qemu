@@ -33,7 +33,7 @@ system_ss.add(when: 'CONFIG_SIFIVE_E_PRCI', if_true: files('sifive_e_prci.c'))
 system_ss.add(when: 'CONFIG_SIFIVE_U_OTP', if_true: files('sifive_u_otp.c'))
 system_ss.add(when: 'CONFIG_SIFIVE_U_PRCI', if_true: files('sifive_u_prci.c'))
 
-softmmu_ss.add(when: 'CONFIG_CODASIP_TRNG', if_true: files('codasip_trng.c'))
+system_ss.add(when: 'CONFIG_CODASIP_TRNG', if_true: files('codasip_trng.c'))
 
 subdir('macio')
 

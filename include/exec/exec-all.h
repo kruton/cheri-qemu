@@ -549,8 +549,8 @@ void tb_invalidate_phys_addr(hwaddr addr);
 void tb_invalidate_phys_addr(AddressSpace *as, hwaddr addr, MemTxAttrs attrs);
 #endif
 void tb_phys_invalidate(TranslationBlock *tb, tb_page_addr_t page_addr);
-TranslationBlock *tb_htable_lookup(CPUState *cpu, target_ulong pc,
-                                   target_ulong cs_base, target_ulong pcc_base,
+TranslationBlock *tb_htable_lookup(CPUState *cpu, vaddr pc,
+                                   uint64_t cs_base, target_ulong pcc_base,
                                    target_ulong pcc_top, uint32_t cheri_flags,
                                    uint32_t flags, uint32_t cflags);
 void tb_invalidate_phys_range(tb_page_addr_t start, tb_page_addr_t last);
