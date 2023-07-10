@@ -18,164 +18,17 @@
  */
 
 #include "qemu/osdep.h"
+#include "qemu/bitops.h"
 #include "disas/dis-asm.h"
 #include "target/riscv/cpu_cfg.h"
+#include "disas/riscv.h"
 
-/* types */
-
-typedef uint64_t rv_inst;
-typedef uint16_t rv_opcode;
-
-/* enums */
+/* Vendor extensions */
+#include "disas/riscv-xthead.h"
+#include "disas/riscv-xventana.h"
 
 typedef enum {
-    rv32,
-    rv64,
-    rv128
-} rv_isa;
-
-typedef enum {
-    rv_rm_rne = 0,
-    rv_rm_rtz = 1,
-    rv_rm_rdn = 2,
-    rv_rm_rup = 3,
-    rv_rm_rmm = 4,
-    rv_rm_dyn = 7,
-} rv_rm;
-
-typedef enum {
-    rv_fence_i = 8,
-    rv_fence_o = 4,
-    rv_fence_r = 2,
-    rv_fence_w = 1,
-} rv_fence;
-
-typedef enum {
-    rv_ireg_zero,
-    rv_ireg_ra,
-    rv_ireg_sp,
-    rv_ireg_gp,
-    rv_ireg_tp,
-    rv_ireg_t0,
-    rv_ireg_t1,
-    rv_ireg_t2,
-    rv_ireg_s0,
-    rv_ireg_s1,
-    rv_ireg_a0,
-    rv_ireg_a1,
-    rv_ireg_a2,
-    rv_ireg_a3,
-    rv_ireg_a4,
-    rv_ireg_a5,
-    rv_ireg_a6,
-    rv_ireg_a7,
-    rv_ireg_s2,
-    rv_ireg_s3,
-    rv_ireg_s4,
-    rv_ireg_s5,
-    rv_ireg_s6,
-    rv_ireg_s7,
-    rv_ireg_s8,
-    rv_ireg_s9,
-    rv_ireg_s10,
-    rv_ireg_s11,
-    rv_ireg_t3,
-    rv_ireg_t4,
-    rv_ireg_t5,
-    rv_ireg_t6,
-} rv_ireg;
-
-typedef enum {
-    rvc_end,
-    rvc_rd_eq_ra,
-    rvc_rd_eq_x0,
-    rvc_rs1_eq_x0,
-    rvc_rs2_eq_x0,
-    rvc_rs2_eq_rs1,
-    rvc_rs1_eq_ra,
-    rvc_imm_eq_zero,
-    rvc_imm_eq_n1,
-    rvc_imm_eq_p1,
-    rvc_csr_eq_0x001,
-    rvc_csr_eq_0x002,
-    rvc_csr_eq_0x003,
-    rvc_csr_eq_0xc00,
-    rvc_csr_eq_0xc01,
-    rvc_csr_eq_0xc02,
-    rvc_csr_eq_0xc80,
-    rvc_csr_eq_0xc81,
-    rvc_csr_eq_0xc82,
-} rvc_constraint;
-
-typedef enum {
-    rv_codec_illegal,
-    rv_codec_none,
-    rv_codec_u,
-    rv_codec_uj,
-    rv_codec_i,
-    rv_codec_i_sh5,
-    rv_codec_i_sh6,
-    rv_codec_i_sh7,
-    rv_codec_i_csr,
-    rv_codec_s,
-    rv_codec_sb,
-    rv_codec_r,
-    rv_codec_r_m,
-    rv_codec_r4_m,
-    rv_codec_r_a,
-    rv_codec_r_l,
-    rv_codec_r_f,
-    rv_codec_cb,
-    rv_codec_cb_imm,
-    rv_codec_cb_sh5,
-    rv_codec_cb_sh6,
-    rv_codec_ci,
-    rv_codec_ci_sh5,
-    rv_codec_ci_sh6,
-    rv_codec_ci_16sp,
-    rv_codec_ci_lwsp,
-    rv_codec_ci_ldsp,
-    rv_codec_ci_lqsp,
-    rv_codec_ci_li,
-    rv_codec_ci_lui,
-    rv_codec_ci_none,
-    rv_codec_ciw_4spn,
-    rv_codec_cj,
-    rv_codec_cj_jal,
-    rv_codec_cl_lw,
-    rv_codec_cl_ld,
-    rv_codec_cl_lq,
-    rv_codec_cr,
-    rv_codec_cr_mv,
-    rv_codec_cr_jalr,
-    rv_codec_cr_jr,
-    rv_codec_cs,
-    rv_codec_cs_sw,
-    rv_codec_cs_sd,
-    rv_codec_cs_sq,
-    rv_codec_css_swsp,
-    rv_codec_css_sdsp,
-    rv_codec_css_sqsp,
-    rv_codec_k_bs,
-    rv_codec_k_rnum,
-    rv_codec_scbndsi,
-    rv_codec_cbo_rs1,
-    rv_codec_v_r,
-    rv_codec_v_ldst,
-    rv_codec_v_i,
-    rv_codec_vsetvli,
-    rv_codec_vsetivli,
-    rv_codec_zcb_ext,
-    rv_codec_zcb_mul,
-    rv_codec_zcb_lb,
-    rv_codec_zcb_lh,
-    rv_codec_zcmp_cm_pushpop,
-    rv_codec_zcmp_cm_mv,
-    rv_codec_zcmt_jt,
-} rv_codec;
-
-typedef enum {
-    rv_op_illegal = 0,
+    /* 0 is reserved for rv_op_illegal. */
     rv_op_lui = 1,
     rv_op_auipc = 2,
     rv_op_jal = 3,
@@ -966,7 +819,7 @@ typedef enum {
     rv_op_cm_jalt = 788,
     rv_op_czero_eqz = 789,
     rv_op_czero_nez = 790,
-    // CHERI:
+// CHERI:
     rv_op_auipcc,
     rv_op_lc,
     rv_op_clc,
@@ -1090,52 +943,50 @@ typedef enum {
     rv_op_cbo_inval_cap,
     rv_op_cbo_zero,
     rv_op_cbo_zero_cap,
+rv_op_fcvt_bf16_s = 791,
+    rv_op_fcvt_s_bf16 = 792,
+    rv_op_vfncvtbf16_f_f_w = 793,
+    rv_op_vfwcvtbf16_f_f_v = 794,
+    rv_op_vfwmaccbf16_vv = 795,
+    rv_op_vfwmaccbf16_vf = 796,
+    rv_op_flh = 797,
+    rv_op_fsh = 798,
+    rv_op_fmv_h_x = 799,
+    rv_op_fmv_x_h = 800,
+    rv_op_fli_s = 801,
+    rv_op_fli_d = 802,
+    rv_op_fli_q = 803,
+    rv_op_fli_h = 804,
+    rv_op_fminm_s = 805,
+    rv_op_fmaxm_s = 806,
+    rv_op_fminm_d = 807,
+    rv_op_fmaxm_d = 808,
+    rv_op_fminm_q = 809,
+    rv_op_fmaxm_q = 810,
+    rv_op_fminm_h = 811,
+    rv_op_fmaxm_h = 812,
+    rv_op_fround_s = 813,
+    rv_op_froundnx_s = 814,
+    rv_op_fround_d = 815,
+    rv_op_froundnx_d = 816,
+    rv_op_fround_q = 817,
+    rv_op_froundnx_q = 818,
+    rv_op_fround_h = 819,
+    rv_op_froundnx_h = 820,
+    rv_op_fcvtmod_w_d = 821,
+    rv_op_fmvh_x_d = 822,
+    rv_op_fmvp_d_x = 823,
+    rv_op_fmvh_x_q = 824,
+    rv_op_fmvp_q_x = 825,
+    rv_op_fleq_s = 826,
+    rv_op_fltq_s = 827,
+    rv_op_fleq_d = 828,
+    rv_op_fltq_d = 829,
+    rv_op_fleq_q = 830,
+    rv_op_fltq_q = 831,
+    rv_op_fleq_h = 832,
+    rv_op_fltq_h = 833,
 } rv_op;
-
-/* structures */
-
-typedef struct {
-    RISCVCPUConfig *cfg;
-    uint64_t  pc;
-    uint64_t  inst;
-    int32_t   imm;
-    uint16_t  op;
-    uint8_t   codec;
-    uint8_t   rd;
-    uint8_t   rs1;
-    uint8_t   rs2;
-    uint8_t   rs3;
-    uint8_t   rm;
-    uint8_t   pred;
-    uint8_t   succ;
-    uint8_t   aq;
-    uint8_t   rl;
-    uint8_t   bs;
-    uint8_t   rnum;
-    uint8_t   vm;
-    uint32_t  vzimm;
-    uint8_t   rlist;
-} rv_decode;
-
-typedef struct {
-    const int op;
-    const rvc_constraint *constraints;
-} rv_comp_data;
-
-enum {
-    rvcd_imm_nz = 0x1
-};
-
-typedef struct {
-    const char * const name;
-    const rv_codec codec;
-    const char * const format;
-    const rv_comp_data *pseudo;
-    const short decomp_rv32;
-    const short decomp_rv64;
-    const short decomp_rv128;
-    const short decomp_data;
-} rv_opcode_data;
 
 /* register names */
 
@@ -1268,6 +1119,22 @@ static const char rv_vreg_name_sym[32][4] = {
 #define rv_fmt_push_rlist             "O\tx,-i"
 #define rv_fmt_pop_rlist              "O\tx,i"
 #define rv_fmt_zcmt_index             "O\ti"
+/* The FLI.[HSDQ] numeric constants (0.0 for symbolic constants).
+ * The constants use the hex floating-point literal representation
+ * that is printed when using the printf %a format specifier,
+ * which matches the output that is generated by the disassembler.
+ */
+static const char rv_fli_name_const[32][9] =
+{
+    "0x1p+0", "min", "0x1p-16", "0x1p-15",
+    "0x1p-8", "0x1p-7", "0x1p-4", "0x1p-3",
+    "0x1p-2", "0x1.4p-2", "0x1.8p-2", "0x1.cp-2",
+    "0x1p-1", "0x1.4p-1", "0x1.8p-1", "0x1.cp-1",
+    "0x1p+0", "0x1.4p+0", "0x1.8p+0", "0x1.cp+0",
+    "0x1p+1", "0x1.4p+1", "0x1.8p+1", "0x1p+2",
+    "0x1p+3", "0x1p+4", "0x1p+7", "0x1p+8",
+    "0x1p+15", "0x1p+16", "inf", "nan"
+};
 
 #define rv_fmt_rs1_rs2_zce_ldst       "O\t2,i(1)"
 /* pseudo-instruction constraints */
@@ -1499,7 +1366,7 @@ static const rv_comp_data rvcp_fsgnjx_q[] = {
 
 /* instruction metadata */
 
-const rv_opcode_data opcode_data[] = {
+const rv_opcode_data rvi_opcode_data[] = {
     { "illegal", rv_codec_illegal, rv_fmt_none, NULL, 0, 0, 0 },
     { "lui", rv_codec_u, rv_fmt_rd_uimm, NULL, 0, 0, 0 },
     { "auipc", rv_codec_u, rv_fmt_rd_uoffset, NULL, 0, 0, 0 },
@@ -2331,8 +2198,7 @@ const rv_opcode_data opcode_data[] = {
     { "cm.jalt", rv_codec_zcmt_jt, rv_fmt_zcmt_index, NULL, 0 },
     { "czero.eqz", rv_codec_r, rv_fmt_rd_rs1_rs2, NULL, 0, 0, 0 },
     { "czero.nez", rv_codec_r, rv_fmt_rd_rs1_rs2, NULL, 0, 0, 0 },
-
-    // CHERI extensions
+// CHERI extensions
     [rv_op_auipcc] = { "auipcc", rv_codec_u, rv_fmt_cd_offset, NULL, 0, 0, 0 },
     [rv_op_lc] = { "lc", rv_codec_i, rv_fmt_cd_offset_rs1, NULL, 0, 0, 0 },
     [rv_op_clc] = { "clc", rv_codec_i, rv_fmt_cd_offset_cs1, NULL, 0, 0, 0 },
@@ -2475,6 +2341,49 @@ const rv_opcode_data opcode_data[] = {
     [rv_op_cbo_inval_cap] = { "cbo.inval", rv_codec_cbo_rs1, rv_fmt_cbo_cs1, NULL, 0, 0, 0 },
     [rv_op_cbo_zero] = { "cbo.zero", rv_codec_cbo_rs1, rv_fmt_cbo_rs1, NULL, 0, 0, 0 },
     [rv_op_cbo_zero_cap] = { "cbo.zero", rv_codec_cbo_rs1, rv_fmt_cbo_cs1, NULL, 0, 0, 0 },
+{ "fcvt.bf16.s", rv_codec_r_m, rv_fmt_rm_frd_frs1, NULL, 0, 0, 0 },
+    { "fcvt.s.bf16", rv_codec_r_m, rv_fmt_rm_frd_frs1, NULL, 0, 0, 0 },
+    { "vfncvtbf16.f.f.w", rv_codec_v_r, rv_fmt_vd_vs2_vm, NULL, 0, 0, 0 },
+    { "vfwcvtbf16.f.f.v", rv_codec_v_r, rv_fmt_vd_vs2_vm, NULL, 0, 0, 0 },
+    { "vfwmaccbf16.vv", rv_codec_v_r, rv_fmt_vd_vs1_vs2_vm, NULL, 0, 0, 0 },
+    { "vfwmaccbf16.vf", rv_codec_v_r, rv_fmt_vd_fs1_vs2_vm, NULL, 0, 0, 0 },
+    { "flh", rv_codec_i, rv_fmt_frd_offset_rs1, NULL, 0, 0, 0 },
+    { "fsh", rv_codec_s, rv_fmt_frs2_offset_rs1, NULL, 0, 0, 0 },
+    { "fmv.h.x", rv_codec_r, rv_fmt_frd_rs1, NULL, 0, 0, 0 },
+    { "fmv.x.h", rv_codec_r, rv_fmt_rd_frs1, NULL, 0, 0, 0 },
+    { "fli.s", rv_codec_fli, rv_fmt_fli, NULL, 0, 0, 0 },
+    { "fli.d", rv_codec_fli, rv_fmt_fli, NULL, 0, 0, 0 },
+    { "fli.q", rv_codec_fli, rv_fmt_fli, NULL, 0, 0, 0 },
+    { "fli.h", rv_codec_fli, rv_fmt_fli, NULL, 0, 0, 0 },
+    { "fminm.s", rv_codec_r, rv_fmt_frd_frs1_frs2, NULL, 0, 0, 0 },
+    { "fmaxm.s", rv_codec_r, rv_fmt_frd_frs1_frs2, NULL, 0, 0, 0 },
+    { "fminm.d", rv_codec_r, rv_fmt_frd_frs1_frs2, NULL, 0, 0, 0 },
+    { "fmaxm.d", rv_codec_r, rv_fmt_frd_frs1_frs2, NULL, 0, 0, 0 },
+    { "fminm.q", rv_codec_r, rv_fmt_frd_frs1_frs2, NULL, 0, 0, 0 },
+    { "fmaxm.q", rv_codec_r, rv_fmt_frd_frs1_frs2, NULL, 0, 0, 0 },
+    { "fminm.h", rv_codec_r, rv_fmt_frd_frs1_frs2, NULL, 0, 0, 0 },
+    { "fmaxm.h", rv_codec_r, rv_fmt_frd_frs1_frs2, NULL, 0, 0, 0 },
+    { "fround.s", rv_codec_r_m, rv_fmt_rm_frd_frs1, NULL, 0, 0, 0 },
+    { "froundnx.s", rv_codec_r_m, rv_fmt_rm_frd_frs1, NULL, 0, 0, 0 },
+    { "fround.d", rv_codec_r_m, rv_fmt_rm_frd_frs1, NULL, 0, 0, 0 },
+    { "froundnx.d", rv_codec_r_m, rv_fmt_rm_frd_frs1, NULL, 0, 0, 0 },
+    { "fround.q", rv_codec_r_m, rv_fmt_rm_frd_frs1, NULL, 0, 0, 0 },
+    { "froundnx.q", rv_codec_r_m, rv_fmt_rm_frd_frs1, NULL, 0, 0, 0 },
+    { "fround.h", rv_codec_r_m, rv_fmt_rm_frd_frs1, NULL, 0, 0, 0 },
+    { "froundnx.h", rv_codec_r_m, rv_fmt_rm_frd_frs1, NULL, 0, 0, 0 },
+    { "fcvtmod.w.d", rv_codec_r_m, rv_fmt_rm_rd_frs1, NULL, 0, 0, 0 },
+    { "fmvh.x.d", rv_codec_r, rv_fmt_rd_frs1, NULL, 0, 0, 0 },
+    { "fmvp.d.x", rv_codec_r, rv_fmt_frd_rs1_rs2, NULL, 0, 0, 0 },
+    { "fmvh.x.q", rv_codec_r, rv_fmt_rd_frs1, NULL, 0, 0, 0 },
+    { "fmvp.q.x", rv_codec_r, rv_fmt_frd_rs1_rs2, NULL, 0, 0, 0 },
+    { "fleq.s", rv_codec_r, rv_fmt_rd_frs1_frs2, NULL, 0, 0, 0 },
+    { "fltq.s", rv_codec_r, rv_fmt_rd_frs1_frs2, NULL, 0, 0, 0 },
+    { "fleq.d", rv_codec_r, rv_fmt_rd_frs1_frs2, NULL, 0, 0, 0 },
+    { "fltq.d", rv_codec_r, rv_fmt_rd_frs1_frs2, NULL, 0, 0, 0 },
+    { "fleq.q", rv_codec_r, rv_fmt_rd_frs1_frs2, NULL, 0, 0, 0 },
+    { "fltq.q", rv_codec_r, rv_fmt_rd_frs1_frs2, NULL, 0, 0, 0 },
+    { "fleq.h", rv_codec_r, rv_fmt_rd_frs1_frs2, NULL, 0, 0, 0 },
+    { "fltq.h", rv_codec_r, rv_fmt_rd_frs1_frs2, NULL, 0, 0, 0 },
 };
 
 /* CSR names */
@@ -3031,6 +2940,7 @@ static void decode_inst_opcode(rv_decode *dec, rv_isa isa, int flags)
                 case 3: op = rv_op_vloxei8_v; break;
                 }
                 break;
+            case 1: op = rv_op_flh; break;
             case 2: op = (flags & RISCV_DIS_FLAG_CAPMODE) ? rv_op_cflw : rv_op_flw; break;
             case 3: op = (flags & RISCV_DIS_FLAG_CAPMODE) ? rv_op_cfld : rv_op_fld; break;
             case 4: op = rv_op_flq; break;
@@ -3282,6 +3192,7 @@ static void decode_inst_opcode(rv_decode *dec, rv_isa isa, int flags)
                 case 3: op = rv_op_vsoxei8_v; break;
                 }
                 break;
+            case 1: op = rv_op_fsh; break;
             case 2: op = (flags & RISCV_DIS_FLAG_CAPMODE) ? rv_op_cfsw : rv_op_fsw; break;
             case 3: op = (flags & RISCV_DIS_FLAG_CAPMODE) ? rv_op_cfsd : rv_op_fsd; break;
             case 4: op = rv_op_fsq; break;
@@ -3589,36 +3500,62 @@ static void decode_inst_opcode(rv_decode *dec, rv_isa isa, int flags)
                 switch ((inst >> 12) & 0b111) {
                 case 0: op = rv_op_fmin_s; break;
                 case 1: op = rv_op_fmax_s; break;
+                case 2: op = rv_op_fminm_s; break;
+                case 3: op = rv_op_fmaxm_s; break;
                 }
                 break;
             case 21:
                 switch ((inst >> 12) & 0b111) {
                 case 0: op = rv_op_fmin_d; break;
                 case 1: op = rv_op_fmax_d; break;
+                case 2: op = rv_op_fminm_d; break;
+                case 3: op = rv_op_fmaxm_d; break;
+                }
+                break;
+            case 22:
+                switch (((inst >> 12) & 0b111)) {
+                case 2: op = rv_op_fminm_h; break;
+                case 3: op = rv_op_fmaxm_h; break;
                 }
                 break;
             case 23:
                 switch ((inst >> 12) & 0b111) {
                 case 0: op = rv_op_fmin_q; break;
                 case 1: op = rv_op_fmax_q; break;
+                case 2: op = rv_op_fminm_q; break;
+                case 3: op = rv_op_fmaxm_q; break;
                 }
                 break;
             case 32:
                 switch ((inst >> 20) & 0b11111) {
                 case 1: op = rv_op_fcvt_s_d; break;
                 case 3: op = rv_op_fcvt_s_q; break;
+                case 4: op = rv_op_fround_s; break;
+                case 5: op = rv_op_froundnx_s; break;
+                case 6: op = rv_op_fcvt_s_bf16; break;
                 }
                 break;
             case 33:
                 switch ((inst >> 20) & 0b11111) {
                 case 0: op = rv_op_fcvt_d_s; break;
                 case 3: op = rv_op_fcvt_d_q; break;
+                case 4: op = rv_op_fround_d; break;
+                case 5: op = rv_op_froundnx_d; break;
+                }
+                break;
+            case 34:
+                switch (((inst >> 20) & 0b11111)) {
+                case 4: op = rv_op_fround_h; break;
+                case 5: op = rv_op_froundnx_h; break;
+                case 8: op = rv_op_fcvt_bf16_s; break;
                 }
                 break;
             case 35:
                 switch ((inst >> 20) & 0b11111) {
                 case 0: op = rv_op_fcvt_q_s; break;
                 case 1: op = rv_op_fcvt_q_d; break;
+                case 4: op = rv_op_fround_q; break;
+                case 5: op = rv_op_froundnx_q; break;
                 }
                 break;
             case 44:
@@ -3641,6 +3578,8 @@ static void decode_inst_opcode(rv_decode *dec, rv_isa isa, int flags)
                 case 0: op = rv_op_fle_s; break;
                 case 1: op = rv_op_flt_s; break;
                 case 2: op = rv_op_feq_s; break;
+                case 4: op = rv_op_fleq_s; break;
+                case 5: op = rv_op_fltq_s; break;
                 }
                 break;
             case 81:
@@ -3648,6 +3587,14 @@ static void decode_inst_opcode(rv_decode *dec, rv_isa isa, int flags)
                 case 0: op = rv_op_fle_d; break;
                 case 1: op = rv_op_flt_d; break;
                 case 2: op = rv_op_feq_d; break;
+                case 4: op = rv_op_fleq_d; break;
+                case 5: op = rv_op_fltq_d; break;
+                }
+                break;
+            case 82:
+                switch (((inst >> 12) & 0b111)) {
+                case 4: op = rv_op_fleq_h; break;
+                case 5: op = rv_op_fltq_h; break;
                 }
                 break;
             case 83:
@@ -3655,6 +3602,18 @@ static void decode_inst_opcode(rv_decode *dec, rv_isa isa, int flags)
                 case 0: op = rv_op_fle_q; break;
                 case 1: op = rv_op_flt_q; break;
                 case 2: op = rv_op_feq_q; break;
+                case 4: op = rv_op_fleq_q; break;
+                case 5: op = rv_op_fltq_q; break;
+                }
+                break;
+            case 89:
+		switch (((inst >> 12) & 0b111)) {
+                case 0: op = rv_op_fmvp_d_x; break;
+                }
+                break;
+            case 91:
+		switch (((inst >> 12) & 0b111)) {
+                case 0: op = rv_op_fmvp_q_x; break;
                 }
                 break;
             case 96:
@@ -3671,6 +3630,7 @@ static void decode_inst_opcode(rv_decode *dec, rv_isa isa, int flags)
                 case 1: op = rv_op_fcvt_wu_d; break;
                 case 2: op = rv_op_fcvt_l_d; break;
                 case 3: op = rv_op_fcvt_lu_d; break;
+                case 8: op = rv_op_fcvtmod_w_d; break;
                 }
                 break;
             case 99:
@@ -3717,6 +3677,13 @@ static void decode_inst_opcode(rv_decode *dec, rv_isa isa, int flags)
                         ((inst >> 12) & 0b00000111)) {
                 case 0: op = rv_op_fmv_x_d; break;
                 case 1: op = rv_op_fclass_d; break;
+                case 8: op = rv_op_fmvh_x_d; break;
+                }
+                break;
+            case 114:
+                switch (((inst >> 17) & 0b11111000) |
+                        ((inst >> 12) & 0b00000111)) {
+                case 0: op = rv_op_fmv_x_h; break;
                 }
                 break;
             case 115:
@@ -3724,24 +3691,35 @@ static void decode_inst_opcode(rv_decode *dec, rv_isa isa, int flags)
                         ((inst >> 12) & 0b00000111)) {
                 case 0: op = rv_op_fmv_x_q; break;
                 case 1: op = rv_op_fclass_q; break;
+                case 8: op = rv_op_fmvh_x_q; break;
                 }
                 break;
             case 120:
                 switch (((inst >> 17) & 0b11111000) |
                         ((inst >> 12) & 0b00000111)) {
                 case 0: op = rv_op_fmv_s_x; break;
+                case 8: op = rv_op_fli_s; break;
                 }
                 break;
             case 121:
                 switch (((inst >> 17) & 0b11111000) |
                         ((inst >> 12) & 0b00000111)) {
                 case 0: op = rv_op_fmv_d_x; break;
+                case 8: op = rv_op_fli_d; break;
+                }
+                break;
+            case 122:
+                switch (((inst >> 17) & 0b11111000) |
+                        ((inst >> 12) & 0b00000111)) {
+                case 0: op = rv_op_fmv_h_x; break;
+                case 8: op = rv_op_fli_h; break;
                 }
                 break;
             case 123:
                 switch (((inst >> 17) & 0b11111000) |
                         ((inst >> 12) & 0b00000111)) {
                 case 0: op = rv_op_fmv_q_x; break;
+                case 8: op = rv_op_fli_q; break;
                 }
                 break;
             }
@@ -3834,6 +3812,7 @@ static void decode_inst_opcode(rv_decode *dec, rv_isa isa, int flags)
                     case 10: op = rv_op_vfwcvt_f_xu_v; break;
                     case 11: op = rv_op_vfwcvt_f_x_v; break;
                     case 12: op = rv_op_vfwcvt_f_f_v; break;
+                    case 13: op = rv_op_vfwcvtbf16_f_f_v; break;
                     case 14: op = rv_op_vfwcvt_rtz_xu_f_v; break;
                     case 15: op = rv_op_vfwcvt_rtz_x_f_v; break;
                     case 16: op = rv_op_vfncvt_xu_f_w; break;
@@ -3844,6 +3823,7 @@ static void decode_inst_opcode(rv_decode *dec, rv_isa isa, int flags)
                     case 21: op = rv_op_vfncvt_rod_f_f_w; break;
                     case 22: op = rv_op_vfncvt_rtz_xu_f_w; break;
                     case 23: op = rv_op_vfncvt_rtz_x_f_w; break;
+                    case 29: op = rv_op_vfncvtbf16_f_f_w; break;
                     }
                     break;
                 case 19:
@@ -3875,6 +3855,7 @@ static void decode_inst_opcode(rv_decode *dec, rv_isa isa, int flags)
                 case 52: op = rv_op_vfwadd_wv; break;
                 case 54: op = rv_op_vfwsub_wv; break;
                 case 56: op = rv_op_vfwmul_vv; break;
+                case 59: op = rv_op_vfwmaccbf16_vv; break;
                 case 60: op = rv_op_vfwmacc_vv; break;
                 case 61: op = rv_op_vfwnmacc_vv; break;
                 case 62: op = rv_op_vfwmsac_vv; break;
@@ -4113,6 +4094,7 @@ static void decode_inst_opcode(rv_decode *dec, rv_isa isa, int flags)
                 case 52: op = rv_op_vfwadd_wf; break;
                 case 54: op = rv_op_vfwsub_wf; break;
                 case 56: op = rv_op_vfwmul_vf; break;
+                case 59: op = rv_op_vfwmaccbf16_vf; break;
                 case 60: op = rv_op_vfwmacc_vf; break;
                 case 61: op = rv_op_vfwnmacc_vf; break;
                 case 62: op = rv_op_vfwmsac_vf; break;
@@ -4651,6 +4633,26 @@ static uint32_t operand_zcmp_rlist(rv_inst inst)
     return ((inst << 56) >> 60);
 }
 
+static uint32_t operand_imm6(rv_inst inst)
+{
+    return (inst << 38) >> 60;
+}
+
+static uint32_t operand_imm2(rv_inst inst)
+{
+    return (inst << 37) >> 62;
+}
+
+static uint32_t operand_immh(rv_inst inst)
+{
+    return (inst << 32) >> 58;
+}
+
+static uint32_t operand_imml(rv_inst inst)
+{
+    return (inst << 38) >> 58;
+}
+
 static uint32_t calculate_stack_adj(rv_isa isa, uint32_t rlist, uint32_t spimm)
 {
     int xlen_bytes_log2 = isa == rv64 ? 3 : 2;
@@ -4674,6 +4676,7 @@ static uint32_t operand_tbl_index(rv_inst inst)
 
 static void decode_inst_operands(rv_decode *dec, rv_isa isa)
 {
+    const rv_opcode_data *opcode_data = dec->opcode_data;
     rv_inst inst = dec->inst;
     dec->codec = opcode_data[dec->op].codec;
     switch (dec->codec) {
@@ -5022,6 +5025,42 @@ static void decode_inst_operands(rv_decode *dec, rv_isa isa)
         break;
     case rv_codec_zcmt_jt:
         dec->imm = operand_tbl_index(inst);
+	break;
+    case rv_codec_fli:
+        dec->rd = operand_rd(inst);
+        dec->imm = operand_rs1(inst);
+        break;
+    case rv_codec_r2_imm5:
+        dec->rd = operand_rd(inst);
+        dec->rs1 = operand_rs1(inst);
+        dec->imm = operand_rs2(inst);
+        break;
+    case rv_codec_r2:
+        dec->rd = operand_rd(inst);
+        dec->rs1 = operand_rs1(inst);
+        break;
+    case rv_codec_r2_imm6:
+        dec->rd = operand_rd(inst);
+        dec->rs1 = operand_rs1(inst);
+        dec->imm = operand_imm6(inst);
+        break;
+    case rv_codec_r_imm2:
+        dec->rd = operand_rd(inst);
+        dec->rs1 = operand_rs1(inst);
+        dec->rs2 = operand_rs2(inst);
+        dec->imm = operand_imm2(inst);
+        break;
+    case rv_codec_r2_immhl:
+        dec->rd = operand_rd(inst);
+        dec->rs1 = operand_rs1(inst);
+        dec->imm = operand_immh(inst);
+        dec->imm1 = operand_imml(inst);
+        break;
+    case rv_codec_r2_imm2_imm5:
+        dec->rd = operand_rd(inst);
+        dec->rs1 = operand_rs1(inst);
+        dec->imm = sextract32(operand_rs2(inst), 0, 5);
+        dec->imm1 = operand_imm2(inst);
         break;
     };
 }
@@ -5165,6 +5204,7 @@ static void append(char *s1, const char *s2, size_t n)
 
 static void format_inst(char *buf, size_t buflen, size_t tab, rv_decode *dec)
 {
+    const rv_opcode_data *opcode_data = dec->opcode_data;
     char tmp[64];
     const char *fmt;
 
@@ -5254,6 +5294,10 @@ static void format_inst(char *buf, size_t buflen, size_t tab, rv_decode *dec)
             break;
         case 'u':
             snprintf(tmp, sizeof(tmp), "%u", ((uint32_t)dec->imm & 0b11111));
+            append(buf, tmp, buflen);
+            break;
+        case 'j':
+            snprintf(tmp, sizeof(tmp), "%d", dec->imm1);
             append(buf, tmp, buflen);
             break;
         case 'o':
@@ -5429,6 +5473,9 @@ static void format_inst(char *buf, size_t buflen, size_t tab, rv_decode *dec)
             append(buf, tmp, buflen);
             break;
         }
+        case 'h':
+            append(buf, rv_fli_name_const[dec->imm], buflen);
+            break;
         default:
             break;
         }
@@ -5440,6 +5487,7 @@ static void format_inst(char *buf, size_t buflen, size_t tab, rv_decode *dec)
 
 static void decode_inst_lift_pseudo(rv_decode *dec)
 {
+    const rv_opcode_data *opcode_data = dec->opcode_data;
     const rv_comp_data *comp_data = opcode_data[dec->op].pseudo;
     if (!comp_data) {
         return;
@@ -5458,6 +5506,7 @@ static void decode_inst_lift_pseudo(rv_decode *dec)
 
 static void decode_inst_decompress_rv32(rv_decode *dec)
 {
+    const rv_opcode_data *opcode_data = dec->opcode_data;
     int decomp_op = opcode_data[dec->op].decomp_rv32;
     if (decomp_op != rv_op_illegal) {
         if ((opcode_data[dec->op].decomp_data & rvcd_imm_nz)
@@ -5472,6 +5521,7 @@ static void decode_inst_decompress_rv32(rv_decode *dec)
 
 static void decode_inst_decompress_rv64(rv_decode *dec)
 {
+    const rv_opcode_data *opcode_data = dec->opcode_data;
     int decomp_op = opcode_data[dec->op].decomp_rv64;
     if (decomp_op != rv_op_illegal) {
         if ((opcode_data[dec->op].decomp_data & rvcd_imm_nz)
@@ -5486,6 +5536,7 @@ static void decode_inst_decompress_rv64(rv_decode *dec)
 
 static void decode_inst_decompress_rv128(rv_decode *dec)
 {
+    const rv_opcode_data *opcode_data = dec->opcode_data;
     int decomp_op = opcode_data[dec->op].decomp_rv128;
     if (decomp_op != rv_op_illegal) {
         if ((opcode_data[dec->op].decomp_data & rvcd_imm_nz)
@@ -5523,7 +5574,44 @@ disasm_inst(char *buf, size_t buflen, rv_isa isa, uint64_t pc, rv_inst inst,
     dec.pc = pc;
     dec.inst = inst;
     dec.cfg = cfg;
-    decode_inst_opcode(&dec, isa, flags);
+
+    static const struct {
+        bool (*guard_func)(const RISCVCPUConfig *);
+        const rv_opcode_data *opcode_data;
+        void (*decode_func)(rv_decode *, rv_isa, int);
+    } decoders[] = {
+        { always_true_p, rvi_opcode_data, decode_inst_opcode },
+        { has_xtheadba_p, xthead_opcode_data, (void (*)(rv_decode *, rv_isa, int))decode_xtheadba },
+        { has_xtheadbb_p, xthead_opcode_data, (void (*)(rv_decode *, rv_isa, int))decode_xtheadbb },
+        { has_xtheadbs_p, xthead_opcode_data, (void (*)(rv_decode *, rv_isa, int))decode_xtheadbs },
+        { has_xtheadcmo_p, xthead_opcode_data, (void (*)(rv_decode *, rv_isa, int))decode_xtheadcmo },
+        { has_xtheadcondmov_p, xthead_opcode_data, (void (*)(rv_decode *, rv_isa, int))decode_xtheadcondmov },
+        { has_xtheadfmemidx_p, xthead_opcode_data, (void (*)(rv_decode *, rv_isa, int))decode_xtheadfmemidx },
+        { has_xtheadfmv_p, xthead_opcode_data, (void (*)(rv_decode *, rv_isa, int))decode_xtheadfmv },
+        { has_xtheadmac_p, xthead_opcode_data, (void (*)(rv_decode *, rv_isa, int))decode_xtheadmac },
+        { has_xtheadmemidx_p, xthead_opcode_data, (void (*)(rv_decode *, rv_isa, int))decode_xtheadmemidx },
+        { has_xtheadmempair_p, xthead_opcode_data, (void (*)(rv_decode *, rv_isa, int))decode_xtheadmempair },
+        { has_xtheadsync_p, xthead_opcode_data, (void (*)(rv_decode *, rv_isa, int))decode_xtheadsync },
+        { has_XVentanaCondOps_p, ventana_opcode_data, (void (*)(rv_decode *, rv_isa, int))decode_xventanacondops },
+    };
+
+    for (size_t i = 0; i < ARRAY_SIZE(decoders); i++) {
+        bool (*guard_func)(const RISCVCPUConfig *) = decoders[i].guard_func;
+        const rv_opcode_data *opcode_data = decoders[i].opcode_data;
+        void (*decode_func)(rv_decode *, rv_isa, int) = decoders[i].decode_func;
+
+        if (guard_func(cfg)) {
+            dec.opcode_data = opcode_data;
+            decode_func(&dec, isa, flags);
+            if (dec.op != rv_op_illegal)
+                break;
+        }
+    }
+
+    if (dec.op == rv_op_illegal) {
+        dec.opcode_data = rvi_opcode_data;
+    }
+
     decode_inst_operands(&dec, isa);
     decode_inst_decompress(&dec, isa);
     decode_inst_lift_pseudo(&dec);
