@@ -73,6 +73,12 @@ static bool gen_sc(DisasContext *ctx, arg_atomic *a, MemOp mop)
     tcg_gen_brcond_tl(TCG_COND_NE, load_res, src1, l1);
     /*
      */
+    cheri_debug_assert((mop & MO_ALIGN) && "store-conditional must be aligned");
+    if (memop_size(mop) > 1) {
+        TCGv_i32 tmop = tcg_constant_i32(mop);
+        TCGv_i32 tcode = tcg_constant_i32(RISCV_EXCP_STORE_AMO_ADDR_MIS);
+        gen_helper_check_alignment(tcg_env, (TCGv)addr, tmop, tcode);
+    }
 
     /*
      * Note that the TCG atomic primitives are SC,
@@ -83,8 +89,10 @@ static bool gen_sc(DisasContext *ctx, arg_atomic *a, MemOp mop)
     tcg_gen_atomic_cmpxchg_tl(dest, load_res, load_val, src2,
                               ctx->mem_idx, mop);
     tcg_gen_setcond_tl(TCG_COND_NE, dest, dest, load_val);
+    /*
      * cmpxchg will perform a read and therefore update mem_rmask, but to match
      * sail we should report that this was just a store.
+     */
     gen_rvfi_dii_set_field_const_i32(MEM, mem_rmask, 0);
     gen_set_gpr(ctx, a->rd, dest);
     tcg_gen_br(l2);
