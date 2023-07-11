@@ -578,6 +578,13 @@ void helper_ctr_clear(CPURISCVState *env)
     riscv_ctr_clear(env);
 }
 
+void HELPER(check_alignment)(CPURISCVState *env, target_ulong addr, MemOp op,
+                             uint32_t exc)
+{
+    if (addr & (memop_size(op) - 1)) {
+        env->badaddr = addr;
+        riscv_raise_exception(env, exc, GETPC());
+    }
 void helper_wfi(CPURISCVState *env)
 {
     CPUState *cs = env_cpu(env);
