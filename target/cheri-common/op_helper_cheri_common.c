@@ -310,6 +310,7 @@ void CHERI_HELPER_IMPL(candaddr(CPUArchState *env, uint32_t cd, uint32_t cb,
         cap_get_top_full(ctp) <= cap_get_top_full(cbp) &&
             cap_get_all_perms(ctp)) {
         is_subset = true;
+    return (target_ulong)is_subset;
     GET_HOST_RETPC_IF_TRAPPING_CHERI_ARCH();
         raise_cheri_exception(env, CapEx_TagViolation, ct);
         return (target_ulong)0;
