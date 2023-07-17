@@ -129,6 +129,7 @@ void CHERI_HELPER_IMPL(cjalr(CPUArchState *env, uint32_t cd,
         raise_cheri_exception(env, CapEx_TagViolation, cs);
     } else if ((cap_get_all_perms(csp) & rt) != rt) {
         raise_cheri_exception(env, CapEx_UserDefViolation, cs);
+    CAP_cc(setbounds)(&tmpcap, len);
     // Previously QEMU return (1<<64)-1 for a representable length of 1<<64
     // (similar to CGetLen), but all other implementations just strip the
     // high bit instead. Note: This allows a subsequent CSetBoundsExact to
@@ -183,6 +184,7 @@ void CHERI_HELPER_IMPL(cbuildcap(CPUArchState *env, uint32_t cd, uint32_t cb,
         if (!cap_is_unsealed(&derived)) {
             derived.cr_tag = 0;
         }
+        cap_set_cursor(&derived, cap_get_base(&result));
         CAP_cc(setbounds)(&derived, cap_get_length_full(&result));
         cap_set_cursor(&derived, cap_get_cursor(&result));
                       cap_get_all_perms(cbp) & cap_get_all_perms(ctp));
@@ -254,6 +256,9 @@ static void cseal_common(CPUArchState *env, uint32_t cd, uint32_t cs,
     } else {
     }
     update_capreg(env, cd, &result);
+}
+    /*
+     */
     /*
      */
     GET_HOST_RETPC_IF_TRAPPING_CHERI_ARCH();
@@ -262,7 +267,9 @@ static void cseal_common(CPUArchState *env, uint32_t cd, uint32_t cs,
         raise_cheri_exception_or_invalidate(env, CapEx_SealViolation, cs);
     } else if (!cap_is_sealed_with_type(csp)) {
         raise_cheri_exception_or_invalidate(env, CapEx_PermitUnsealViolation,
+        raise_cheri_exception_or_invalidate(env, CapEx_LengthViolation, ct);
     cap_register_t result = *csp;
+    } else {
     } else {
         CAP_cc(update_otype)(&result, CAP_OTYPE_UNSEALED);
     update_capreg(env, cd, &result);
@@ -270,13 +277,16 @@ static void cseal_common(CPUArchState *env, uint32_t cd, uint32_t cs,
 static inline QEMU_ALWAYS_INLINE void
 cincoffset_impl(CPUArchState *env, uint32_t cd, uint32_t cb, target_ulong rt,
                 uintptr_t retpc, struct oob_stats_info *oob_info)
+    target_ulong new_addr = cap_get_cursor(cbp) + rt;
     GET_HOST_RETPC_IF_TRAPPING_CHERI_ARCH();
     DEFINE_RESULT_VALID;
+    if (!cbp->cr_tag) {
         raise_cheri_exception_or_invalidate(env, CapEx_TagViolation, cb);
         raise_cheri_exception_or_invalidate(env, CapEx_SealViolation, cb);
     cap_register_t result = *cbp;
     if (!RESULT_VALID) {
         result.cr_tag = 0;
+#endif
     update_capreg(env, cd, &result);
 void CHERI_HELPER_IMPL(candaddr(CPUArchState *env, uint32_t cd, uint32_t cb,
     target_ulong cursor = get_capreg_cursor(env, cb);
@@ -287,15 +297,28 @@ void CHERI_HELPER_IMPL(candaddr(CPUArchState *env, uint32_t cd, uint32_t cb,
     DEFINE_RESULT_VALID;
     // CFromPtr traps on cbp == NULL so we use reg0 as $ddc to save encoding
         return;
+        raise_cheri_exception_or_invalidate(env, CapEx_TagViolation, cb);
+    } else if (is_cap_sealed(cbp)) {
+        raise_cheri_exception_or_invalidate(env, CapEx_SealViolation, cb);
     cap_register_t result = *cbp;
     if (!is_representable_cap_with_addr(cbp, new_addr)) {
                          uint32_t cb, target_ulong length,
                          uintptr_t _host_return_address)
     cap_register_t result = *cbp;
+    bool exact;
     if (!CHERI_TAG_CLEAR_ON_INVALID(env)) {
+         * The setbounds call will invalidate any results with larger bounds
+         * than the input, but for trapping architectures we still need to
+         * perform these checks here.
             raise_cheri_exception(env, CapEx_TagViolation, cb);
             raise_cheri_exception(env, CapEx_SealViolation, cb);
+        } else if (!cap_is_in_bounds(cbp, cap_get_cursor(cbp), length)) {
             raise_cheri_exception(env, CapEx_LengthViolation, cb);
+        /* Use checked_setbounds to ensure we didn't missed any checks. */
+        exact = CAP_cc(checked_setbounds)(&result, length);
+        exact = CAP_cc(setbounds)(&result, length);
+        RESULT_VALID = cbp->cr_tag && result.cr_tag;
+     * memory addresses to be wider than requested so it is representable.
         assert(cap_is_representable(&result) &&
         assert(cap_get_top_full(&result) <= cap_get_top_full(cbp) &&
         result.cr_tag = 0;
@@ -303,6 +326,7 @@ void CHERI_HELPER_IMPL(candaddr(CPUArchState *env, uint32_t cd, uint32_t cb,
 /* Morello does not have flags in the capability metadata */
     GET_HOST_RETPC_IF_TRAPPING_CHERI_ARCH();
     if (cbp->cr_tag && !cap_is_unsealed(cbp)) {
+    cap_register_t result = *cbp;
     bool is_subset = false;
     if (cbp->cr_tag == ctp->cr_tag &&
         /* is_cap_sealed(cbp) == is_cap_sealed(ctp) && */
@@ -312,6 +336,7 @@ void CHERI_HELPER_IMPL(candaddr(CPUArchState *env, uint32_t cd, uint32_t cb,
         is_subset = true;
     return (target_ulong)is_subset;
     GET_HOST_RETPC_IF_TRAPPING_CHERI_ARCH();
+    if (!CHERI_TAG_CLEAR_ON_INVALID(env) && !ctp->cr_tag) {
         raise_cheri_exception(env, CapEx_TagViolation, ct);
         return (target_ulong)0;
 #ifdef TARGET_AARCH64
@@ -333,6 +358,7 @@ target_ulong CHERI_HELPER_IMPL(cap_check_addr(CPUArchState *env,
     if (tag && (prot & PAGE_LC_CLEAR)) {
     if ((tag && (prot & PAGE_LC_TRAP)) || (prot & PAGE_LC_TRAP_ANY))
     if (!cap_has_perms(source, CAP_PERM_MUTABLE_LOAD)) {
+#if defined(TARGET_AARCH64)
             perms &= ~(CAP_PERM_MUTABLE_LOAD | CAP_PERM_STORE_LOCAL |
                        CAP_PERM_STORE_CAP | CAP_PERM_STORE);
         if (cap_is_unsealed(&tmp)) {
