@@ -208,6 +208,7 @@ void CHERI_HELPER_IMPL(cbuildcap(CPUArchState *env, uint32_t cd, uint32_t cb,
     if (!cbp->cr_tag) {
         raise_cheri_exception_or_invalidate(env, CapEx_TagViolation, cb);
         raise_cheri_exception_or_invalidate(env, CapEx_SealViolation, cb);
+    if (cap_is_sealed_with_reserved_otype(ctp) || cap_is_unsealed(ctp)) {
             RESULT_VALID = false;
         } else {
             /* For reserved otypes we return a null-derived value. */
