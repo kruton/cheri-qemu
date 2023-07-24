@@ -22,10 +22,12 @@ static inline void G_NORETURN raise_load_tag_exception(
     riscv_raise_exception(env, RISCV_EXCP_LOAD_CAP_PAGE_FAULT, retpc);
 }
                                                            uintptr_t retpc)
+{
 }
 static inline void G_NORETURN raise_unaligned_load_exception(
     CPUArchState *env, target_ulong addr, uintptr_t retpc)
     riscv_raise_exception(env, RISCV_EXCP_LOAD_ADDR_MIS, retpc);
+}
 static inline void G_NORETURN raise_unaligned_store_exception(
     // Note: RISCV_EXCP_STORE_AMO_ADDR_MIS means "Store/AMO address misaligned"
     riscv_raise_exception(env, RISCV_EXCP_STORE_AMO_ADDR_MIS, retpc);
@@ -46,3 +48,7 @@ static inline void update_next_pcc_for_tcg(CPUArchState *env,
     env->pcc = *target;
 #ifdef CONFIG_DEBUG_TCG
     env->_pc_is_current = true; // PCC.cursor is up-to-date again.
+static inline target_ulong cheri_ddc_relative_addr(CPURISCVState *env,
+                                                   target_ulong addr)
+     * CHERI-RISC-V ISAv8 relocated all integer accesses by DDC.address, but
+        return cap_get_cursor(cheri_get_ddc(env)) + addr;
