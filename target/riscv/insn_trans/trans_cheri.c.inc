@@ -4,7 +4,13 @@
 typedef void(cheri_int_cap_helper)(TCGv, TCGv_env, TCGv_i32);
 static inline bool gen_cheri_int_cap(DisasContext *ctx, arg_rc *a,
                                      cheri_int_cap_helper *gen_func)
+{
+}
+static inline QEMU_ALWAYS_INLINE bool
+gen_cheri_cap_int_plus_imm(DisasContext *ctx, int cd, int rs, target_long imm,
                            cheri_cap_int_helper *gen_func)
+    tcg_gen_addi_tl(gpr_value, gpr_value, imm);
+                                         cheri_cap_cap_int_helper *gen_func)
     /* Mask the LSB to match the RISC-V spec for JAL. */
     target_ulong next_pc = (ctx->base.pc_next + imm) & ~(target_ulong)1;
     TCGv target_addr = tcg_constant_tl(next_pc);
