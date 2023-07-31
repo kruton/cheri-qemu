@@ -210,6 +210,7 @@ void CHERI_HELPER_IMPL(cbuildcap(CPUArchState *env, uint32_t cd, uint32_t cb,
     update_capreg(env, cd, &result);
     GET_HOST_RETPC_IF_TRAPPING_CHERI_ARCH();
     DEFINE_RESULT_VALID;
+    const cap_register_t *cbp = get_readonly_capreg(env, cb);
     if (!cbp->cr_tag) {
         raise_cheri_exception_or_invalidate(env, CapEx_TagViolation, cb);
         raise_cheri_exception_or_invalidate(env, CapEx_SealViolation, cb);
