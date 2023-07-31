@@ -1661,6 +1661,7 @@ static int get_physical_address(CPURISCVState *env, hwaddr *physical,
             prot |= PAGE_LC_CLEAR;
         } else {
             prot |= PAGE_LC_TRAP;
+        }
         prot |= PAGE_SC_TRAP;
         if (!(pte & PTE_CW)) {
         if (!(pte & PTE_CW)) {
@@ -1675,6 +1676,9 @@ static int get_physical_address(CPURISCVState *env, hwaddr *physical,
                   (vpn & (((target_ulong)1 << ptshift) - 1))
                  ) << PGSHIFT) | (addr & ~TARGET_PAGE_MASK);
 
+static void rvfi_dii_update_mem_addr(CPURISCVState *env,
+                                     MMUAccessType access_type, vaddr addr)
+{
 #if defined(CONFIG_RVFI_DII)
     /*
      * Remove write permission unless this is a store, or the page is
@@ -1682,15 +1686,18 @@ static int get_physical_address(CPURISCVState *env, hwaddr *physical,
      * the dirty bit.
      * For non-ifetch, we log the mem_addr here to match sail which logs it
      * for all accesses that go down to the physical level (i.e. the ones
+     * that passed CHERI and MMU checks) even if they fail then.
      */
     if (access_type != MMU_DATA_STORE && !(pte & PTE_D)) {
         prot &= ~PAGE_WRITE;
+    if (access_type != MMU_INST_FETCH) {
         env->rvfi_dii_trace.MEM.rvfi_mem_addr = addr;
         env->rvfi_dii_trace.available_fields |= RVFI_MEM_DATA;
     }
     *ret_prot = prot;
 
     return TRANSLATE_SUCCESS;
+#endif
 }
 
 static void raise_mmu_exception(CPURISCVState *env, target_ulong address,
@@ -1700,6 +1707,8 @@ static void raise_mmu_exception(CPURISCVState *env, target_ulong address,
 {
     CPUState *cs = env_cpu(env);
 
+    /*
+     */
     switch (access_type) {
     case MMU_INST_FETCH:
         if (pmp_violation) {
@@ -1734,6 +1743,10 @@ static void raise_mmu_exception(CPURISCVState *env, target_ulong address,
         break;
     default:
         g_assert_not_reached();
+    }
+    if (pmp_violation) {
+        /* CHERI and MMU checks passed, so we update mem_addr to match sail. */
+        rvfi_dii_update_mem_addr(env, access_type, address);
     }
     env->badaddr = address;
     env->two_stage_lookup = two_stage;
@@ -1782,6 +1795,8 @@ void riscv_cpu_do_transaction_failed(CPUState *cs, hwaddr physaddr,
 
     env->badaddr = addr;
     env->two_stage_lookup = mmuidx_2stage(mmu_idx);
+    /* CHERI and MMU checks passed, so we update mem_addr to match sail. */
+    rvfi_dii_update_mem_addr(env, mmu_idx, addr);
     env->two_stage_indirect_lookup = false;
     cpu_loop_exit_restore(cs, retaddr);
 }
