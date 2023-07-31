@@ -109,10 +109,12 @@ static inline QEMU_ALWAYS_INLINE void tagblock_clear_tag(CheriTagBlock *block,
 #endif
                                                 bool isWrite,
     /* XXXAR: see mte_helper.c */
+    /*
      * Find the iotlbentry for ptr.  This *must* be present in the TLB
      * because we just found the mapping.
      * TODO: Perhaps there should be a cputlb helper that returns a
      * matching tlb entry + iotlb entry.
+     */
 #ifdef CONFIG_DEBUG_TCG
     CPUTLBEntry *entry = cheri_tlb_entry(env_cpu(env), mmu_idx, vaddr);
     g_assert(tlb_hit(isWrite ? cheri_tlb_addr_write(entry) : entry->addr_read, vaddr));
@@ -129,9 +131,13 @@ static inline QEMU_ALWAYS_INLINE void tagblock_clear_tag(CheriTagBlock *block,
     if (!ram->cheri_tags) {
         CheriTagBlock *tagblk = cheri_tag_block(tag, ram);
 #ifdef TARGET_MIPS
+    cheri_debug_assert(!(tagmem_flags & TLBENTRYCAP_FLAG_TRAP));
         if (tagmem_flags & TLBENTRYCAP_FLAG_TRAP) {
     probe_read(env, vaddr, CAP_TAG_MANY_DATA_SIZE, mmu_idx, pc);
     if ((result && (tagmem_flags & TLBENTRYCAP_FLAG_TRAP)) ||
      * We call probe_(cap)_write rather than probe_access since the branches
      * checking access_type can be eliminated.
     if (tags) {
+     * TLBENTRYCAP_FLAG_TRAP prevents writing non-zero tags, and should have
+     * trapped in probe_cap_write().
+    assert(tags == 0 || !(tagmem_flags & TLBENTRYCAP_FLAG_TRAP));
