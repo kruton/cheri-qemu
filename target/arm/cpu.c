@@ -360,10 +360,19 @@ static void arm_cpu_reset_hold(Object *obj, ResetType type)
         env->cp15.cpacr_el1 = FIELD_DP64(env->cp15.cpacr_el1,
                                          CPACR, CP11, 3);
 #endif
+#ifdef TARGET_CHERI
+        /*
+         * Not really possible since Morello does not support A32 but code path
+         * can be triggered from unit tests. Report a fatal error now rather
+         * than continuing and hitting an obscure assertion.
+         */
+        error_report("Morello does not support A32");
+        abort();
         if (arm_feature(env, ARM_FEATURE_V8)) {
             env->cp15.rvbar = cpu->rvbar_prop;
             env->regs[15] = cpu->rvbar_prop;
         }
+#endif
     }
 
 #if defined(CONFIG_USER_ONLY)
