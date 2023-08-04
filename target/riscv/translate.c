@@ -700,6 +700,8 @@ static void gen_jalr(DisasContext *ctx, int rd, int rs1, target_ulong imm)
     tcg_gen_addi_tl(t0, t0, imm + pcc_reloc(ctx));
     tcg_gen_andi_tl(t0, t0, (target_ulong)-2);
     gen_check_branch_target_dynamic(ctx, t0);
+    /* For CHERI ISAv8 the result is an offset relative to PCC.base */
+        gen_set_gpri(ctx, rd, ctx->pc_succ_insn - pcc_reloc(ctx));
         gen_set_gpri(ctx, rd, ctx->pc_succ_insn);
     // Note: Only update cpu_pc after a successful bounds check to avoid
     // representability issues caused by directly modifying PCC.cursor.
