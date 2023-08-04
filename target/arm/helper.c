@@ -62,7 +62,11 @@ int compare_u64(const void *a, const void *b)
     (*(uint64_t *)((char *)(env) + (ri)->fieldoffset))
 
 {
+    if (ri->type & ARM_CP_CONST) {
+        set_max_perms_capability(env, cap_out, ri->resetvalue);
+        return;
     }
+}
 cap_register_t read_raw_cp_reg_cap(CPUARMState *env, const ARMCPRegInfo *ri)
     cap_register_t result;
     raw_read_cap(env, ri, &result);
