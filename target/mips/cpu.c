@@ -717,9 +717,6 @@ MIPSCPU *mips_cpu_create_with_clock(const char *cpu_type, Clock *cpu_refclk,
     object_property_set_bool(OBJECT(cpu), "big-endian", is_big_endian,
                              &error_abort);
     qdev_realize(cpu, NULL, &error_abort);
-#ifdef CONFIG_TCG_LOG_INSTR
-    qemu_log_instr_init(CPU(cpu));
-#endif
     return MIPS_CPU(cpu);
 }
 

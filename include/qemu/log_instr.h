@@ -10,3 +10,4 @@ static inline qemu_log_instr_fmt_t qemu_log_instr_get_format(void)
     /* Ring buffer index of the next entry to write */
     /* Ring buffer index of the first entry to dump */
     size_t ring_tail;
+void qemu_log_instr_init(CPUState *cpu);
