@@ -1,8 +1,13 @@
  */
+}
+#endif
     // Note: we can use a "stale" PCC value with an outdated cursor here since
     // we only really care about the bounds and permissions to derive the
     // resulting capability (e.g. auipcc or CGetPCCIncOffset).
     // If the result is not representable it will be untagged.
+    return;
+            error_report_once("Detected infinite trap loop due to invalid "
+                              PRINT_CAP_ARGS(pcc));
     /*
      * Morello does not require ASR when executing ERET, it will just detag
      * the result. However, this helper is only used for MIPS/RISC-V.
@@ -10,6 +15,8 @@
            "Attempting to return from exception without ASR in PCC");
      * On exception return we unseal sentry capabilities (if the address
      * matches).
+        if (new_cursor == cap_get_cursor(pcc)) {
+                         "addr: " PRINT_CAP_FMTSTR "\r",
     uint32_t perms = CAP_PERM_STORE;
     if (get_capreg_tag(env, cs))
         perms |= CAP_PERM_STORE_CAP;
