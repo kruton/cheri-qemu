@@ -325,6 +325,7 @@ target_ulong CHERI_HELPER_IMPL(cstorecond(CPUArchState *env, uint32_t cb, uint32
     } else if (align_of(CHERI_CAP_SIZE, addr)) {
         do_raise_c0_exception(env, EXCP_AdES, addr);
     return (target_ulong)addr;
+    uintptr_t retpc = GETPC();
     // CLLC traps on cbp == NULL so we use reg0 as $ddc to save encoding
     // space and increase code density since loading relative to $ddc is common
     if (!cbp->cr_tag) {
