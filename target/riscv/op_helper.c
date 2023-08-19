@@ -412,10 +412,13 @@ static void check_ret_from_m_mode(CPURISCVState *env, target_ulong retpc,
         riscv_raise_exception(env, RISCV_EXCP_INST_ADDR_MIS, ra);
     }
 
+#if 0
+    /* FIXME: upstream diff seems wrong, the ifetch should fail not the mret */
     if (riscv_cpu_cfg(env)->pmp &&
         !pmp_get_num_rules(env) && (prev_priv != PRV_M)) {
         riscv_raise_exception(env, RISCV_EXCP_INST_ACCESS_FAULT, ra);
     }
+#endif
 }
 static target_ulong ssdbltrp_mxret(CPURISCVState *env, target_ulong mstatus,
                                    target_ulong prev_priv,
