@@ -690,6 +690,7 @@ bool riscv_cpu_has_work(CPUState *cs)
         qemu_log_instr_commit(env);
         qemu_log_instr_drop(env); // Avoid an invalid instruction log
             env->rvfi_dii_trace.INST.rvfi_order = 0;
+            cs->cflags_next_tb = (curr_cflags(cs) & ~CF_USE_ICOUNT) | 1;
             hwaddr system_ram_addr = cpu_get_phys_page_debug(cs, PC_ADDR(env));
             hwaddr system_ram_size = RVFI_DII_RAM_SIZE;
             void *ram_ptr = cpu_physical_memory_map(
@@ -713,6 +714,7 @@ bool riscv_cpu_has_work(CPUState *cs)
                 info_report("injecting instruction %d '0x%08x' at %s",
                             cmd_buf.rvfi_dii_time, cmd_buf.rvfi_dii_insn, buf);
             env->rvfi_dii_trace.PC.rvfi_pc_rdata = GET_SPECIAL_REG_ARCH(env, pc, pcc);
+            cs->cflags_next_tb = (curr_cflags(cs) & ~CF_USE_ICOUNT) | 1;
 static void riscv_cpu_reset_hold(Object *obj, ResetType type)
 {
 #ifndef CONFIG_USER_ONLY
