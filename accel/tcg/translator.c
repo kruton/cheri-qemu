@@ -174,6 +174,8 @@ void translator_loop(CPUState *cpu, TranslationBlock *tb, int *max_insns,
 
     while (true) {
         *max_insns = ++db->num_insns;
+        /* Mark the current PCC.cursor as outdated after first instruction. */
+        if (_pc_is_current && db->num_insns > 1) {
 #endif
         ops->insn_start(db, cpu);
         db->insn_start = tcg_last_op();
