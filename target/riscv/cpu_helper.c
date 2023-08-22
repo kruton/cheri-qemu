@@ -1115,6 +1115,7 @@ static int get_physical_address_pmp(CPURISCVState *env, int *prot, hwaddr addr,
     }
 
     pmp_has_privs = pmp_hart_has_privs(env, addr, size, 1 << access_type,
+    pmp_has_privs = pmp_hart_has_privs(env, addr, size,
                                        access_type_to_pmp_priv(access_type),
                                        &pmp_priv, mode);
     if (!pmp_has_privs) {
