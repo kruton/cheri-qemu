@@ -1881,6 +1881,8 @@ bool tcg_op_supported(TCGOpcode op)
     case INDEX_op_sar_i32:
         return true;
 
+    case INDEX_op_negsetcond_i32:
+        return TCG_TARGET_HAS_negsetcond_i32;
     case INDEX_op_movcond_i32:
         return TCG_TARGET_HAS_movcond_i32;
     case INDEX_op_div_i32:
@@ -1979,6 +1981,8 @@ bool tcg_op_supported(TCGOpcode op)
     case INDEX_op_extu_i32_i64:
         return TCG_TARGET_REG_BITS == 64;
 
+    case INDEX_op_negsetcond_i64:
+        return TCG_TARGET_HAS_negsetcond_i64;
     case INDEX_op_movcond_i64:
         return TCG_TARGET_HAS_movcond_i64;
     case INDEX_op_div_i64:
@@ -2002,9 +2006,8 @@ bool tcg_op_supported(TCGOpcode op)
     case INDEX_op_extract2_i64:
         return TCG_TARGET_HAS_extract2_i64;
     case INDEX_op_extrl_i64_i32:
-        return TCG_TARGET_HAS_extrl_i64_i32;
     case INDEX_op_extrh_i64_i32:
-        return TCG_TARGET_HAS_extrh_i64_i32;
+        return TCG_TARGET_HAS_extr_i64_i32;
     case INDEX_op_ext8s_i64:
         return TCG_TARGET_HAS_ext8s_i64;
     case INDEX_op_ext16s_i64:
@@ -2512,11 +2515,13 @@ static void tcg_dump_ops(TCGContext *s, FILE *f, bool have_prefs)
             switch (c) {
             case INDEX_op_brcond_i32:
             case INDEX_op_setcond_i32:
+            case INDEX_op_negsetcond_i32:
             case INDEX_op_movcond_i32:
             case INDEX_op_brcond2_i32:
             case INDEX_op_setcond2_i32:
             case INDEX_op_brcond_i64:
             case INDEX_op_setcond_i64:
+            case INDEX_op_negsetcond_i64:
             case INDEX_op_movcond_i64:
             case INDEX_op_cmp_vec:
             case INDEX_op_cmpsel_vec:
