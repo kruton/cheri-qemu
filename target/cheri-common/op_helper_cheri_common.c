@@ -41,6 +41,7 @@
 #include "exec/exec-all.h"
 #include "exec/helper-proto.h"
 #include "exec/memop.h"
+#include "exec/cpu_ldst.h"
 
 #include "cheri-helper-utils.h"
 #include "cheri_tagmem.h"

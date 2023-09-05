@@ -36,6 +36,7 @@
 #include "exec/exec-all.h"
 #include "exec/log.h"
 #include "exec/ramblock.h"
+#include "exec/cpu_ldst.h"
 #include "cheri_defs.h"
 #include "cheri-helper-utils.h"
 // XXX: use hbitmap? Or a different data structure?

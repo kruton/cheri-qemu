@@ -21,9 +21,9 @@
 #include "qemu/osdep.h"
 #include "cpu.h"
 #include "internals.h"
-#include "qemu/main-loop.h"
 #include "qemu/error-report.h"
 #include "exec/exec-all.h"
+#include "exec/cpu_ldst.h"
 #include "exec/helper-proto.h"
 #ifdef TARGET_CHERI
 #include "cheri-helper-utils.h"

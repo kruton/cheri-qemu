@@ -38,6 +38,7 @@
 #include "exec/exec-all.h"
 #include "exec/log.h"
 #include "exec/log_instr.h"
+#include "exec/cpu_ldst.h"
 #ifdef TARGET_CHERI
 #include "cheri_tagmem.h"
 #endif
