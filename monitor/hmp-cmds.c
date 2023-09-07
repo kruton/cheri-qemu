@@ -21,6 +21,7 @@
 #include "qemu/help_option.h"
 #include "monitor/monitor-internal.h"
 #include "qapi/error.h"
+#include "qemu/error-report.h"
 #include "qapi/qapi-commands-control.h"
 #include "qapi/qapi-commands-misc.h"
 #include "qapi/qmp/qdict.h"
