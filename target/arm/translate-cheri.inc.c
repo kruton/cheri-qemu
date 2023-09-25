@@ -381,7 +381,7 @@ static inline __attribute__((always_inline)) bool load_store_implementation(
             }
         } else if (rd2 == REG_NONE) {
             if (unpriv) {
-                TCGv_i32 tcg_idx = tcg_constant_i32(get_a64_user_mem_index(ctx));
+                TCGv_i32 tcg_idx = tcg_constant_i32(get_a64_user_mem_index(ctx, unpriv));
                 (is_load ? gen_helper_load_cap_via_cap_mmu_idx
                          : gen_helper_store_cap_via_cap_mmu_idx)(
                     cpu_env, tcg_rd, tcg_base_reg, addr, tcg_idx);
@@ -415,7 +415,7 @@ static inline __attribute__((always_inline)) bool load_store_implementation(
         assert(rd != REG_NONE);
 
         // Perform bounds checks and do load / stores
-        int memidx = unpriv ? get_a64_user_mem_index(ctx) : get_mem_index(ctx);
+        int memidx = unpriv ? get_a64_user_mem_index(ctx, unpriv) : get_mem_index(ctx);
 
         TCGv_cap_checked_ptr checked =
             gen_mte_and_cheri_check1(ctx, addr, is_load, !is_load, false,
