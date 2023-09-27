@@ -191,7 +191,7 @@ extern "C" {
  *   }
  */
 #ifdef __clang__
-#define coroutine_fn __attribute__((__annotate__("coroutine_fn")))
+#define coroutine_fn QEMU_ANNOTATE("coroutine_fn")
 #else
 #define coroutine_fn
 #endif
@@ -201,7 +201,7 @@ extern "C" {
  * but can handle running in non-coroutine context too.
  */
 #ifdef __clang__
-#define coroutine_mixed_fn __attribute__((__annotate__("coroutine_mixed_fn")))
+#define coroutine_mixed_fn QEMU_ANNOTATE("coroutine_mixed_fn")
 #else
 #define coroutine_mixed_fn
 #endif
@@ -230,7 +230,7 @@ extern "C" {
  *   }
  */
 #ifdef __clang__
-#define no_coroutine_fn __attribute__((__annotate__("no_coroutine_fn")))
+#define no_coroutine_fn QEMU_ANNOTATE("no_coroutine_fn")
 #else
 #define no_coroutine_fn
 #endif
