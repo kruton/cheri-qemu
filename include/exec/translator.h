@@ -72,6 +72,7 @@ typedef enum DisasJumpType {
  * @num_insns: Number of translated instructions (including current).
  * @max_insns: Maximum number of instructions to be translated in this TB.
  * @singlestep_enabled: "Hardware" single stepping enabled.
+ * @saved_can_do_io: Known value of cpu->neg.can_do_io, or -1 for unknown.
  *
  * Architecture-agnostic disassembly context.
  */
@@ -96,6 +97,7 @@ typedef struct DisasContextBase {
     bool log_instr_enabled;
     uint8_t printf_used_ptr;
 #endif
+    int8_t saved_can_do_io;
     void *host_addr[2];
 } DisasContextBase;
 
