@@ -278,13 +278,13 @@ static void gen_set_pc_imm(DisasContext *ctx, target_ulong dest)
 static void generate_exception(DisasContext *ctx, int excp)
 {
     gen_update_pc(ctx, 0);
-    gen_helper_raise_exception(cpu_env, tcg_constant_i32(excp));
+    gen_helper_raise_exception(tcg_env, tcg_constant_i32(excp));
     ctx->base.is_jmp = DISAS_NORETURN;
 }
 
 static void gen_exception_illegal(DisasContext *ctx)
 {
-    tcg_gen_st_i32(tcg_constant_i32(ctx->opcode), cpu_env,
+    tcg_gen_st_i32(tcg_constant_i32(ctx->opcode), tcg_env,
                    offsetof(CPURISCVState, bins));
     if (ctx->virt_inst_excp) {
         generate_exception(ctx, RISCV_EXCP_VIRT_INSTRUCTION_FAULT);
@@ -295,7 +295,7 @@ static void gen_exception_illegal(DisasContext *ctx)
 
 static void gen_exception_inst_addr_mis(DisasContext *ctx, TCGv target)
 {
-    tcg_gen_st_tl(target, cpu_env, offsetof(CPURISCVState, badaddr));
+    tcg_gen_st_tl(target, tcg_env, offsetof(CPURISCVState, badaddr));
     generate_exception(ctx, RISCV_EXCP_INST_ADDR_MIS);
 }
 
@@ -305,7 +305,7 @@ static void lookup_and_goto_ptr(DisasContext *ctx)
 {
 #ifndef CONFIG_USER_ONLY
     if (ctx->itrigger) {
-        gen_helper_itrigger_match(cpu_env);
+        gen_helper_itrigger_match(tcg_env);
     }
 #endif
     tcg_gen_lookup_and_goto_ptr();
@@ -315,7 +315,7 @@ static void exit_tb(DisasContext *ctx)
 {
 #ifndef CONFIG_USER_ONLY
     if (ctx->itrigger) {
-        gen_helper_itrigger_match(cpu_env);
+        gen_helper_itrigger_match(tcg_env);
     }
 #endif
     tcg_gen_exit_tb(NULL, 0);
@@ -846,14 +846,14 @@ static void mark_fs_dirty(DisasContext *ctx)
         ctx->mstatus_fs = EXT_STATUS_DIRTY;
 
         tmp = tcg_temp_new();
-        tcg_gen_ld_tl(tmp, cpu_env, offsetof(CPURISCVState, mstatus));
+        tcg_gen_ld_tl(tmp, tcg_env, offsetof(CPURISCVState, mstatus));
         tcg_gen_ori_tl(tmp, tmp, MSTATUS_FS);
-        tcg_gen_st_tl(tmp, cpu_env, offsetof(CPURISCVState, mstatus));
+        tcg_gen_st_tl(tmp, tcg_env, offsetof(CPURISCVState, mstatus));
 
         if (ctx->virt_enabled) {
-            tcg_gen_ld_tl(tmp, cpu_env, offsetof(CPURISCVState, mstatus_hs));
+            tcg_gen_ld_tl(tmp, tcg_env, offsetof(CPURISCVState, mstatus_hs));
             tcg_gen_ori_tl(tmp, tmp, MSTATUS_FS);
-            tcg_gen_st_tl(tmp, cpu_env, offsetof(CPURISCVState, mstatus_hs));
+            tcg_gen_st_tl(tmp, tcg_env, offsetof(CPURISCVState, mstatus_hs));
         }
     }
 }
@@ -875,14 +875,14 @@ static void mark_vs_dirty(DisasContext *ctx)
         ctx->mstatus_vs = EXT_STATUS_DIRTY;
 
         tmp = tcg_temp_new();
-        tcg_gen_ld_tl(tmp, cpu_env, offsetof(CPURISCVState, mstatus));
+        tcg_gen_ld_tl(tmp, tcg_env, offsetof(CPURISCVState, mstatus));
         tcg_gen_ori_tl(tmp, tmp, MSTATUS_VS);
-        tcg_gen_st_tl(tmp, cpu_env, offsetof(CPURISCVState, mstatus));
+        tcg_gen_st_tl(tmp, tcg_env, offsetof(CPURISCVState, mstatus));
 
         if (ctx->virt_enabled) {
-            tcg_gen_ld_tl(tmp, cpu_env, offsetof(CPURISCVState, mstatus_hs));
+            tcg_gen_ld_tl(tmp, tcg_env, offsetof(CPURISCVState, mstatus_hs));
             tcg_gen_ori_tl(tmp, tmp, MSTATUS_VS);
-            tcg_gen_st_tl(tmp, cpu_env, offsetof(CPURISCVState, mstatus_hs));
+            tcg_gen_st_tl(tmp, tcg_env, offsetof(CPURISCVState, mstatus_hs));
         }
     }
 }
@@ -904,7 +904,7 @@ static void gen_set_rm(DisasContext *ctx, int rm)
 
     /* The helper may raise ILLEGAL_INSN -- record binv for unwind. */
     decode_save_opc(ctx);
-    gen_helper_set_rounding_mode(cpu_env, tcg_constant_i32(rm));
+    gen_helper_set_rounding_mode(tcg_env, tcg_constant_i32(rm));
 }
 
 static void gen_set_rm_chkfrm(DisasContext *ctx, int rm)
@@ -917,7 +917,7 @@ static void gen_set_rm_chkfrm(DisasContext *ctx, int rm)
 
     /* The helper may raise ILLEGAL_INSN -- record binv for unwind. */
     decode_save_opc(ctx);
-    gen_helper_set_rounding_mode_chkfrm(cpu_env, tcg_constant_i32(rm));
+    gen_helper_set_rounding_mode_chkfrm(tcg_env, tcg_constant_i32(rm));
 }
 
 static int ex_plus_1(DisasContext *ctx, int nf)
@@ -1370,7 +1370,7 @@ static uint32_t opcode_at(DisasContextBase *dcbase, target_ulong pc)
 {
     DisasContext *ctx = container_of(dcbase, DisasContext, base);
     CPUState *cpu = ctx->cs;
-    CPURISCVState *env = cpu->env_ptr;
+    CPURISCVState *env = cpu_env(cpu);
 
     return cpu_ldl_code(env, pc);
 }
@@ -1576,7 +1576,7 @@ static void decode_opc(CPURISCVState *env, DisasContext *ctx, uint16_t opcode)
 static void riscv_tr_init_disas_context(DisasContextBase *dcbase, CPUState *cs)
 {
     DisasContext *ctx = container_of(dcbase, DisasContext, base);
-    CPURISCVState *env = cs->env_ptr;
+    CPURISCVState *env = cpu_env(cs);
     RISCVCPU *cpu = RISCV_CPU(cs);
     uint32_t tb_flags = ctx->base.tb->flags;
 
@@ -1637,7 +1637,7 @@ static void riscv_tr_insn_start(DisasContextBase *dcbase, CPUState *cpu)
 static void riscv_tr_translate_insn(DisasContextBase *dcbase, CPUState *cpu)
 {
     DisasContext *ctx = container_of(dcbase, DisasContext, base);
-    CPURISCVState *env = cpu->env_ptr;
+    CPURISCVState *env = cpu_env(cpu);
 #ifdef CONFIG_RVFI_DII
     // We have to avoid memory accesses for injected instructions since
     // the PC could point somewhere invalid.
@@ -1748,9 +1748,9 @@ void riscv_translate_init(void)
     cpu_gpr[0] = NULL;
 
     for (i = 1; i < 32; i++) {
-        cpu_gpr[i] = tcg_global_mem_new(cpu_env,
+        cpu_gpr[i] = tcg_global_mem_new(tcg_env,
             offsetof(CPURISCVState, gpr[i]), riscv_int_regnames[i]);
-        cpu_gprh[i] = tcg_global_mem_new(cpu_env,
+        cpu_gprh[i] = tcg_global_mem_new(tcg_env,
             offsetof(CPURISCVState, gprh[i]), riscv_int_regnamesh[i]);
     }
 #else
@@ -1763,46 +1763,46 @@ void riscv_translate_init(void)
      */
     for (i = 1; i < 32; i++) {
         _cpu_cursors_do_not_access_directly[i] = tcg_global_mem_new(
-            cpu_env,
+            tcg_env,
             offsetof(CPURISCVState, gpcapregs.decompressed[i].cap._cr_cursor),
             riscv_int_regnames[i]);
     }
 #endif
 #ifdef CONFIG_RVFI_DII
     cpu_rvfi_available_fields = tcg_global_mem_new_i32(
-        cpu_env, offsetof(CPURISCVState, rvfi_dii_trace.available_fields),
+        tcg_env, offsetof(CPURISCVState, rvfi_dii_trace.available_fields),
         "rvfi_available_fields");
 #endif
 
     for (i = 0; i < 32; i++) {
-        cpu_fpr[i] = tcg_global_mem_new_i64(cpu_env,
+        cpu_fpr[i] = tcg_global_mem_new_i64(tcg_env,
             offsetof(CPURISCVState, fpr[i]), riscv_fpr_regnames[i]);
     }
 
 #ifdef TARGET_CHERI
-    cpu_pc = tcg_global_mem_new(cpu_env,
+    cpu_pc = tcg_global_mem_new(tcg_env,
                                 offsetof(CPURISCVState, pcc._cr_cursor), "pc");
     /// XXXAR: We currently interpose using DDC.cursor and not DDC.base!
     ddc_interposition = tcg_global_mem_new(
-        cpu_env, offsetof(CPURISCVState, ddc._cr_cursor), "ddc_interpose");
+        tcg_env, offsetof(CPURISCVState, ddc._cr_cursor), "ddc_interpose");
 #else
-    cpu_pc = tcg_global_mem_new(cpu_env, offsetof(CPURISCVState, pc), "pc");
+    cpu_pc = tcg_global_mem_new(tcg_env, offsetof(CPURISCVState, pc), "pc");
 #endif
-    cpu_vl = tcg_global_mem_new(cpu_env, offsetof(CPURISCVState, vl), "vl");
-    cpu_vstart = tcg_global_mem_new(cpu_env, offsetof(CPURISCVState, vstart),
+    cpu_vl = tcg_global_mem_new(tcg_env, offsetof(CPURISCVState, vl), "vl");
+    cpu_vstart = tcg_global_mem_new(tcg_env, offsetof(CPURISCVState, vstart),
                             "vstart");
 #ifdef CONFIG_DEBUG_TCG
     _pc_is_current = tcg_global_mem_new(
-        cpu_env, offsetof(CPURISCVState, _pc_is_current), "_pc_is_current");
+        tcg_env, offsetof(CPURISCVState, _pc_is_current), "_pc_is_current");
 #endif
     load_res = (TCGv_cap_checked_ptr)tcg_global_mem_new(
-        cpu_env, offsetof(CPURISCVState, load_res), "load_res");
-    load_val = tcg_global_mem_new(cpu_env, offsetof(CPURISCVState, load_val),
+        tcg_env, offsetof(CPURISCVState, load_res), "load_res");
+    load_val = tcg_global_mem_new(tcg_env, offsetof(CPURISCVState, load_val),
                              "load_val");
     /* Assign PM CSRs to tcg globals */
-    pm_mask = tcg_global_mem_new(cpu_env, offsetof(CPURISCVState, cur_pmmask),
+    pm_mask = tcg_global_mem_new(tcg_env, offsetof(CPURISCVState, cur_pmmask),
                                  "pmmask");
-    pm_base = tcg_global_mem_new(cpu_env, offsetof(CPURISCVState, cur_pmbase),
+    pm_base = tcg_global_mem_new(tcg_env, offsetof(CPURISCVState, cur_pmbase),
                                  "pmbase");
 }
 

@@ -172,8 +172,8 @@ static void gen_div_i128(TCGv rdl, TCGv rdh,
 #ifdef TARGET_CHERI
     g_assert_not_reached();
 #else
-    gen_helper_divs_i128(rdl, cpu_env, rs1l, rs1h, rs2l, rs2h);
-    tcg_gen_ld_tl(rdh, cpu_env, offsetof(CPURISCVState, retxh));
+    gen_helper_divs_i128(rdl, tcg_env, rs1l, rs1h, rs2l, rs2h);
+    tcg_gen_ld_tl(rdh, tcg_env, offsetof(CPURISCVState, retxh));
 #endif
 }
 
@@ -219,8 +219,8 @@ static void gen_divu_i128(TCGv rdl, TCGv rdh,
 #ifdef TARGET_CHERI
     g_assert_not_reached();
 #else
-    gen_helper_divu_i128(rdl, cpu_env, rs1l, rs1h, rs2l, rs2h);
-    tcg_gen_ld_tl(rdh, cpu_env, offsetof(CPURISCVState, retxh));
+    gen_helper_divu_i128(rdl, tcg_env, rs1l, rs1h, rs2l, rs2h);
+    tcg_gen_ld_tl(rdh, tcg_env, offsetof(CPURISCVState, retxh));
 #endif
 }
 
@@ -255,8 +255,8 @@ static void gen_rem_i128(TCGv rdl, TCGv rdh,
 #ifdef TARGET_CHERI
     g_assert_not_reached();
 #else
-    gen_helper_rems_i128(rdl, cpu_env, rs1l, rs1h, rs2l, rs2h);
-    tcg_gen_ld_tl(rdh, cpu_env, offsetof(CPURISCVState, retxh));
+    gen_helper_rems_i128(rdl, tcg_env, rs1l, rs1h, rs2l, rs2h);
+    tcg_gen_ld_tl(rdh, tcg_env, offsetof(CPURISCVState, retxh));
 #endif
 }
 
@@ -304,8 +304,8 @@ static void gen_remu_i128(TCGv rdl, TCGv rdh,
 #ifdef TARGET_CHERI
     g_assert_not_reached();
 #else
-    gen_helper_remu_i128(rdl, cpu_env, rs1l, rs1h, rs2l, rs2h);
-    tcg_gen_ld_tl(rdh, cpu_env, offsetof(CPURISCVState, retxh));
+    gen_helper_remu_i128(rdl, tcg_env, rs1l, rs1h, rs2l, rs2h);
+    tcg_gen_ld_tl(rdh, tcg_env, offsetof(CPURISCVState, retxh));
 #endif
 }
 
