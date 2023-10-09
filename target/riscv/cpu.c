@@ -654,6 +654,9 @@ static void riscv_cpu_set_pc(CPUState *cs, vaddr value)
     } else {
         env->pc = value;
     }
+#ifdef TARGET_CHERI
+    cheri_update_pcc(&env->pcc, value, /*can_be_unrepresentable=*/true);
+#else
 }
 
 static vaddr riscv_cpu_get_pc(CPUState *cs)
