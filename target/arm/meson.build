@@ -40,4 +40,4 @@ else
 endif
 
 target_arch += {'arm': arm_ss}
-target_softmmu_arch += {'arm': arm_system_ss}
+target_system_arch += {'arm': arm_system_ss}
