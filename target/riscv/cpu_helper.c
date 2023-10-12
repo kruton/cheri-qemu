@@ -85,8 +85,7 @@ void riscv_cpu_get_tb_cpu_state(CPURISCVState *env, vaddr *pc,
                                 target_ulong *pcc_top, uint32_t *cheri_flags,
                                 uint32_t *pflags)
 {
-    CPUState *cs = env_cpu(env);
-    RISCVCPU *cpu = RISCV_CPU(cs);
+    RISCVCPU *cpu = env_archcpu(env);
     RISCVExtStatus fs, vs;
     uint32_t flags = 0;
     *pc = env->xl == MXL_RV32 ? PC_ADDR(env) & UINT32_MAX : PC_ADDR(env);

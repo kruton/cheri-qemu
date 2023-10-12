@@ -1167,7 +1167,7 @@ void tlb_set_page_full(CPUState *cpu, int mmu_idx,
      * any other entries are modified.
      */
     uintptr_t tagmem = (uintptr_t)cheri_tagmem_for_addr(
-        env, addr, section->mr->ram_block, xlat, sz, &prot, tag_setting);
+        cpu_env(cpu), addr, section->mr->ram_block, xlat, sz, &prot, tag_setting);
     assert((tagmem & TLBENTRYCAP_MASK) == 0);
 #endif
 
@@ -2509,7 +2509,7 @@ static uint16_t do_ld2_mmu(CPUState *cpu, vaddr addr, MemOpIdx oi,
         return do_ld_2(cpu, &l.page[0], l.mmu_idx, access_type, l.memop, ra);
     }
 #ifdef TARGET_CHERI
-    check_address_space_wrap(env, addr, 2, access_type, ra);
+    check_address_space_wrap(cpu_env(cpu), addr, 2, access_type, ra);
 #endif
 
     a = do_ld_1(cpu, &l.page[0], l.mmu_idx, access_type, ra);
@@ -2536,7 +2536,7 @@ static uint32_t do_ld4_mmu(CPUState *cpu, vaddr addr, MemOpIdx oi,
         return do_ld_4(cpu, &l.page[0], l.mmu_idx, access_type, l.memop, ra);
     }
 #ifdef TARGET_CHERI
-    check_address_space_wrap(env, addr, 4, access_type, ra);
+    check_address_space_wrap(cpu_env(cpu), addr, 4, access_type, ra);
 #endif
 
     ret = do_ld_beN(cpu, &l.page[0], 0, l.mmu_idx, access_type, l.memop, ra);
@@ -2560,7 +2560,7 @@ static uint64_t do_ld8_mmu(CPUState *cpu, vaddr addr, MemOpIdx oi,
         return do_ld_8(cpu, &l.page[0], l.mmu_idx, access_type, l.memop, ra);
     }
 #ifdef TARGET_CHERI
-    check_address_space_wrap(env, addr, 8, access_type, ra);
+    check_address_space_wrap(cpu_env(cpu), addr, 8, access_type, ra);
 #endif
 
     ret = do_ld_beN(cpu, &l.page[0], 0, l.mmu_idx, access_type, l.memop, ra);
@@ -2939,7 +2939,7 @@ static void do_st2_mmu(CPUState *cpu, vaddr addr, uint16_t val,
         return;
     }
 #ifdef TARGET_CHERI
-    check_address_space_wrap(env, addr, 2, MMU_DATA_STORE, ra);
+    check_address_space_wrap(cpu_env(cpu), addr, 2, MMU_DATA_STORE, ra);
 #endif
 
     if ((l.memop & MO_BSWAP) == MO_LE) {
@@ -2964,7 +2964,7 @@ static void do_st4_mmu(CPUState *cpu, vaddr addr, uint32_t val,
         return;
     }
 #ifdef TARGET_CHERI
-    check_address_space_wrap(env, addr, 4, MMU_DATA_STORE, ra);
+    check_address_space_wrap(cpu_env(cpu), addr, 4, MMU_DATA_STORE, ra);
 #endif
 
     /* Swap to little endian for simplicity, then store by bytes. */
@@ -2988,7 +2988,7 @@ static void do_st8_mmu(CPUState *cpu, vaddr addr, uint64_t val,
         return;
     }
 #ifdef TARGET_CHERI
-    check_address_space_wrap(env, addr, 8, MMU_DATA_STORE, ra);
+    check_address_space_wrap(cpu_env(cpu), addr, 8, MMU_DATA_STORE, ra);
 #endif
 
     /* Swap to little endian for simplicity, then store by bytes. */

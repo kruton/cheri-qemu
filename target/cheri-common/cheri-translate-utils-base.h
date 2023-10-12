@@ -56,7 +56,7 @@ static inline void gen_raise_pcc_violation_tcgv(DisasContextBase *db,
     // Ensure correct PCC.cursor
     cheri_tcg_save_pc(db);
     TCGv_i32 tbytes = tcg_constant_i32(num_bytes);
-    gen_helper_raise_exception_pcc_bounds(cpu_env, taddr, tbytes);
+    gen_helper_raise_exception_pcc_bounds(tcg_env, taddr, tbytes);
     // Note: we don't set DISAS_NORETURN (must be called before helper) since
     // this helper function might only be called in a conditional branch
 }

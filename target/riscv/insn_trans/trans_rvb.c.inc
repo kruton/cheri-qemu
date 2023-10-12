@@ -368,7 +368,7 @@ GEN_SHADD(3)
             TCGv offset = tcg_temp_new();                                      \
             gen_get_gpr(ctx, offset, a->rs1);                                  \
             tcg_gen_shli_tl(offset, offset, SHAMT);                            \
-            gen_helper_cincoffset(cpu_env, tcg_constant_i32(a->rd),            \
+            gen_helper_cincoffset(tcg_env, tcg_constant_i32(a->rd),            \
                                   tcg_constant_i32(a->rs2), offset);           \
             return true;                                                       \
         }                                                                      \
@@ -481,7 +481,7 @@ GEN_SHADD_UW(3)
             gen_get_gpr(ctx, offset, a->rs1);                                  \
             tcg_gen_ext32u_tl(offset, offset);                                 \
             tcg_gen_shli_tl(offset, offset, SHAMT);                            \
-            gen_helper_cincoffset(cpu_env, tcg_constant_i32(a->rd),            \
+            gen_helper_cincoffset(tcg_env, tcg_constant_i32(a->rd),            \
                                   tcg_constant_i32(a->rs2), offset);           \
             return true;                                                       \
         }                                                                      \
@@ -521,7 +521,7 @@ static bool trans_add_uw(DisasContext *ctx, arg_add_uw *a)
         TCGv t = tcg_temp_new();
         gen_get_gpr(ctx, t, a->rs1);
         tcg_gen_ext32u_tl(t, t);
-        gen_helper_cincoffset(cpu_env, tcg_constant_i32(a->rd),
+        gen_helper_cincoffset(tcg_env, tcg_constant_i32(a->rd),
                               tcg_constant_i32(a->rs2), t);
         return true;
     }

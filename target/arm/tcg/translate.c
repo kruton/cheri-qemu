@@ -353,7 +353,7 @@ void store_reg(DisasContext *s, int reg, TCGv_i32 var)
         TCGv_ptr name = tcg_constant_ptr(arm32_regnames[reg]);
         TCGv new_val = tcg_temp_new();
         tcg_gen_extu_i32_tl(new_val, var);
-        gen_helper_qemu_log_instr_reg(cpu_env, name, new_val,
+        gen_helper_qemu_log_instr_reg(tcg_env, name, new_val,
                                       tcg_constant_i32(reg),
                                       tcg_constant_i32(LRI_GPR_ACCESS));
     }
@@ -6423,7 +6423,7 @@ static bool trans_ERET(DisasContext *s, arg_ERET *a)
     if (s->current_el == 2) {
         /* ERET from Hyp uses ELR_Hyp, not LR */
         tmp = tcg_temp_new_i32();
-        tcg_gen_ld_i32(tmp, cpu_env, offsetof(CPUARMState, elr_el[2]) +
+        tcg_gen_ld_i32(tmp, tcg_env, offsetof(CPUARMState, elr_el[2]) +
                        (HOST_BIG_ENDIAN ? 4 : 0));
     } else {
         tmp = load_reg(s, 14);
@@ -9406,7 +9406,7 @@ static void arm_tr_translate_insn(DisasContextBase *dcbase, CPUState *cpu)
 
 #if defined(CONFIG_TCG_LOG_INSTR)
     if (unlikely(dcbase->log_instr_enabled)) {
-        gen_helper_arm_log_instr(cpu_env, tcg_constant_i64(dc->pc_curr),
+        gen_helper_arm_log_instr(tcg_env, tcg_constant_i64(dc->pc_curr),
                                  tcg_constant_i32(insn), tcg_constant_i32(4));
     }
 #endif
@@ -9499,7 +9499,7 @@ static void thumb_tr_translate_insn(DisasContextBase *dcbase, CPUState *cpu)
     if (unlikely(dcbase->log_instr_enabled)) {
         /* For Thumb we have to undo the 16-bit swap above for disassembly. */
         gen_helper_arm_log_instr(
-            cpu_env, tcg_constant_i64(dc->pc_curr),
+            tcg_env, tcg_constant_i64(dc->pc_curr),
             tcg_constant_i32(is_16bit ? insn : rol32(insn, 16)),
             tcg_constant_i32(is_16bit ? 2 : 4));
     }

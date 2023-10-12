@@ -3288,7 +3288,7 @@ static bool get_phys_addr_twostage(CPUARMState *env, S1Translate *ptw,
      */
     s1_prot = result->f.prot;
     s1_lgpgsz = result->f.lg_page_size;
-    s1_guarded = result->f.guarded;
+    s1_guarded = result->f.extra.arm.guarded;
     cacheattrs1 = result->cacheattrs;
 
     ret = get_phys_addr_nogpc(env, ptw, ipa, access_type, result, fi);
@@ -3341,7 +3341,7 @@ static bool get_phys_addr_twostage(CPUARMState *env, S1Translate *ptw,
                                             result->cacheattrs);
 
     /* No BTI GP information in stage 2, we just use the S1 value */
-    result->f.guarded = s1_guarded;
+    result->f.extra.arm.guarded = s1_guarded;
 
     /*
      * Check if IPA translates to secure or non-secure PA space.

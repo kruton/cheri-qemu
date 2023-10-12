@@ -655,7 +655,7 @@ static void dump_cpu_ips_on_exit(void) {
     assert(start_ns != 0);
     CPUState *cpu;
     CPU_FOREACH(cpu) {
-        CPUMIPSState *env = cpu->env_ptr;
+        CPUMIPSState *env = cpu_env(cpu);
         double duration_s = (get_clock() - start_ns) / 1000000000.0;
         uint64_t inst_total =
             env->statcounters_icount_kernel + env->statcounters_icount_user;

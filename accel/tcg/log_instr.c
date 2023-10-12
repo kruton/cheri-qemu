@@ -637,7 +637,7 @@ static void do_instr_commit(CPUArchState *env)
  */
 static void do_cpu_loglevel_switch(CPUState *cpu, run_on_cpu_data data)
 {
-    CPUArchState *env = cpu->env_ptr;
+    CPUArchState *env = cpu_env(cpu);
     tcg_debug_assert(env != NULL && "Called to early?");
     cpu_log_instr_state_t *cpulog = get_cpu_log_state(env);
     cpu_log_instr_info_t *iinfo = get_cpu_log_instr_info(env);
@@ -834,7 +834,7 @@ void qemu_log_instr_init(CPUState *cpu)
         trace_format = &trace_formats[qemu_log_instr_format];
         // Only emit header on first init
         if (trace_format->emit_header)
-            trace_format->emit_header(cpu->env_ptr);
+            trace_format->emit_header(cpu_env(cpu));
     }
 
     /* If we are starting with instruction logging enabled, switch it on now */
@@ -850,7 +850,7 @@ static void
 do_log_buffer_resize(CPUState *cpu, run_on_cpu_data data)
 {
     unsigned long new_size = data.host_ulong;
-    cpu_log_instr_state_t *cpulog = get_cpu_log_state(cpu->env_ptr);
+    cpu_log_instr_state_t *cpulog = get_cpu_log_state(cpu_env(cpu));
     cpu_log_instr_info_t *iinfo;
     int i;
 
@@ -1241,7 +1241,7 @@ static TCGv_i64 qemu_log_printf_valid_entries;
 void qemu_log_printf_create_globals(void)
 {
     qemu_log_printf_valid_entries = tcg_global_mem_new_i64(
-        cpu_env,
+        tcg_env,
         QEMU_PRINTF_LOG_OFFSET + offsetof(qemu_log_printf_buf_t, valid_entries),
         "log_valids");
 }
@@ -1278,10 +1278,10 @@ void qemu_log_gen_printf(DisasContextBase *base, const char *qemu_format,
 
 #if UINTPTR_MAX == UINT32_MAX
     tcg_gen_movi_i32(temp32, (uintptr_t)fmt);
-    tcg_gen_st_i32(temp32, cpu_env, fmt_offset);
+    tcg_gen_st_i32(temp32, tcg_env, fmt_offset);
 #else
     tcg_gen_movi_i64(temp64, (uintptr_t)fmt);
-    tcg_gen_st_i64(temp64, cpu_env, fmt_offset);
+    tcg_gen_st_i64(temp64, tcg_env, fmt_offset);
 #endif
 
     /* Mark this entry as valid. */
@@ -1421,13 +1421,13 @@ void qemu_log_gen_printf(DisasContextBase *base, const char *qemu_format,
                     }
                     switch (arg_size) {
                     case 1:
-                        tcg_gen_st8_i32(t32, cpu_env, offset);
+                        tcg_gen_st8_i32(t32, tcg_env, offset);
                         break;
                     case 2:
-                        tcg_gen_st16_i32(t32, cpu_env, offset);
+                        tcg_gen_st16_i32(t32, tcg_env, offset);
                         break;
                     case 4:
-                        tcg_gen_st_i32(t32, cpu_env, offset);
+                        tcg_gen_st_i32(t32, tcg_env, offset);
                         break;
                     default:
                         g_assert_not_reached();
@@ -1454,7 +1454,7 @@ void qemu_log_gen_printf(DisasContextBase *base, const char *qemu_format,
                         t64 = temp64;
                         tcg_gen_movi_i64(t64, 0);
                     }
-                    tcg_gen_st_i64(t64, cpu_env, offset);
+                    tcg_gen_st_i64(t64, tcg_env, offset);
                 }
                 offset += sizeof(qemu_log_arg_t);
                 break;
@@ -1472,7 +1472,7 @@ void qemu_log_gen_printf_flush(DisasContextBase *base, bool flush_early,
     if (force_flush || ((base->printf_used_ptr != 0) &&
                         (flush_early || (base->printf_used_ptr >=
                                          (QEMU_LOG_PRINTF_FLUSH_BARRIER))))) {
-        gen_helper_qemu_log_printf_dump(cpu_env);
+        gen_helper_qemu_log_printf_dump(tcg_env);
         base->printf_used_ptr = 0;
     }
 }
@@ -1589,7 +1589,7 @@ void helper_qemu_log_instr_allcpu_start(void)
     CPUState *cpu;
 
     CPU_FOREACH(cpu) {
-        helper_qemu_log_instr_start(cpu->env_ptr, 0);
+        helper_qemu_log_instr_start(cpu_env(cpu), 0);
     }
 }
 
@@ -1599,7 +1599,7 @@ void helper_qemu_log_instr_allcpu_user_start(void)
     CPUState *cpu;
 
     CPU_FOREACH(cpu) {
-        helper_qemu_log_instr_user_start(cpu->env_ptr, 0);
+        helper_qemu_log_instr_user_start(cpu_env(cpu), 0);
     }
 }
 
@@ -1609,7 +1609,7 @@ void helper_qemu_log_instr_allcpu_stop(void)
     CPUState *cpu;
 
     CPU_FOREACH(cpu) {
-        helper_qemu_log_instr_stop(cpu->env_ptr, 0);
+        helper_qemu_log_instr_stop(cpu_env(cpu), 0);
     }
 }
 

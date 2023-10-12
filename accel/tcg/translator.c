@@ -141,7 +141,7 @@ void translator_loop(CPUState *cpu, TranslationBlock *tb, int *max_insns,
      * This assumes that the TCG buffer will be flushed on instruction
      * log level changes.
      */
-    const bool log_instr_enabled = qemu_log_instr_enabled(cpu->env_ptr);
+    const bool log_instr_enabled = qemu_log_instr_enabled(cpu_env(cpu));
 #endif
 
     /* Initialize DisasContext */
@@ -156,9 +156,9 @@ void translator_loop(CPUState *cpu, TranslationBlock *tb, int *max_insns,
     db->pcc_base = tb->pcc_base;
     db->pcc_top = tb->pcc_top;
     cheri_debug_assert(db->pcc_base ==
-                       cap_get_base(cheri_get_recent_pcc(cpu->env_ptr)));
+                       cap_get_base(cheri_get_recent_pcc(cpu_env(cpu))));
     cheri_debug_assert(db->pcc_top ==
-                       cap_get_top(cheri_get_recent_pcc(cpu->env_ptr)));
+                       cap_get_top(cheri_get_recent_pcc(cpu_env(cpu))));
     db->cheri_flags = tb->cheri_flags;
     disas_capreg_reset_all(db);
     // TODO: verify cheri_flags are correct?
@@ -191,7 +191,7 @@ void translator_loop(CPUState *cpu, TranslationBlock *tb, int *max_insns,
     /* Commit previous instruction */
     if (unlikely(log_instr_enabled)) {
         qemu_log_gen_printf_flush(db, true, true);
-        gen_helper_qemu_log_instr_commit(cpu_env);
+        gen_helper_qemu_log_instr_commit(tcg_env);
     }
 #endif
 #ifdef TARGET_CHERI
@@ -199,7 +199,7 @@ void translator_loop(CPUState *cpu, TranslationBlock *tb, int *max_insns,
     // Each target must reserve one bit in tb->flags as the "PCC valid" flag.
     if (unlikely((tb->cheri_flags & TB_FLAG_CHERI_PCC_EXECUTABLE) !=
                  TB_FLAG_CHERI_PCC_EXECUTABLE)) {
-        gen_helper_raise_exception_pcc_perms(cpu_env);
+        gen_helper_raise_exception_pcc_perms(tcg_env);
     } else if (unlikely(!in_pcc_bounds(db, db->pc_next))) {
         gen_raise_pcc_violation(db, db->pc_next, 0);
     }
@@ -273,7 +273,7 @@ void translator_loop(CPUState *cpu, TranslationBlock *tb, int *max_insns,
              * till the end of a BB.
              */
             qemu_log_gen_printf_flush(db, true, false);
-            gen_helper_qemu_log_instr_commit(cpu_env);
+            gen_helper_qemu_log_instr_commit(tcg_env);
         }
 #endif
     }

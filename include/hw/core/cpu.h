@@ -233,7 +233,6 @@ typedef struct CPUTLBEntryFull {
      */
     hwaddr phys_addr;
 
-#ifdef TARGET_CHERI
 #define TLBENTRYCAP_MASK (uintptr_t)0x7
     /* Trap if a non-zero tag is read/written. */
 #define TLBENTRYCAP_FLAG_TRAP (uintptr_t)0x1
@@ -261,7 +260,6 @@ typedef struct CPUTLBEntryFull {
     (TLBENTRYCAP_FLAG_TRAP | TLBENTRYCAP_FLAG_CLEAR)
 #define TLBENTRYCAP_INVALID_WRITE_VALUE (TLBENTRYCAP_FLAG_TRAP)
     uintptr_t tagmem_write;
-#endif
 
     /* @attrs contains the memory transaction attributes for the page. */
     MemTxAttrs attrs;
@@ -622,7 +620,7 @@ struct CPUState {
     /*
      * MUST BE LAST in order to minimize the displacement to CPUArchState.
      */
-    char neg_align[-sizeof(CPUNegativeOffsetState) % 16] QEMU_ALIGNED(16);
+    char neg_align[-sizeof(CPUNegativeOffsetState) % 32] QEMU_ALIGNED(32);
     CPUNegativeOffsetState neg;
 };
 

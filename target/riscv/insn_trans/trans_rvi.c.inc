@@ -40,7 +40,7 @@ static bool trans_auipc(DisasContext *ctx, arg_auipc *a)
 {
 #ifdef TARGET_CHERI
     if (ctx->capmode) {
-        gen_helper_auipcc(cpu_env, tcg_constant_i32(a->rd),
+        gen_helper_auipcc(tcg_env, tcg_constant_i32(a->rd),
                           tcg_constant_tl(a->imm + ctx->base.pc_next));
         return true;
     }
@@ -483,25 +483,25 @@ static bool trans_slti(DisasContext *ctx, arg_slti *a)
         switch (a->imm) {
         case 0x01: case 0x02:
             ttmp = tcg_constant_i32(a->imm == 0x01);
-            gen_helper_qemu_log_instr_buffered_mode(cpu_env, ttmp);
+            gen_helper_qemu_log_instr_buffered_mode(tcg_env, ttmp);
             break;
         case 0x03:
-            gen_helper_qemu_log_instr_buffer_flush(cpu_env);
+            gen_helper_qemu_log_instr_buffer_flush(tcg_env);
             break;
         case 0x1b:
-            gen_helper_qemu_log_instr_start(cpu_env, tpc);
+            gen_helper_qemu_log_instr_start(tcg_env, tpc);
             ctx->base.is_jmp = DISAS_NORETURN;
             break;
         case 0x1e:
-            gen_helper_qemu_log_instr_stop(cpu_env, tpc);
+            gen_helper_qemu_log_instr_stop(tcg_env, tpc);
             ctx->base.is_jmp = DISAS_NORETURN;
             break;
         case 0x2b:
-            gen_helper_qemu_log_instr_user_start(cpu_env, tpc);
+            gen_helper_qemu_log_instr_user_start(tcg_env, tpc);
             ctx->base.is_jmp = DISAS_NORETURN;
             break;
         case 0x2e:
-            gen_helper_qemu_log_instr_stop(cpu_env, tpc);
+            gen_helper_qemu_log_instr_stop(tcg_env, tpc);
             ctx->base.is_jmp = DISAS_NORETURN;
             break;
         }
@@ -981,7 +981,7 @@ static bool trans_csrrw(DisasContext *ctx, arg_csrrw *a)
     if (xl < MXL_RV128) {
 #ifdef TARGET_CHERI
         if (is_cap_csr(a->csr)) {
-            gen_helper_csrrw_cap(cpu_env, tcg_constant_i32(a->csr),
+            gen_helper_csrrw_cap(tcg_env, tcg_constant_i32(a->csr),
                                  tcg_constant_i32(a->rd),
                                  tcg_constant_i32(a->rs1));
             return true;
@@ -1024,7 +1024,7 @@ static bool trans_csrrs(DisasContext *ctx, arg_csrrs *a)
 {
 #ifdef TARGET_CHERI
     if (is_cap_csr(a->csr)) {
-        gen_helper_csrrs_cap(cpu_env, tcg_constant_i32(a->csr),
+        gen_helper_csrrs_cap(tcg_env, tcg_constant_i32(a->csr),
                              tcg_constant_i32(a->rd), tcg_constant_i32(a->rs1));
         return true;
     }
@@ -1064,7 +1064,7 @@ static bool trans_csrrc(DisasContext *ctx, arg_csrrc *a)
 {
 #ifdef TARGET_CHERI
     if (is_cap_csr(a->csr)) {
-        gen_helper_csrrc_cap(cpu_env, tcg_constant_i32(a->csr),
+        gen_helper_csrrc_cap(tcg_env, tcg_constant_i32(a->csr),
                              tcg_constant_i32(a->rd), tcg_constant_i32(a->rs1));
         return true;
     }
@@ -1105,7 +1105,7 @@ static bool trans_csrrwi(DisasContext *ctx, arg_csrrwi *a)
     if (xl < MXL_RV128) {
 #ifdef TARGET_CHERI
         if (is_cap_csr(a->csr)) {
-            gen_helper_csrrwi_cap(cpu_env, tcg_constant_i32(a->csr),
+            gen_helper_csrrwi_cap(tcg_env, tcg_constant_i32(a->csr),
                                   tcg_constant_i32(a->rd),
                                   tcg_constant_i32(a->rs1));
             return true;
@@ -1148,7 +1148,7 @@ static bool trans_csrrsi(DisasContext *ctx, arg_csrrsi *a)
 {
 #ifdef TARGET_CHERI
     if (is_cap_csr(a->csr)) {
-        gen_helper_csrrsi_cap(cpu_env, tcg_constant_i32(a->csr),
+        gen_helper_csrrsi_cap(tcg_env, tcg_constant_i32(a->csr),
                               tcg_constant_i32(a->rd),
                               tcg_constant_i32(a->rs1));
         return true;
@@ -1188,7 +1188,7 @@ static bool trans_csrrci(DisasContext *ctx, arg_csrrci * a)
 {
 #ifdef TARGET_CHERI
     if (is_cap_csr(a->csr)) {
-        gen_helper_csrrci_cap(cpu_env, tcg_constant_i32(a->csr),
+        gen_helper_csrrci_cap(tcg_env, tcg_constant_i32(a->csr),
                               tcg_constant_i32(a->rd),
                               tcg_constant_i32(a->rs1));
         return true;

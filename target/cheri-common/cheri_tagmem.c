@@ -350,11 +350,11 @@ static inline void *get_tagmem_from_iotlb_entry(CPUArchState *env,
      * matching tlb entry + iotlb entry.
      */
 #ifdef CONFIG_DEBUG_TCG
-    CPUTLBEntry *entry = tlb_entry(env, mmu_idx, vaddr);
+    CPUTLBEntry *entry = tlb_entry(env_cpu(env), mmu_idx, vaddr);
     g_assert(tlb_hit(isWrite ? tlb_addr_write(entry) : entry->addr_read, vaddr));
 #endif
     CPUTLBEntryFull *iotlbentry =
-        &env_tlb(env)->d[mmu_idx].fulltlb[tlb_index(env, mmu_idx, vaddr)];
+        &env_cpu(env)->neg.tlb.d[mmu_idx].fulltlb[tlb_index(env_cpu(env), mmu_idx, vaddr)];
     if (isWrite) {
         *flags_out = IOTLB_GET_TAGMEM_FLAGS(iotlbentry, write);
         return IOTLB_GET_TAGMEM(iotlbentry, write);
@@ -551,7 +551,7 @@ void cheri_tag_phys_invalidate(CPUArchState *env, RAMBlock *ram,
     do {                                                                       \
         if (ret_paddr) {                                                       \
             *ret_paddr = (vaddr & ~TARGET_PAGE_MASK) |                         \
-                         (tlb_entry(env, mmu_idx, vaddr)->addr_##rw &          \
+                         (tlb_entry(env_cpu(env), mmu_idx, vaddr)->addr_##rw &  \
                           TARGET_PAGE_MASK);                                   \
         }                                                                      \
     } while (0)

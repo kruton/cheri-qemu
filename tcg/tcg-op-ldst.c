@@ -1130,9 +1130,9 @@ static void do_atomic_op_i32(TCGv_i32 ret, TCGTemp *addr, TCGv_i32 val,
 #ifdef TARGET_CHERI
     TCGv_i32 tcoi = tcg_constant_i32(make_memop_idx(memop, idx));
     if (tcg_ctx->addr_type == TCG_TYPE_I32) {
-        gen_helper_cheri_invalidate_tags(cpu_env, (TCGv_cap_checked_ptr)temp_tcgv_i32(addr), tcoi);
+        gen_helper_cheri_invalidate_tags(tcg_env, (TCGv_cap_checked_ptr)temp_tcgv_i32(addr), tcoi);
     } else {
-        gen_helper_cheri_invalidate_tags(cpu_env, (TCGv_cap_checked_ptr)temp_tcgv_i64(addr), tcoi);
+        gen_helper_cheri_invalidate_tags(tcg_env, (TCGv_cap_checked_ptr)temp_tcgv_i64(addr), tcoi);
     }
 #endif
 
@@ -1184,9 +1184,9 @@ static void do_atomic_op_i64(TCGv_i64 ret, TCGTemp *addr, TCGv_i64 val,
 #ifdef TARGET_CHERI
             TCGv_i32 tcoi = tcg_constant_i32(make_memop_idx(memop, idx));
             if (tcg_ctx->addr_type == TCG_TYPE_I32) {
-                gen_helper_cheri_invalidate_tags(cpu_env, (TCGv_cap_checked_ptr)temp_tcgv_i32(addr), tcoi);
+                gen_helper_cheri_invalidate_tags(tcg_env, (TCGv_cap_checked_ptr)temp_tcgv_i32(addr), tcoi);
             } else {
-                gen_helper_cheri_invalidate_tags(cpu_env, (TCGv_cap_checked_ptr)temp_tcgv_i64(addr), tcoi);
+                gen_helper_cheri_invalidate_tags(tcg_env, (TCGv_cap_checked_ptr)temp_tcgv_i64(addr), tcoi);
             }
 #endif
             return;
@@ -1423,7 +1423,7 @@ void handle_conditional_invalidate(TCGv_cap_checked_ptr checked_addr,
 {
     TCGv_i32 oi = tcg_constant_i32(make_memop_idx(memop, mmu_idx));
     /* Condition is handled in helper */
-    gen_helper_cheri_invalidate_tags_condition(cpu_env, checked_addr, oi,
+    gen_helper_cheri_invalidate_tags_condition(tcg_env, checked_addr, oi,
                                                store_happens);
 }
 

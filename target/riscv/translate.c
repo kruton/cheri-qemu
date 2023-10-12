@@ -493,7 +493,7 @@ static void _gen_set_gpr(DisasContext *ctx, int reg_num, TCGv t,
 #ifdef CONFIG_TCG_LOG_INSTR
         // Log GPR writes here
         if (qemu_ctx_logging_enabled(ctx)) {
-            gen_helper_riscv_log_gpr_write(cpu_env, tcg_constant_i32(reg_num),
+            gen_helper_riscv_log_gpr_write(tcg_env, tcg_constant_i32(reg_num),
                                            t);
         }
 #endif
@@ -552,7 +552,7 @@ static inline void gen_riscv_log_instr(DisasContext *ctx, uint32_t opcode,
         TCGv_i32 topc = tcg_constant_i32(opcode);
         TCGv_i32 twidth = tcg_constant_i32(width);
         // TODO(am2419): bswap opcode if target byte-order != host byte-order
-        gen_helper_riscv_log_instr(cpu_env, tpc, topc, twidth);
+        gen_helper_riscv_log_instr(tcg_env, tpc, topc, twidth);
     }
 }
 

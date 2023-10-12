@@ -73,7 +73,7 @@ static inline bool gen_sc_impl(DisasContext *ctx, TCGv_cap_checked_ptr addr,
     if (memop_size(mop) > 1) {
         TCGv_i32 tmop = tcg_constant_i32(mop);
         TCGv_i32 tcode = tcg_constant_i32(RISCV_EXCP_STORE_AMO_ADDR_MIS);
-        gen_helper_check_alignment(cpu_env, (TCGv)addr, tmop, tcode);
+        gen_helper_check_alignment(tcg_env, (TCGv)addr, tmop, tcode);
     }
 
 #ifdef TARGET_CHERI
@@ -148,7 +148,7 @@ static bool gen_amo(DisasContext *ctx, arg_atomic *a,
     if (memop_size(mop) > 1) {
         TCGv_i32 tmop = tcg_constant_i32(mop);
         TCGv_i32 tcode = tcg_constant_i32(RISCV_EXCP_STORE_AMO_ADDR_MIS);
-        gen_helper_check_alignment(cpu_env, (TCGv)src1, tmop, tcode);
+        gen_helper_check_alignment(tcg_env, (TCGv)src1, tmop, tcode);
     }
     func(dest, src1, src2, ctx->mem_idx, mop);
 

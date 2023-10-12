@@ -47,7 +47,7 @@ static inline bool gen_cheri_int_cap(DisasContext *ctx, arg_rc *a,
                                      cheri_int_cap_helper *gen_func)
 {
     TCGv result = tcg_temp_new();
-    gen_func(result, cpu_env, tcg_constant_i32(a->cs1));
+    gen_func(result, tcg_env, tcg_constant_i32(a->cs1));
     gen_set_gpr(ctx, a->rd, result);
     return true;
 }
@@ -60,7 +60,7 @@ typedef void(cheri_cap_cap_helper)(TCGv_env, TCGv_i32, TCGv_i32);
 static inline bool gen_cheri_cap_cap(DisasContext *ctx G_GNUC_UNUSED, arg_cc *a,
                                      cheri_cap_cap_helper *gen_func)
 {
-    gen_func(cpu_env, tcg_constant_i32(a->cd), tcg_constant_i32(a->cs1));
+    gen_func(tcg_env, tcg_constant_i32(a->cd), tcg_constant_i32(a->cs1));
     return true;
 }
 #define TRANSLATE_CAP_CAP_HELPER(name, helper)                                 \
@@ -75,7 +75,7 @@ gen_cheri_cap_int_plus_imm(DisasContext *ctx, int cd, int rs, target_long imm,
     TCGv gpr_value = tcg_temp_new();
     gen_get_gpr(ctx, gpr_value, rs);
     tcg_gen_addi_tl(gpr_value, gpr_value, imm);
-    gen_func(cpu_env, tcg_constant_i32(cd), gpr_value);
+    gen_func(tcg_env, tcg_constant_i32(cd), gpr_value);
     return true;
 }
 
@@ -86,7 +86,7 @@ static inline bool gen_cheri_int_int(DisasContext *ctx, arg_r2 *a,
     TCGv result = tcg_temp_new();
     TCGv gpr_src_value = tcg_temp_new();
     gen_get_gpr(ctx, gpr_src_value, a->rs1);
-    gen_func(result, cpu_env, gpr_src_value);
+    gen_func(result, tcg_env, gpr_src_value);
     gen_set_gpr(ctx, a->rd, result);
     return true;
 }
@@ -96,7 +96,7 @@ static inline bool gen_cheri_cap_cap_cap(DisasContext *ctx G_GNUC_UNUSED,
                                          arg_ccc *arg,
                                          cheri_cap_cap_cap_helper *gen_func)
 {
-    gen_func(cpu_env, tcg_constant_i32(arg->cd), tcg_constant_i32(arg->cs1),
+    gen_func(tcg_env, tcg_constant_i32(arg->cd), tcg_constant_i32(arg->cs1),
              tcg_constant_i32(arg->cs2));
     return true;
 }
@@ -111,7 +111,7 @@ static inline bool gen_cheri_cap_cap_int(DisasContext *ctx, arg_ccr *a,
 {
     TCGv gpr_value = tcg_temp_new();
     gen_get_gpr(ctx, gpr_value, a->rs2);
-    gen_func(cpu_env, tcg_constant_i32(a->cd), tcg_constant_i32(a->cs1),
+    gen_func(tcg_env, tcg_constant_i32(a->cd), tcg_constant_i32(a->cs1),
              gpr_value);
     return true;
 }
@@ -129,7 +129,7 @@ static inline bool gen_cheri_cap_loadstore(DisasContext *ctx, int srcdst,
     if (imm != 0) {
         tcg_gen_addi_tl(addr, addr, imm);
     }
-    gen_func(cpu_env, tcg_constant_i32(srcdst), addr, tcg_constant_i32(auth));
+    gen_func(tcg_env, tcg_constant_i32(srcdst), addr, tcg_constant_i32(auth));
     return true;
 }
 
@@ -138,7 +138,7 @@ static inline bool gen_cheri_int_cap_cap(DisasContext *ctx, arg_rcc *a,
                                          cheri_int_cap_cap_helper *gen_func)
 {
     TCGv result = tcg_temp_new();
-    gen_func(result, cpu_env, tcg_constant_i32(a->cs1),
+    gen_func(result, tcg_env, tcg_constant_i32(a->cs1),
              tcg_constant_i32(a->cs2));
     gen_set_gpr(ctx, a->rd, result);
     return true;
@@ -151,7 +151,7 @@ typedef void(cheri_cap_cap_imm_helper)(TCGv_env, TCGv_i32, TCGv_i32, TCGv);
 static inline bool gen_cheri_cap_cap_imm(int cd, int cs1, target_long imm,
                                          cheri_cap_cap_imm_helper *gen_func)
 {
-    gen_func(cpu_env, tcg_constant_i32(cd), tcg_constant_i32(cs1),
+    gen_func(tcg_env, tcg_constant_i32(cd), tcg_constant_i32(cs1),
              tcg_constant_tl(imm));
     return true;
 }
@@ -171,7 +171,7 @@ static void gen_cjal(DisasContext *ctx, int rd, target_ulong imm)
      * helper_cjal() checks for misalignment and capability bounds. It also
      * ensures that the written value is a sentry and marks PC as up-to-date.
      */
-    gen_helper_cjal(cpu_env, tcg_constant_i32(rd), target_addr, link_addr);
+    gen_helper_cjal(tcg_env, tcg_constant_i32(rd), target_addr, link_addr);
 
     /* No bounds check needed here since we did it in helper_cjal(). */
     gen_goto_tb(ctx, 0, next_pc - ctx->base.pc_next, false);
@@ -181,7 +181,7 @@ static void gen_cjal(DisasContext *ctx, int rd, target_ulong imm)
 static void gen_cjalr(DisasContext *ctx, int cd, int cs1, target_ulong imm)
 {
     TCGv t0 = tcg_constant_tl(ctx->pc_succ_insn); /* Link addr + resulting pc */
-    gen_helper_cjalr(cpu_env, tcg_constant_i32(cd), tcg_constant_i32(cs1),
+    gen_helper_cjalr(tcg_env, tcg_constant_i32(cd), tcg_constant_i32(cs1),
                      tcg_constant_tl(imm), t0);
 
     tcg_gen_lookup_and_goto_ptr();
@@ -283,7 +283,7 @@ static bool trans_jalr_pcc(DisasContext *ctx, arg_jalr_pcc *a)
 
 static inline bool trans_cinvoke(DisasContext *ctx, arg_cinvoke *a)
 {
-    gen_helper_cinvoke(cpu_env, tcg_constant_i32(a->rs1),
+    gen_helper_cinvoke(tcg_env, tcg_constant_i32(a->rs1),
                        tcg_constant_i32(a->rs2));
 
     tcg_gen_lookup_and_goto_ptr();
@@ -459,7 +459,7 @@ static inline bool trans_lr_c_impl(DisasContext *ctx, arg_atomic *a,
     REQUIRE_EXT(ctx, RVA);
     if (tb_cflags(ctx->base.tb) & CF_PARALLEL) {
         // In a parallel context, stop the world and single step.
-        gen_helper_exit_atomic(cpu_env);
+        gen_helper_exit_atomic(tcg_env);
         ctx->base.is_jmp = DISAS_NORETURN;
     } else {
         // Note: we ignore the Acquire/release flags since using
@@ -496,7 +496,7 @@ static inline bool trans_sc_c_impl(DisasContext *ctx, arg_atomic *a,
     REQUIRE_EXT(ctx, RVA);
     if (tb_cflags(ctx->base.tb) & CF_PARALLEL) {
         // In a parallel context, stop the world and single step.
-        gen_helper_exit_atomic(cpu_env);
+        gen_helper_exit_atomic(tcg_env);
         ctx->base.is_jmp = DISAS_NORETURN;
     } else {
         // Note: we ignore the Acquire/release flags since using
@@ -533,7 +533,7 @@ static inline bool trans_amoswap_c(DisasContext *ctx, arg_amoswap_c *a)
     REQUIRE_EXT(ctx, RVA);
     if (tb_cflags(ctx->base.tb) & CF_PARALLEL) {
         // In a parallel context, stop the world and single step.
-        gen_helper_exit_atomic(cpu_env);
+        gen_helper_exit_atomic(tcg_env);
         ctx->base.is_jmp = DISAS_NORETURN;
     } else {
         // Note: we ignore the Acquire/release flags since using
@@ -553,7 +553,7 @@ static inline bool do_trans_modesw(DisasContext *ctx, bool to_capmode)
                                lookup_symbol(ctx->base.pc_first));
         return true;
     }
-    gen_helper_modesw(cpu_env, tcg_constant_i32(to_capmode));
+    gen_helper_modesw(tcg_env, tcg_constant_i32(to_capmode));
 
     /*
      * The current execution mode is checked at translation time (not at
