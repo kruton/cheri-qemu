@@ -1573,14 +1573,13 @@ static int get_physical_address(CPURISCVState *env, hwaddr *physical,
     }
 
     if (!((prot >> access_type) & 1)) {
-        /*
          * Access check failed, access check failures for shadow stack are
          * access faults.
-         */
             qemu_log_mask(CPU_LOG_MMU, "%s Translate fail: X bit not set\n", __func__);
         return sstack_page ? TRANSLATE_PMP_FAIL : TRANSLATE_FAIL;
     }
 
+#if defined(TARGET_CHERI) && !defined(TARGET_RISCV32)
     target_ulong updated_pte = pte;
 
     /*
@@ -1891,7 +1890,7 @@ bool riscv_cpu_tlb_fill(CPUState *cs, vaddr address, int size,
     CPURISCVState *env = &cpu->env;
     vaddr im_address;
     hwaddr pa = 0;
-    int prot, prot2, prot_pmp;
+    int prot, prot2, prot_pmp, prot_lc_preserve, prot_sc_preserve;
     bool pmp_violation = false;
     bool first_stage_error = true;
     bool two_stage_lookup = mmuidx_2stage(mmu_idx);
@@ -1901,6 +1900,13 @@ bool riscv_cpu_tlb_fill(CPUState *cs, vaddr address, int size,
     /* default TLB page size */
     hwaddr tlb_size = TARGET_PAGE_SIZE;
 
+#if defined(TARGET_CHERI) && !defined(TARGET_RISCV32)
+    prot_lc_preserve = PAGE_LC_TRAP | PAGE_LC_CLEAR;
+    prot_sc_preserve = PAGE_SC_TRAP;
+#else
+    prot_lc_preserve = 0;
+    prot_sc_preserve = 0;
+#endif
     env->guest_phys_fault_addr = 0;
 
     qemu_log_mask(CPU_LOG_MMU, "%s ad %" VADDR_PRIx " rw %d mmu_idx %d\n",
@@ -1964,6 +1970,7 @@ bool riscv_cpu_tlb_fill(CPUState *cs, vaddr address, int size,
              * get_physical_address already handles the store-side CHERI
              * extensions.
              */
+            prot &= prot2 | prot_lc_preserve;
 
             if (ret == TRANSLATE_SUCCESS) {
                 ret = get_physical_address_pmp(env, &prot_pmp, pa,
@@ -1975,7 +1982,8 @@ bool riscv_cpu_tlb_fill(CPUState *cs, vaddr address, int size,
                               " %d tlb_size %" HWADDR_PRIu "\n",
                               __func__, pa, ret, prot_pmp, tlb_size);
 
-                prot &= prot_pmp;
+                /* PMP has no CHERI permissions; preserve trap/clear */
+                prot &= prot_pmp | prot_lc_preserve | prot_sc_preserve;
             } else {
                 /*
                  * Guest physical address translation failed, this is a HS
@@ -2011,7 +2019,8 @@ bool riscv_cpu_tlb_fill(CPUState *cs, vaddr address, int size,
                           " %d tlb_size %" HWADDR_PRIu "\n",
                           __func__, pa, ret, prot_pmp, tlb_size);
 
-            prot &= prot_pmp;
+            /* PMP has no CHERI permissions; preserve trap/clear */
+            prot &= prot_pmp | prot_lc_preserve | prot_sc_preserve;
         }
     }
 
