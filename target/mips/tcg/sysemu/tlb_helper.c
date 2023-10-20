@@ -27,7 +27,6 @@
 #include "exec/log_instr.h"
 #include "qemu/atomic.h"
 #include "qemu/error-report.h"
-#include "hw/mips/cpudevs.h"
 #include "exec/helper-proto.h"
 
 static bool r4k_lookup_tlb(CPUMIPSState *env, int *matching, bool use_extra);

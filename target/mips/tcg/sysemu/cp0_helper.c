@@ -31,6 +31,7 @@
 #include "exec/log_instr.h"
 #include "sysemu/cpus.h"
 #include "sysemu/runstate.h"
+#include "hw/misc/mips_itu.h"
 
 /*
  * Names of coprocessor 0 registers.
