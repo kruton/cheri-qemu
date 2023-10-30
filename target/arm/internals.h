@@ -29,6 +29,7 @@
 #include "tcg/tcg-gvec-desc.h"
 #include "cheri-lazy-capregs.h"
 #include "syndrome.h"
+#include "cpu-features.h"
 
 /* register banks for CPU modes */
 #define BANK_USRSYS 0
