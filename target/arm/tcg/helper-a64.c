@@ -1300,6 +1300,15 @@ static void check_setg_alignment(CPUARMState *env, uint64_t ptr, uint64_t size,
     }
 }
 
+static uint64_t arm_reg_or_xzr(CPUARMState *env, int reg)
+{
+    /*
+     * Runtime equivalent of cpu_reg() -- return the CPU register value,
+     * for contexts when index 31 means XZR (not SP).
+     */
+    return reg == 31 ? 0 : GET_XREG(env, reg);
+}
+
 /*
  * For the Memory Set operation, our implementation chooses
  * always to use "option A", where we update Xd to the final
@@ -1320,7 +1329,7 @@ static void do_setp(CPUARMState *env, uint32_t syndrome, uint32_t mtedesc,
     int rd = mops_destreg(syndrome);
     int rs = mops_srcreg(syndrome);
     int rn = mops_sizereg(syndrome);
-    uint8_t data = GET_XREG(env, rs);
+    uint8_t data = arm_reg_or_xzr(env, rs);
     uint32_t memidx = FIELD_EX32(mtedesc, MTEDESC, MIDX);
     uint64_t toaddr = GET_XREG(env, rd);
     uint64_t setsize = GET_XREG(env, rn);
@@ -1380,7 +1389,7 @@ static void do_setm(CPUARMState *env, uint32_t syndrome, uint32_t mtedesc,
     int rd = mops_destreg(syndrome);
     int rs = mops_srcreg(syndrome);
     int rn = mops_sizereg(syndrome);
-    uint8_t data = GET_XREG(env, rs);
+    uint8_t data = arm_reg_or_xzr(env, rs);
     uint64_t toaddr = GET_XREG(env, rd) + GET_XREG(env, rn);
     uint64_t setsize = -GET_XREG(env, rn);
     uint32_t memidx = FIELD_EX32(mtedesc, MTEDESC, MIDX);
@@ -1443,7 +1452,7 @@ static void do_sete(CPUARMState *env, uint32_t syndrome, uint32_t mtedesc,
     int rd = mops_destreg(syndrome);
     int rs = mops_srcreg(syndrome);
     int rn = mops_sizereg(syndrome);
-    uint8_t data = GET_XREG(env, rs);
+    uint8_t data = arm_reg_or_xzr(env, rs);
     uint64_t toaddr = GET_XREG(env, rd) + GET_XREG(env, rn);
     uint64_t setsize = -GET_XREG(env, rn);
     uint32_t memidx = FIELD_EX32(mtedesc, MTEDESC, MIDX);

@@ -4269,6 +4269,7 @@ void gen_sve_str(DisasContext *s, TCGv_ptr base, int vofs,
     int nparts = len / 16 + ctpop8(len_remain);
     int midx = get_mem_index(s);
     TCGv_i64 dirty_addr, t0, t1;
+    TCGv_i128 t16;
     TCGv_cap_checked_ptr clean_addr;
 
     dirty_addr = tcg_temp_new_i64();
@@ -4288,10 +4289,15 @@ void gen_sve_str(DisasContext *s, TCGv_ptr base, int vofs,
         int i;
 
         t0 = tcg_temp_new_i64();
-        for (i = 0; i < len_align; i += 8) {
+        t1 = tcg_temp_new_i64();
+        t16 = tcg_temp_new_i128();
+        for (i = 0; i < len_align; i += 16) {
             tcg_gen_ld_i64(t0, base, vofs + i);
-            tcg_gen_qemu_st_i64_with_checked_addr(t0, clean_addr, midx, MO_LEUQ);
-            tcg_gen_addi_i64((TCGv_i64)clean_addr, (TCGv_i64)clean_addr, 8);
+            tcg_gen_ld_i64(t1, base, vofs + i + 8);
+            tcg_gen_concat_i64_i128(t16, t0, t1);
+            tcg_gen_qemu_st_i128_with_checked_addr(t16, clean_addr, midx,
+                                                 MO_LE | MO_128 | MO_ATOM_NONE);
+            tcg_gen_addi_i64((TCGv_i64)clean_addr, (TCGv_i64)clean_addr, 16);
         }
     } else {
         TCGLabel *loop = gen_new_label();
@@ -4308,10 +4314,12 @@ void gen_sve_str(DisasContext *s, TCGv_ptr base, int vofs,
         tcg_gen_ld_i64(t1, tp, vofs + 8);
         tcg_gen_addi_ptr(i, i, 16);
 
-        tcg_gen_qemu_st_i64_with_checked_addr(t0, clean_addr, midx, MO_LEUQ);
-        tcg_gen_addi_i64((TCGv_i64)clean_addr, (TCGv_i64)clean_addr, 8);
-        tcg_gen_qemu_st_i64_with_checked_addr(t1, clean_addr, midx, MO_LEUQ);
-        tcg_gen_addi_i64((TCGv_i64)clean_addr, (TCGv_i64)clean_addr, 8);
+        t16 = tcg_temp_new_i128();
+        tcg_gen_concat_i64_i128(t16, t0, t1);
+
+        tcg_gen_qemu_st_i128_with_checked_addr(t16, clean_addr, midx,
+                                             MO_LE | MO_128 | MO_ATOM_NONE);
+        tcg_gen_addi_i64((TCGv_i64)clean_addr, (TCGv_i64)clean_addr, 16);
 
         tcg_gen_brcondi_ptr(TCG_COND_LTU, i, len_align, loop);
     }
