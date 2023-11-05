@@ -118,9 +118,14 @@ static inline QEMU_ALWAYS_INLINE void tagblock_clear_tag(CheriTagBlock *block,
 #ifdef CONFIG_DEBUG_TCG
     CPUTLBEntry *entry = cheri_tlb_entry(env_cpu(env), mmu_idx, vaddr);
     g_assert(tlb_hit(isWrite ? cheri_tlb_addr_write(entry) : entry->addr_read, vaddr));
+                                      int32_t size, uintptr_t pc, int mmu_idx);
+                                   uintptr_t pc, int mmu_idx)
+    return cheri_tag_invalidate_one(env, vaddr, CHERI_CAP_SIZE, pc, mmu_idx);
+        cheri_tag_invalidate_one(env, vaddr, size, pc, mmu_idx);
 #if defined(CHERI_UNALIGNED)
     if (unlikely((first_addr & TARGET_PAGE_MASK) !=
         warn_report("Got unaligned %d-byte store across page "
+    cheri_debug_assert(size > 0);
         return NULL;
         get_tagmem_from_iotlb_entry(env, vaddr, mmu_idx, true, &tagmem_flags);
     if (qemu_log_instr_enabled(env)) {
