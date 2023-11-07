@@ -218,6 +218,10 @@ static AddressSpace *xilinx_pcie_host_set_iommu(PCIBus *bus, void *opaque,
     return &s->address_space;
 }
 
+static const PCIIOMMUOps xilinx_pcie_iommu_ops = {
+    .get_address_space = xilinx_pcie_host_set_iommu,
+};
+
 static void xilinx_pcie_host_realize(DeviceState *dev, Error **errp)
 {
     PCIHostState *pci = PCI_HOST_BRIDGE(dev);
@@ -266,7 +270,7 @@ static void xilinx_pcie_host_realize(DeviceState *dev, Error **errp)
     address_space_init(&s->address_space,
                        &s->address_space_root,
                        g_strdup_printf("%s-bus-address-space", s->name));
-    pci_setup_iommu(pci->bus, xilinx_pcie_host_set_iommu, s);
+    pci_setup_iommu(pci->bus, &xilinx_pcie_iommu_ops, s);
 
     qdev_realize(DEVICE(&s->root), BUS(pci->bus), &error_fatal);
 }
