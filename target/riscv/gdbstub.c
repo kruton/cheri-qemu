@@ -502,7 +502,7 @@ void riscv_cpu_register_gdb_regs_for_features(CPUState *cs)
 #endif
 #endif
 
-    if (cpu->cfg.ext_icsr) {
+    if (cpu->cfg.ext_zicsr) {
         int base_reg = cs->gdb_num_regs;
         gdb_register_coprocessor(cs, riscv_gdb_get_csr, riscv_gdb_set_csr,
                                  riscv_gen_dynamic_csr_xml(cs, base_reg),
