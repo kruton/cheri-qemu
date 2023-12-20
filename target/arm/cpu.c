@@ -1821,7 +1821,7 @@ void arm_cpu_post_init(Object *obj)
     }
 
     if (kvm_enabled()) {
-        kvm_arm_add_vcpu_properties(obj);
+        kvm_arm_add_vcpu_properties(cpu);
     }
 
     qdev_property_add_static(DEVICE(obj), &arm_cpu_mpidr_mt_property);
