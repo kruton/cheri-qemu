@@ -120,6 +120,12 @@ config SPIKE
     select RISCV_ACLINT
     select SIFIVE_PLIC
 
+config HOBGOBLIN
+    bool
+    select RISCV_ACLINT
+    select SIFIVE_PLIC
+    select XILINX_SPI
+    select XILINX_AXI_GPIO
 config XIANGSHAN_KUNMINGHU
     bool
     default y
