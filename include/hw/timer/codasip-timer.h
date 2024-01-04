@@ -16,7 +16,7 @@
 #include "qemu/timer.h"
 #include "qom/object.h"
 
-#define TYPE_CODASIP_TIMER "codasip,timer"
+#define TYPE_CODASIP_TIMER "codasip-timer"
 
 #define CODASIP_TIMER(obj) \
     OBJECT_CHECK(CodasipTimerState_t, (obj), TYPE_CODASIP_TIMER)
