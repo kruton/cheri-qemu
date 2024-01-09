@@ -131,9 +131,9 @@ static inline void mips_vpe_wake(MIPSCPU *c)
      * because there might be other conditions that state that c should
      * be sleeping.
      */
-    qemu_mutex_lock_iothread();
+    bql_lock();
     cpu_interrupt(CPU(c), CPU_INTERRUPT_WAKE);
-    qemu_mutex_unlock_iothread();
+    bql_unlock();
 }
 
 static inline void mips_vpe_sleep(MIPSCPU *cpu)
@@ -945,13 +945,13 @@ void helper_mttc0_tchalt(CPUMIPSState *env, target_ulong arg1)
     }
     log_instr_cop0_update(env, CP0_REGISTER_02, 4, arg1);
 
-    qemu_mutex_lock_iothread();
+    bql_lock();
     if (arg1 & 1) {
         mips_tc_sleep(other_cpu, other_tc);
     } else {
         mips_tc_wake(other_cpu, other_tc);
     }
-    qemu_mutex_unlock_iothread();
+    bql_unlock();
 }
 
 void helper_mtc0_tccontext(CPUMIPSState *env, target_ulong arg1)
@@ -1418,7 +1418,7 @@ void helper_mtc0_status(CPUMIPSState *env, target_ulong arg1)
 
 void helper_mttc0_status(CPUMIPSState *env, target_ulong arg1)
 {
-    qemu_mutex_lock_iothread();
+    bql_lock();
     int other_tc = env->CP0_VPEControl & (0xff << CP0VPECo_TargTC);
     uint32_t mask = env->CP0_Status_rw_bitmask & ~0xf1000018;
     CPUMIPSState *other = mips_cpu_map_tc(env, &other_tc);
@@ -1426,7 +1426,7 @@ void helper_mttc0_status(CPUMIPSState *env, target_ulong arg1)
     other->CP0_Status = (other->CP0_Status & ~mask) | (arg1 & mask);
     sync_c0_status(env, other, other_tc);
     log_instr_cop0_update(env, CP0_REGISTER_12, 0, env->CP0_Status);
-    qemu_mutex_unlock_iothread();
+    bql_unlock();
 }
 
 void helper_mtc0_intctl(CPUMIPSState *env, target_ulong arg1)
@@ -1450,13 +1450,13 @@ void helper_mtc0_cause(CPUMIPSState *env, target_ulong arg1)
 
 void helper_mttc0_cause(CPUMIPSState *env, target_ulong arg1)
 {
-    qemu_mutex_lock_iothread();
+    bql_lock();
     int other_tc = env->CP0_VPEControl & (0xff << CP0VPECo_TargTC);
     CPUMIPSState *other = mips_cpu_map_tc(env, &other_tc);
 
     cpu_mips_store_cause(other, arg1);
     log_instr_cop0_update(env, CP0_REGISTER_13, 0, env->CP0_Cause);
-    qemu_mutex_unlock_iothread();
+    bql_unlock();
 }
 
 target_ulong helper_mftc0_epc(CPUMIPSState *env) {

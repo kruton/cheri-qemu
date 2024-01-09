@@ -838,9 +838,9 @@ void HELPER(exception_return)(CPUARMState *env, uint64_t new_pc)
         goto illegal_return;
     }
 
-    qemu_mutex_lock_iothread();
+    bql_lock();
     arm_call_pre_el_change_hook(env_archcpu(env));
-    qemu_mutex_unlock_iothread();
+    bql_unlock();
 
     if (!return_to_aa64) {
         ASSERT_IF_CHERI();
@@ -940,9 +940,9 @@ void HELPER(exception_return)(CPUARMState *env, uint64_t new_pc)
     qemu_log_instr_mode_switch(env, arm_el_to_logging_mode(env, new_el),
                                get_aarch_reg_as_x(&env->pc));
 
-    qemu_mutex_lock_iothread();
+    bql_lock();
     arm_call_el_change_hook(env_archcpu(env));
-    qemu_mutex_unlock_iothread();
+    bql_unlock();
 
     return;
 
