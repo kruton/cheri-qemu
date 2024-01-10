@@ -237,8 +237,11 @@ static RISCVException mctr(CPURISCVState *env, int csrno)
 
     if ((riscv_cpu_mxl(env) == MXL_RV32) && csrno >= CSR_MCYCLEH) {
         /* Offset for RV32 mhpmcounternh counters */
-        base_csrno += 0x80;
+        csrno -= 0x80;
     }
+
+    g_assert(csrno >= CSR_MHPMCOUNTER3 && csrno <= CSR_MHPMCOUNTER31);
+
     ctr_index = csrno - base_csrno;
     if ((BIT(ctr_index) & pmu_avail_ctrs >> 3) == 0) {
         /* The PMU is not enabled or counter is out of range */
@@ -1406,13 +1409,16 @@ static RISCVException write_mstatus(CPURISCVState *env, int csrno,
     mask = MSTATUS_SIE | MSTATUS_SPIE | MSTATUS_MIE | MSTATUS_MPIE |
         MSTATUS_SPP | MSTATUS_MPRV | MSTATUS_SUM |
         MSTATUS_MPP | MSTATUS_MXR | MSTATUS_TVM | MSTATUS_TSR |
-        MSTATUS_TW | MSTATUS_VS;
+        MSTATUS_TW;
 #if defined(TARGET_CHERI_RISCV_STD_093) && !defined(TARGET_RISCV32)
     mask = mask | MSTATUS64_UCRG;
 #endif
 
     if (riscv_has_ext(env, RVF)) {
         mask |= MSTATUS_FS;
+    }
+    if (riscv_has_ext(env, RVV)) {
+        mask |= MSTATUS_VS;
     }
 
     if (xl != MXL_RV32 || env->debugger) {
