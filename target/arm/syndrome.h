@@ -94,6 +94,9 @@ typedef enum {
 #define ARM_EL_IL (1 << ARM_EL_IL_SHIFT)
 #define ARM_EL_ISV (1 << ARM_EL_ISV_SHIFT)
 
+/* In the Data Abort syndrome */
+#define ARM_EL_VNCR (1 << 13)
+
 static inline uint32_t syn_get_ec(uint32_t syn)
 {
     return syn >> ARM_EL_EC_SHIFT;
@@ -284,13 +287,12 @@ static inline uint32_t syn_bxjtrap(int cv, int cond, int rm)
         (cv << 24) | (cond << 20) | rm;
 }
 
-static inline uint32_t syn_gpc(int s2ptw, int ind, int gpcsc,
+static inline uint32_t syn_gpc(int s2ptw, int ind, int gpcsc, int vncr,
                                int cm, int s1ptw, int wnr, int fsc)
 {
-    /* TODO: FEAT_NV2 adds VNCR */
     return (EC_GPC << ARM_EL_EC_SHIFT) | ARM_EL_IL | (s2ptw << 21)
-            | (ind << 20) | (gpcsc << 14) | (cm << 8) | (s1ptw << 7)
-            | (wnr << 6) | fsc;
+        | (ind << 20) | (gpcsc << 14) | (vncr << 13) | (cm << 8)
+        | (s1ptw << 7) | (wnr << 6) | fsc;
 }
 
 static inline uint32_t syn_insn_abort(int same_el, int ea, int s1ptw, int fsc)
@@ -331,6 +333,16 @@ static inline uint32_t syn_sp_alignment(bool is_16bit)
 static inline uint32_t syn_pc_alignment(bool is_16bit)
 {
     return (EC_PCALIGNMENT << ARM_EL_EC_SHIFT) | (is_16bit ? 0 : ARM_EL_IL);
+}
+
+/*
+ * Faults due to FEAT_NV2 VNCR_EL2-based accesses report as same-EL
+ * Data Aborts with the VNCR bit set.
+ */
+static inline uint32_t syn_data_abort_vncr(int ea, int wnr, int fsc)
+{
+    return (EC_DATAABORT << ARM_EL_EC_SHIFT) | (1 << ARM_EL_EC_SHIFT)
+        | ARM_EL_IL | ARM_EL_VNCR | (wnr << 6) | fsc;
 }
 
 static inline uint32_t syn_swstep(int same_el, int isv, int ex)
