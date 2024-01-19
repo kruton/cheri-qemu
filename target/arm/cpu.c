@@ -1933,8 +1933,8 @@ static void arm_cpu_realizefn(DeviceState *dev, Error **errp)
     int pagebits;
     Error *local_err = NULL;
 
+#if defined(CONFIG_TCG) && !defined(CONFIG_USER_ONLY) && !defined(TARGET_CHERI)
     /* Use pc-relative instructions in system-mode */
-#if !defined(CONFIG_USER_ONLY) && !defined(TARGET_CHERI)
     cs->tcg_cflags |= CF_PCREL;
 #endif
 
