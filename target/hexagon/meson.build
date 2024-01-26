@@ -190,13 +190,13 @@ hexagon_ss.add(subinsn_s2_decode_generated)
 #
 # Run the QEMU decodetree.py script to produce the instruction decoder
 #
-decodetree_py = meson.current_source_dir() / '../../scripts/decodetree.py'
+hexagon_decodetree_py = meson.current_source_dir() / '../../scripts/decodetree.py'
 decode_normal_generated = custom_target(
     'decode_normal_generated.c.inc',
     output: 'decode_normal_generated.c.inc',
     input: normal_decode_generated,
     env: {'PYTHONPATH': meson.current_build_dir()},
-    command: [python, files(decodetree_py), normal_decode_generated, '--static-decode=decode_normal', '-o', '@OUTPUT@'],
+    command: [python, files(hexagon_decodetree_py), normal_decode_generated, '--static-decode=decode_normal', '-o', '@OUTPUT@'],
 )
 hexagon_ss.add(decode_normal_generated)
 
@@ -205,7 +205,7 @@ decode_hvx_generated = custom_target(
     output: 'decode_hvx_generated.c.inc',
     input: hvx_decode_generated,
     env: {'PYTHONPATH': meson.current_build_dir()},
-    command: [python, files(decodetree_py), hvx_decode_generated, '--static-decode=decode_hvx', '-o', '@OUTPUT@'],
+    command: [python, files(hexagon_decodetree_py), hvx_decode_generated, '--static-decode=decode_hvx', '-o', '@OUTPUT@'],
 )
 hexagon_ss.add(decode_hvx_generated)
 
@@ -214,7 +214,7 @@ decode_subinsn_a_generated = custom_target(
     output: 'decode_subinsn_a_generated.c.inc',
     input: subinsn_a_decode_generated,
     env: {'PYTHONPATH': meson.current_build_dir()},
-    command: [python, files(decodetree_py), subinsn_a_decode_generated, ['--static-decode=decode_subinsn_a', '--insnwidth=16'], '-o', '@OUTPUT@'],
+    command: [python, files(hexagon_decodetree_py), subinsn_a_decode_generated, ['--static-decode=decode_subinsn_a', '--insnwidth=16'], '-o', '@OUTPUT@'],
 )
 hexagon_ss.add(decode_subinsn_a_generated)
 
@@ -223,7 +223,7 @@ decode_subinsn_l1_generated = custom_target(
     output: 'decode_subinsn_l1_generated.c.inc',
     input: subinsn_l1_decode_generated,
     env: {'PYTHONPATH': meson.current_build_dir()},
-    command: [python, files(decodetree_py), subinsn_l1_decode_generated, ['--static-decode=decode_subinsn_l1', '--insnwidth=16'], '-o', '@OUTPUT@'],
+    command: [python, files(hexagon_decodetree_py), subinsn_l1_decode_generated, ['--static-decode=decode_subinsn_l1', '--insnwidth=16'], '-o', '@OUTPUT@'],
 )
 hexagon_ss.add(decode_subinsn_l1_generated)
 
@@ -232,7 +232,7 @@ decode_subinsn_l2_generated = custom_target(
     output: 'decode_subinsn_l2_generated.c.inc',
     input: subinsn_l2_decode_generated,
     env: {'PYTHONPATH': meson.current_build_dir()},
-    command: [python, files(decodetree_py), subinsn_l2_decode_generated, ['--static-decode=decode_subinsn_l2', '--insnwidth=16'], '-o', '@OUTPUT@'],
+    command: [python, files(hexagon_decodetree_py), subinsn_l2_decode_generated, ['--static-decode=decode_subinsn_l2', '--insnwidth=16'], '-o', '@OUTPUT@'],
 )
 hexagon_ss.add(decode_subinsn_l2_generated)
 
@@ -241,7 +241,7 @@ decode_subinsn_s1_generated = custom_target(
     output: 'decode_subinsn_s1_generated.c.inc',
     input: subinsn_s1_decode_generated,
     env: {'PYTHONPATH': meson.current_build_dir()},
-    command: [python, files(decodetree_py), subinsn_s1_decode_generated, ['--static-decode=decode_subinsn_s1', '--insnwidth=16'], '-o', '@OUTPUT@'],
+    command: [python, files(hexagon_decodetree_py), subinsn_s1_decode_generated, ['--static-decode=decode_subinsn_s1', '--insnwidth=16'], '-o', '@OUTPUT@'],
 )
 hexagon_ss.add(decode_subinsn_s1_generated)
 
@@ -250,7 +250,7 @@ decode_subinsn_s2_generated = custom_target(
     output: 'decode_subinsn_s2_generated.c.inc',
     input: subinsn_s2_decode_generated,
     env: {'PYTHONPATH': meson.current_build_dir()},
-    command: [python, files(decodetree_py), subinsn_s2_decode_generated, ['--static-decode=decode_subinsn_s2', '--insnwidth=16'], '-o', '@OUTPUT@'],
+    command: [python, files(hexagon_decodetree_py), subinsn_s2_decode_generated, ['--static-decode=decode_subinsn_s2', '--insnwidth=16'], '-o', '@OUTPUT@'],
 )
 hexagon_ss.add(decode_subinsn_s2_generated)
 

@@ -2780,7 +2780,7 @@ void qmp_x_exit_preconfig(Error **errp)
         rvfi_client_fd = accept(rvfi_listen_fd, NULL, NULL);
         autostart = true;
         assert(!incoming);
-        singlestep = true;
+        object_property_set_bool(OBJECT(current_accel()), "one-insn-per-tb", true, &error_abort);
     }
 #endif
 
@@ -2796,12 +2796,14 @@ void qmp_x_exit_preconfig(Error **errp)
             cpu_breakcount(cs, cl_breakcount);
         }
     }
-    if (opt_one_insn_per_tb) {
+#ifdef CONFIG_RVFI_DII
+    if (rvfi_client_fd) {
         CPUState *cpu;
         CPU_FOREACH(cpu) {
             cpu_single_step(cpu, SSTEP_ENABLE | SSTEP_NOIRQ | SSTEP_NOTIMER);
         }
     }
+#endif
     if (incoming) {
         Error *local_err = NULL;
         if (strcmp(incoming, "defer") != 0) {
