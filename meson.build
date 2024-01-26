@@ -3319,7 +3319,6 @@ if have_system
     'hw/arm',
     'hw/audio',
     'hw/block',
-    'hw/block/dataplane',
     'hw/char',
     'hw/display',
     'hw/dma',
