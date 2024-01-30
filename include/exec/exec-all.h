@@ -477,12 +477,6 @@ static inline void cpu_get_tb_cpu_state_ext(CPUArchState *env, vaddr *pc,
     *cs_base = cs_base_tgt;
 }
 #endif
-/* Hide the qatomic_read to make code a little easier on the eyes */
-static inline uint32_t tb_cflags(const TranslationBlock *tb)
-{
-    return qatomic_read(&tb->cflags);
-}
-
 static inline tb_page_addr_t tb_page_addr0(const TranslationBlock *tb)
 {
 #ifdef CONFIG_USER_ONLY

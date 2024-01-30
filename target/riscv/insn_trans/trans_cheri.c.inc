@@ -548,7 +548,7 @@ static inline bool do_trans_modesw(DisasContext *ctx, bool to_capmode)
 {
     if (ctx->capmode == to_capmode) {
         qemu_log_mask_and_addr(CPU_LOG_INSTR, ctx->base.pc_first,
-                               "Redundant modesw at " TARGET_FMT_lx " (%s)",
+                               "Redundant modesw at %" VADDR_PRIx " (%s)",
                                ctx->base.pc_first,
                                lookup_symbol(ctx->base.pc_first));
         return true;

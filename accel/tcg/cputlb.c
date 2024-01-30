@@ -3154,7 +3154,7 @@ target_ulong cpu_ld_cap_word_ra(CPUArchState *env, abi_ptr ptr,
  * Hack to avoid logging memory accesses that store capability
  * components as normal memory accesses. The caller is responsible for logging.
  */
-void cpu_st_cap_word_ra(CPUArchState *env, target_ulong ptr,
+void cpu_st_cap_word_ra(CPUArchState *env, abi_ptr ptr,
                         target_ulong val, uintptr_t retaddr)
 {
     MemOpIdx oi;

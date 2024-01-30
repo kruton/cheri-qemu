@@ -121,8 +121,8 @@ static inline bool guest_range_valid_untagged(abi_ulong start, abi_ulong len)
     h2g_nocheck(x); \
 })
 #else
-typedef target_ulong abi_ptr;
-#define TARGET_ABI_FMT_ptr TARGET_FMT_lx
+typedef vaddr abi_ptr;
+#define TARGET_ABI_FMT_ptr VADDR_PRIx
 #endif
 
 uint32_t cpu_ldub_data(CPUArchState *env, abi_ptr ptr);
@@ -171,9 +171,9 @@ void cpu_stq_le_data_ra(CPUArchState *env, abi_ptr ptr,
                         uint64_t val, uintptr_t ra);
 
 #ifdef TARGET_CHERI
-target_ulong cpu_ld_cap_word_ra(CPUArchState *env, target_ulong ptr,
+target_ulong cpu_ld_cap_word_ra(CPUArchState *env, abi_ptr ptr,
                                 uintptr_t retaddr);
-void cpu_st_cap_word_ra(CPUArchState *env, target_ulong ptr,
+void cpu_st_cap_word_ra(CPUArchState *env, abi_ptr ptr,
                         target_ulong val, uintptr_t retaddr);
 #endif
 
