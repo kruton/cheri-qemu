@@ -639,13 +639,11 @@ static void hobgoblin_add_ethernetlite(HobgoblinState *s)
     const memmapEntry_t *memmap = address_maps[MAPVERSION(s)];
     const memmapEntry_t *mem_eth = &memmap[HOBGOBLIN_ETHLITE];
 
-    NICInfo *nd = &nd_table[0];
     const char *model = TYPE_XILINX_ETHLITE;
 
     /* Ethernet (ethernetlite) */
-    qemu_check_nic_model(nd, model);
     DeviceState *eth = qdev_new(model);
-    qdev_set_nic_properties(eth, nd);
+    qemu_configure_nic_device(eth, true, NULL);
 
     SysBusDevice *bus_eth = SYS_BUS_DEVICE(eth);
     sysbus_realize_and_unref(bus_eth, &error_fatal);
@@ -665,12 +663,9 @@ static void hobgoblin_add_axi_ethernet(HobgoblinState *s, int eth_num,
     const memmapEntry_t *memmap = address_maps[MAPVERSION(s)];
     const memmapEntry_t *mem_eth = &memmap[eth_memmap];
     const memmapEntry_t *mem_dma = &memmap[dma_memmap];
-    NICInfo *nd = &nd_table[eth_num];
     const char *eth_model = TYPE_XILINX_AXI_ETHERNET;
     const char *eth_name = g_strdup_printf("xilinx-eth%d", eth_num);
     const char *dma_name = g_strdup_printf("xilinx-dma%d", eth_num);
-
-    qemu_check_nic_model(nd, eth_model);
 
     DeviceState *eth = qdev_new(eth_model);
     DeviceState *dma = qdev_new(TYPE_XILINX_AXI_DMA);
@@ -685,7 +680,7 @@ static void hobgoblin_add_axi_ethernet(HobgoblinState *s, int eth_num,
     cs = object_property_get_link(OBJECT(dma),
                                   "axistream-control-connected-target", NULL);
     assert(ds && cs);
-    qdev_set_nic_properties(eth, nd);
+    qemu_configure_nic_device(eth, true, NULL);
     qdev_prop_set_uint32(eth, "phyaddr", phy_addr);
     qdev_prop_set_uint32(eth, "rxmem", 0x4000);
     qdev_prop_set_uint32(eth, "txmem", 0x4000);
