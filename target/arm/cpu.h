@@ -3487,19 +3487,6 @@ extern void aarch_cpu_get_tb_cpu_state(CPUARMState *env, vaddr *pc,
 #define cpu_get_tb_cpu_state_ext aarch_cpu_get_tb_cpu_state
 
 /**
- * cpu_mmu_index:
- * @env: The cpu environment
- * @ifetch: True for code access, false for data access.
- *
- * Return the core mmu index for the current translation regime.
- * This function is used by generic TCG code paths.
- */
-static inline int cpu_mmu_index(CPUARMState *env, bool ifetch)
-{
-    return EX_TBFLAG_ANY(env->hflags, MMUIDX);
-}
-
-/**
  * sve_vq
  * @env: the cpu context
  *
@@ -3749,7 +3736,7 @@ static inline unsigned cpu_get_asid(CPUArchState *env, target_ulong pc)
 {
 
     uint64_t ttbr;
-    if (cpu_mmu_index(env, 0) == ARMMMUIdx_Stage2) {
+    if (cpu_mmu_index(env_cpu(env), 0) == ARMMMUIdx_Stage2) {
         ttbr = env->cp15.vttbr_el2;
     } else {
         int el = arm_current_el(env);

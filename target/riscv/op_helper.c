@@ -188,7 +188,7 @@ static void do_cbo_zero(CPURISCVState *env, target_ulong address, uintptr_t ra)
 {
     RISCVCPU *cpu = env_archcpu(env);
     uint16_t cbozlen = cpu->cfg.cboz_blocksize;
-    int mmu_idx = cpu_mmu_index(env, false);
+    int mmu_idx = riscv_env_mmu_index(env, false);
     void *mem;
 
     /* Caller must pass an address that is aligned-down to the cache-block. */
@@ -294,7 +294,7 @@ static void check_zicbom_access(CPURISCVState *env,
                                 uintptr_t ra)
 {
     RISCVCPU *cpu = env_archcpu(env);
-    int mmu_idx = cpu_mmu_index(env, false);
+    int mmu_idx = riscv_env_mmu_index(env, false);
     uint16_t cbomlen = cpu->cfg.cbom_blocksize;
     void *phost;
     int ret;

@@ -163,14 +163,14 @@ static inline void G_NORETURN raise_unaligned_load_exception(
     CPUArchState *env, target_ulong addr, uintptr_t retpc)
 {
     arm_cpu_do_unaligned_access(env_cpu(env), addr, MMU_DATA_LOAD,
-                                cpu_mmu_index(env, false), retpc);
+                                cpu_mmu_index(env_cpu(env), false), retpc);
 }
 
 static inline void G_NORETURN raise_unaligned_store_exception(
     CPUArchState *env, target_ulong addr, uintptr_t retpc)
 {
     arm_cpu_do_unaligned_access(env_cpu(env), addr, MMU_DATA_STORE,
-                                cpu_mmu_index(env, false), retpc);
+                                cpu_mmu_index(env_cpu(env), false), retpc);
 }
 
 static inline bool validate_jump_target(CPUARMState *env,

@@ -802,7 +802,7 @@ target_ulong riscv_cpu_get_geilen(CPURISCVState *env);
 void riscv_cpu_set_geilen(CPURISCVState *env, target_ulong geilen);
 bool riscv_cpu_vector_enabled(CPURISCVState *env);
 void riscv_cpu_set_virt_enabled(CPURISCVState *env, bool enable);
-int riscv_cpu_mmu_index(CPURISCVState *env, bool ifetch);
+int riscv_env_mmu_index(CPURISCVState *env, bool ifetch);
 #ifdef TARGET_CHERI
 hwaddr cpu_riscv_translate_address_tagmem(CPURISCVState *env,
                                           target_ulong address,
@@ -820,8 +820,6 @@ char *riscv_isa_string(RISCVCPU *cpu);
 #ifdef TARGET_CHERI
 static inline bool riscv_cpu_mode_cre(CPURISCVState *env);
 #endif
-#define cpu_mmu_index riscv_cpu_mmu_index
-
 #ifndef CONFIG_USER_ONLY
 void riscv_cpu_do_transaction_failed(CPUState *cs, hwaddr physaddr,
                                      vaddr addr, unsigned size,

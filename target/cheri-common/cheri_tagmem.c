@@ -663,7 +663,7 @@ int cheri_tag_get_many(CPUArchState *env, target_ulong vaddr, int reg,
         hwaddr *ret_paddr, uintptr_t pc)
 {
 
-    const int mmu_idx = cpu_mmu_index(env, false);
+    const int mmu_idx = cpu_mmu_index(env_cpu(env), false);
     probe_read(env, vaddr, CAP_TAG_MANY_DATA_SIZE, mmu_idx, pc);
     handle_paddr_return(read);
 
@@ -690,7 +690,7 @@ void cheri_tag_set_many(CPUArchState *env, uint32_t tags, target_ulong vaddr,
 {
     tags &= CAP_TAG_GET_MANY_MASK;
 
-    const int mmu_idx = cpu_mmu_index(env, false);
+    const int mmu_idx = cpu_mmu_index(env_cpu(env), false);
     store_capcause_reg(env, reg);
     /*
      * We call probe_(cap)_write rather than probe_access since the branches

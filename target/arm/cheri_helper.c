@@ -239,7 +239,7 @@ static void swap_cap_via_cap_impl(CPUArchState *env, uint32_t cd, uint32_t cs,
     // Now do a probe early, so that we get the store fault with priority
     // (LC/SC MMU fault priority) is the reverse of cap permissions)
     bool cd_tagged = get_without_decompress_tag(env, cd);
-    int mmu_index = cpu_mmu_index(env, false);
+    int mmu_index = cpu_mmu_index(env_cpu(env), false);
 
     if (cd_tagged)
         probe_cap_write(env, addr, CHERI_CAP_SIZE, mmu_index,

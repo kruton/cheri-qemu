@@ -1557,7 +1557,7 @@ bool load_raw_cap_from_memory(CPUArchState *env, target_ulong *pesbt,
 {
     return load_cap_from_memory_raw_tag_mmu_idx(env, pesbt, cursor, 0, NULL,
                                                 vaddr, retpc, NULL, NULL,
-                                                cpu_mmu_index(env, false),
+                                                cpu_mmu_index(env_cpu(env), false),
                                                 /* all_raw */ true);
 }
 
@@ -1569,7 +1569,7 @@ bool load_cap_from_memory_raw_tag(CPUArchState *env, target_ulong *pesbt,
 {
     return load_cap_from_memory_raw_tag_mmu_idx(env, pesbt, cursor, cb, source,
                                                 vaddr, retpc, physaddr, raw_tag,
-                                                cpu_mmu_index(env, false),
+                                                cpu_mmu_index(env_cpu(env), false),
                                                 /* all_raw */ false);
 }
 
@@ -1721,7 +1721,7 @@ void store_cap_to_memory(CPUArchState *env, uint32_t cs, uint32_t cb,
                          target_ulong vaddr, uintptr_t retpc)
 {
     return store_cap_to_memory_mmu_index(env, cs, cb, vaddr, retpc,
-                                         cpu_mmu_index(env, false));
+                                         cpu_mmu_index(env_cpu(env), false));
 }
 
 target_ulong CHERI_HELPER_IMPL(cloadtags(CPUArchState *env, uint32_t cb))

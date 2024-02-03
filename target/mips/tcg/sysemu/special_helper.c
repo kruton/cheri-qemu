@@ -91,7 +91,7 @@ static void debug_post_eret(CPUMIPSState *env)
             qemu_log_instr_or_mask_msg(env, CPU_LOG_EXEC,
                 " DEPC " TARGET_FMT_lx, env->CP0_DEPC);
         }
-        switch (cpu_mmu_index(env, false)) {
+        switch (mips_env_mmu_index(env)) {
         case 3:
             flag = ", ERL\n";
             break;

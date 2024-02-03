@@ -135,7 +135,7 @@ store_byte_and_clear_tag(CPUMIPSState *env, target_ulong vaddr, uint8_t val,
 #ifdef TARGET_CHERI
     // If we returned (i.e. write was successful) we also need to invalidate the
     // tags bit to ensure we are consistent with sb
-    cheri_tag_invalidate(env, vaddr, 1, retaddr, cpu_mmu_index(env, false));
+    cheri_tag_invalidate(env, vaddr, 1, retaddr, cpu_mmu_index(env_cpu(env), false));
 #endif
 }
 
@@ -148,7 +148,7 @@ store_u32_and_clear_tag(CPUMIPSState *env, target_ulong vaddr, uint32_t val,
 #ifdef TARGET_CHERI
     // If we returned (i.e. write was successful) we also need to invalidate the
     // tags bit to ensure we are consistent with sb
-    cheri_tag_invalidate(env, vaddr, 4, retaddr, cpu_mmu_index(env, false));
+    cheri_tag_invalidate(env, vaddr, 4, retaddr, cpu_mmu_index(env_cpu(env), false));
 #endif
 }
 
@@ -164,7 +164,7 @@ static bool do_magic_memmove(CPUMIPSState *env, uint64_t ra, int dest_regnum, in
     const target_ulong original_dest_ddc_offset = env->active_tc.gpr[dest_regnum]; // $a0 = dest
     const target_ulong original_src_ddc_offset = env->active_tc.gpr[src_regnum];  // $a1 = src
     const target_ulong original_len = env->active_tc.gpr[MIPS_REGNUM_A2];  // $a2 = len
-    int mmu_idx = cpu_mmu_index(env, false);
+    int mmu_idx = cpu_mmu_index(env_cpu(env), false);
     MemOpIdx oi = make_memop_idx(MO_UB, mmu_idx);
     target_ulong len = original_len;
     target_ulong already_written = 0;
@@ -360,7 +360,7 @@ static bool do_magic_memset(CPUMIPSState *env, uint64_t ra, uint pattern_length)
     // TODO: just use address_space_write?
 
     // See target/s390x/mem_helper.c and arm/helper.c HELPER(dc_zva)
-    int mmu_idx = cpu_mmu_index(env, false);
+    int mmu_idx = cpu_mmu_index(env_cpu(env), false);
     MemOpIdx oi = make_memop_idx(MO_UB, mmu_idx);
 
     const target_ulong original_dest_ddc_offset = env->active_tc.gpr[MIPS_REGNUM_A0];      // $a0 = dest
