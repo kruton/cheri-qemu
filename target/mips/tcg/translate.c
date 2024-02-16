@@ -5743,19 +5743,7 @@ static void gen_mfhc0(DisasContext *ctx, TCGv arg, int reg, int sel)
             goto cp0_unimplemented;
         }
         break;
-    case CP0_REGISTER_09:
-        switch (sel) {
-#if !defined(TARGET_CHERI) /* SAAR Conflicts with RTC */
-        case CP0_REG09__SAAR:
-            CP0_CHECK(ctx->saar);
-            gen_helper_mfhc0_saar(arg, tcg_env);
-            register_name = "SAAR";
-            break;
-#endif
-        default:
-            goto cp0_unimplemented;
-        }
-        break;
+
     case CP0_REGISTER_17:
         switch (sel) {
         case CP0_REG17__LLADDR:
@@ -5846,19 +5834,7 @@ static void gen_mthc0(DisasContext *ctx, TCGv arg, int reg, int sel)
             goto cp0_unimplemented;
         }
         break;
-    case CP0_REGISTER_09:
-        switch (sel) {
-#if !defined(TARGET_CHERI) /* SAAR Conflicts with RTC */
-        case CP0_REG09__SAAR:
-            CP0_CHECK(ctx->saar);
-            gen_helper_mthc0_saar(tcg_env, arg);
-            register_name = "SAAR";
-            break;
-#endif
-        default:
-            goto cp0_unimplemented;
-        }
-        break;
+
     case CP0_REGISTER_17:
         switch (sel) {
         case CP0_REG17__LLADDR:
@@ -6281,18 +6257,7 @@ static void gen_mfc0(DisasContext *ctx, TCGv arg, int reg, int sel)
             ctx->base.is_jmp = DISAS_EXIT;
             register_name = "Count";
             break;
-#if !defined(TARGET_CHERI) /* Conflicts with RTC */
-        case CP0_REG09__SAARI:
-            CP0_CHECK(ctx->saar);
-            gen_mfc0_load32(arg, offsetof(CPUMIPSState, CP0_SAARI));
-            register_name = "SAARI";
-            break;
-        case CP0_REG09__SAAR:
-            CP0_CHECK(ctx->saar);
-            gen_helper_mfc0_saar(arg, tcg_env);
-            register_name = "SAAR";
-            break;
-#endif
+
         default:
             goto cp0_unimplemented;
         }
@@ -7037,18 +7002,7 @@ static void gen_mtc0(DisasContext *ctx, TCGv arg, int reg, int sel)
             gen_helper_mtc0_count(tcg_env, arg);
             register_name = "Count";
             break;
-#if !defined(TARGET_CHERI) /* Conflicts with RTC */
-        case CP0_REG09__SAARI:
-            CP0_CHECK(ctx->saar);
-            gen_helper_mtc0_saari(tcg_env, arg);
-            register_name = "SAARI";
-            break;
-        case CP0_REG09__SAAR:
-            CP0_CHECK(ctx->saar);
-            gen_helper_mtc0_saar(tcg_env, arg);
-            register_name = "SAAR";
-            break;
-#endif
+
         default:
             goto cp0_unimplemented;
         }
@@ -7831,18 +7785,7 @@ static void gen_dmfc0(DisasContext *ctx, TCGv arg, int reg, int sel)
             ctx->base.is_jmp = DISAS_EXIT;
             register_name = "Count";
             break;
-#if !defined(TARGET_CHERI) /* SAAR Conflicts with RTC */
-        case CP0_REG09__SAARI:
-            CP0_CHECK(ctx->saar);
-            gen_mfc0_load32(arg, offsetof(CPUMIPSState, CP0_SAARI));
-            register_name = "SAARI";
-            break;
-        case CP0_REG09__SAAR:
-            CP0_CHECK(ctx->saar);
-            gen_helper_dmfc0_saar(arg, tcg_env);
-            register_name = "SAAR";
-            break;
-#else
+#ifdef TARGET_CHERI
         /* 6,7 are implementation dependent */
         case 6:
             // QEMU-CHERI extension:
@@ -8578,18 +8521,7 @@ static void gen_dmtc0(DisasContext *ctx, TCGv arg, int reg, int sel)
             gen_helper_mtc0_count(tcg_env, arg);
             register_name = "Count";
             break;
-#if !defined(TARGET_CHERI) /* Conflicts with RTC */
-        case CP0_REG09__SAARI:
-            CP0_CHECK(ctx->saar);
-            gen_helper_mtc0_saari(tcg_env, arg);
-            register_name = "SAARI";
-            break;
-        case CP0_REG09__SAAR:
-            CP0_CHECK(ctx->saar);
-            gen_helper_mtc0_saar(tcg_env, arg);
-            register_name = "SAAR";
-            break;
-#else
+#ifdef TARGET_CHERI
         /* 6,7 are implementation dependent */
         case 6:
             gen_helper_mtc0_rtc64(tcg_env, arg);

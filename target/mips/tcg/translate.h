@@ -49,9 +49,6 @@ typedef struct DisasContext {
     bool mrp;
     bool nan2008;
     bool abs2008;
-#ifndef TARGET_CHERI
-    bool saar; /* This conflicts with the cheri RTC mfc/mtc */
-#endif /* TARGET_CHERI */
     bool mi;
     int gi;
 } DisasContext;
