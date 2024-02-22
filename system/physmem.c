@@ -2167,10 +2167,8 @@ void qemu_ram_remap(ram_addr_t addr, ram_addr_t length)
  *
  * Called within RCU critical section.
  */
-void *qemu_map_ram_ptr(RAMBlock *ram_block, ram_addr_t addr)
+void *qemu_map_ram_ptr(RAMBlock *block, ram_addr_t addr)
 {
-    RAMBlock *block = ram_block;
-
     if (block == NULL) {
         block = qemu_get_ram_block(addr);
         addr -= block->offset;
@@ -2195,10 +2193,9 @@ void *qemu_map_ram_ptr(RAMBlock *ram_block, ram_addr_t addr)
  *
  * Called within RCU critical section.
  */
-static void *qemu_ram_ptr_length(RAMBlock *ram_block, ram_addr_t addr,
+static void *qemu_ram_ptr_length(RAMBlock *block, ram_addr_t addr,
                                  hwaddr *size, bool lock)
 {
-    RAMBlock *block = ram_block;
     if (*size == 0) {
         return NULL;
     }
