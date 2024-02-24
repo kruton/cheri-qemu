@@ -593,6 +593,7 @@ warn_flags = [
   '-Wstrict-prototypes',
   '-Wtype-limits',
   '-Wundef',
+  '-Wvla',
   '-Wwrite-strings',
 
   # Then disable some undesirable warnings
