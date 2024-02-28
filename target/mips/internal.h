@@ -103,12 +103,12 @@ extern const int mips_defs_number;
 #ifdef TARGET_CHERI
 #include "cheri_utils.h"
 
-int mips_gdb_get_cheri_reg(CPUMIPSState *env, GByteArray *buf, int n);
-int mips_gdb_set_cheri_reg(CPUMIPSState *env, uint8_t *mem_buf, int n);
+int mips_gdb_get_cheri_reg(CPUState *cs, GByteArray *buf, int n);
+int mips_gdb_set_cheri_reg(CPUState *cs, uint8_t *mem_buf, int n);
 static inline bool cheri_have_access_sysregs(CPUArchState *env);
 #endif
-int mips_gdb_get_sys_reg(CPUMIPSState *env, GByteArray *buf, int n);
-int mips_gdb_set_sys_reg(CPUMIPSState *env, uint8_t *mem_buf, int n);
+int mips_gdb_get_sys_reg(CPUState *cs, GByteArray *buf, int n);
+int mips_gdb_set_sys_reg(CPUState *cs, uint8_t *mem_buf, int n);
 
 int mips_cpu_gdb_read_register(CPUState *cpu, GByteArray *buf, int reg);
 int mips_cpu_gdb_write_register(CPUState *cpu, uint8_t *buf, int reg);

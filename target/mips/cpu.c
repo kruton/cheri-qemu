@@ -587,21 +587,24 @@ static void mips_cpu_realizefn(DeviceState *dev, Error **errp)
     }
 
 #ifdef TARGET_MIPS64
-    gdb_register_coprocessor(cs, NULL, NULL, 0, "mips64-cp0.xml", 0);
-    gdb_register_coprocessor(cs, NULL, NULL, 0, "mips64-fpu.xml", 0);
+    gdb_register_coprocessor(cs, NULL, NULL,
+                             gdb_find_static_feature("mips64-cp0.xml"), 0);
+    gdb_register_coprocessor(cs, NULL, NULL,
+                             gdb_find_static_feature("mips64-fpu.xml"), 0);
     gdb_register_coprocessor(cs, mips_gdb_get_sys_reg, mips_gdb_set_sys_reg,
-        1, "mips64-sys.xml", 0);
+                             gdb_find_static_feature("mips64-sys.xml"), 0);
 #if defined(TARGET_CHERI)
     gdb_register_coprocessor(cs, mips_gdb_get_cheri_reg,
-        mips_gdb_set_cheri_reg, 44,
-        "mips64-cheri-c128.xml",
-        0);
+                             mips_gdb_set_cheri_reg,
+                             gdb_find_static_feature("mips64-cheri-c128.xml"), 0);
 #endif
 #else
-    gdb_register_coprocessor(cs, NULL, NULL, 0, "mips-cp0.xml", 0);
-    gdb_register_coprocessor(cs, NULL, NULL, 0, "mips-fpu.xml", 0);
+    gdb_register_coprocessor(cs, NULL, NULL,
+                             gdb_find_static_feature("mips-cp0.xml"), 0);
+    gdb_register_coprocessor(cs, NULL, NULL,
+                             gdb_find_static_feature("mips-fpu.xml"), 0);
     gdb_register_coprocessor(cs, mips_gdb_get_sys_reg, mips_gdb_set_sys_reg,
-        1, "mips-sys.xml", 0);
+                             gdb_find_static_feature("mips-sys.xml"), 0);
 #endif
 
     env->exception_base = (int32_t)0xBFC00000;

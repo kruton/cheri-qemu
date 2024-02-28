@@ -154,15 +154,17 @@ int mips_cpu_gdb_write_register(CPUState *cs, uint8_t *mem_buf, int n)
     return sizeof(target_ulong);
 }
 
-int mips_gdb_get_sys_reg(CPUMIPSState *env, GByteArray *buf, int n)
+int mips_gdb_get_sys_reg(CPUState *cs, GByteArray *buf, int n)
 {
+    MIPSCPU *cpu = MIPS_CPU(cs);
+    CPUMIPSState *env = &cpu->env;
     if (n == 0)
         return gdb_get_regl(buf, (int32_t)env->CP0_PRid);
 
     return 0;
 }
 
-int mips_gdb_set_sys_reg(CPUMIPSState *env, uint8_t *mem_buf, int n)
+int mips_gdb_set_sys_reg(CPUState *cs, uint8_t *mem_buf, int n)
 {
     /* System registers are readonly.  Ignore writes.  */
     if (n == 0)
@@ -179,8 +181,10 @@ int mips_gdb_set_sys_reg(CPUMIPSState *env, uint8_t *mem_buf, int n)
 #define CHERI_GDB_NUM_REGS (CHERI_GDB_NUM_CAPREGS + CHERI_GDB_NUM_INTREGS)
 _Static_assert(CHERI_GDB_NUM_REGS == 44, "");
 
-int mips_gdb_get_cheri_reg(CPUMIPSState *env, GByteArray *mem_buf, int n)
+int mips_gdb_get_cheri_reg(CPUState *cs, GByteArray *mem_buf, int n)
 {
+    MIPSCPU *cpu = MIPS_CPU(cs);
+    CPUMIPSState *env = &cpu->env;
     if (n < 0)
         return 0;
 
@@ -238,7 +242,7 @@ int mips_gdb_get_cheri_reg(CPUMIPSState *env, GByteArray *mem_buf, int n)
     return 0;
 }
 
-int mips_gdb_set_cheri_reg(CPUMIPSState *env, uint8_t *mem_buf, int n)
+int mips_gdb_set_cheri_reg(CPUState *cs, uint8_t *mem_buf, int n)
 {
     /* All CHERI registers are read-only currently.  */
     if (n < CHERI_GDB_NUM_CAPREGS) {

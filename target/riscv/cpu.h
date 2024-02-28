@@ -25,6 +25,7 @@
 #include "hw/qdev-properties.h"
 #include "exec/cpu-defs.h"
 #include "qemu/units.h"
+#include "exec/gdbstub.h"
 #include "qemu/cpu-float.h"
 #include "qom/object.h"
 #include "qemu/int128.h"
@@ -592,12 +593,12 @@ struct ArchCPU {
 
     CPURISCVState env;
 
-    char *dyn_csr_xml;
-    char *dyn_vreg_xml;
+    GDBFeature dyn_csr_feature;
+    GDBFeature dyn_vreg_feature;
 #ifdef TARGET_CHERI_RISCV_STD
-    char *dyn_ycsr_xml;
+    GDBFeature dyn_ycsr_feature;
 #elif defined(TARGET_CHERI_RISCV_V9)
-    char *dyn_scr_xml;
+    GDBFeature dyn_scr_feature;
 #endif
 
     /* Configuration Settings */
