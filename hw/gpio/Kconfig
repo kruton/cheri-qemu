@@ -20,3 +20,6 @@ config SIFIVE_GPIO
 config XILINX_AXI_GPIO
     bool
     select REGISTER
+
+config STM32L4X5_GPIO
+    bool
