@@ -71,6 +71,7 @@ struct RISCVCPUConfig {
     bool ext_zihintntl;
     bool ext_zihintpause;
     bool ext_zihpm;
+    bool ext_ztso;
     bool ext_smstateen;
     bool ext_sstc;
     bool ext_svadu;
@@ -120,8 +121,6 @@ struct RISCVCPUConfig {
     bool ext_smepmp;
     bool rvv_ta_all_1s;
     bool rvv_ma_all_1s;
-    bool svade;
-    bool zic64b;
 
     bool ext_zish4add;
 
@@ -137,6 +136,16 @@ struct RISCVCPUConfig {
     uint32_t mvendorid;
     uint64_t marchid;
     uint64_t mimpid;
+
+    /* Named features  */
+    bool ext_svade;
+    bool ext_zic64b;
+
+    /*
+     * Always 'true' boolean for named features
+     * TCG always implement/can't be disabled.
+     */
+    bool ext_always_enabled;
 
     /* Vendor-specific custom extensions */
     bool ext_xtheadba;

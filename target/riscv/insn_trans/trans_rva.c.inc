@@ -38,11 +38,13 @@ static inline bool gen_lr_impl(DisasContext *ctx, TCGv_cap_checked_ptr addr,
     if (a->rl) {
         tcg_gen_mb(TCG_MO_ALL | TCG_BAR_STRL);
     }
-
     cheri_debug_assert((mop & MO_ALIGN) && "load-reserved must be aligned");
     tcg_gen_qemu_ld_tl_with_checked_addr(load_val, addr, ctx->mem_idx, mop);
-
-    if (a->aq) {
+    /*
+     * TSO defines AMOs as acquire+release-RCsc, but does not define LR/SC as
+     * AMOs.  Instead treat them like loads.
+     */
+    if (a->aq || ctx->ztso) {
         tcg_gen_mb(TCG_MO_ALL | TCG_BAR_LDAQ);
     }
 #ifdef TARGET_CHERI
@@ -115,9 +117,10 @@ static inline bool gen_sc_impl(DisasContext *ctx, TCGv_cap_checked_ptr addr,
     gen_set_label(l1);
     /*
      * Address comparison failure.  However, we still need to
-     * provide the memory barrier implied by AQ/RL.
+     * provide the memory barrier implied by AQ/RL/TSO.
      */
-    tcg_gen_mb(TCG_MO_ALL + a->aq * TCG_BAR_LDAQ + a->rl * TCG_BAR_STRL);
+    TCGBar bar_strl = (ctx->ztso || a->rl) ? TCG_BAR_STRL : 0;
+    tcg_gen_mb(TCG_MO_ALL + a->aq * TCG_BAR_LDAQ + bar_strl);
     gen_set_gpr(ctx, a->rd, tcg_constant_tl(1));
 
     gen_set_label(l2);

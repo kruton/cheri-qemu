@@ -1064,7 +1064,9 @@ static int get_physical_address(CPURISCVState *env, hwaddr *physical,
     }
 
     bool pbmte = env->menvcfg & MENVCFG_PBMTE;
-    bool adue = env->menvcfg & MENVCFG_ADUE;
+    bool svade = riscv_cpu_cfg(env)->ext_svade;
+    bool svadu = riscv_cpu_cfg(env)->ext_svadu;
+    bool adue = svadu ? env->menvcfg & MENVCFG_ADUE : !svade;
 
     if (first_stage && two_stage && env->virt_enabled) {
         pbmte = pbmte && (env->henvcfg & HENVCFG_PBMTE);
@@ -1330,40 +1332,43 @@ restart:
     }
 #endif
 
-#if RISCV_PTE_TRAPPY
-    if (!(pte & PTE_A)) {
-        /* PTE not marked as accessed */
-        qemu_log_mask(CPU_LOG_MMU, "%s Translate fail: A not set\n",
-                      __func__);
-        return TRANSLATE_FAIL;
-    }
-    if ((access_type == MMU_DATA_STORE || access_type == MMU_DATA_CAP_STORE) && !(pte & PTE_D)) {
-        /* PTE not marked as dirty */
-        qemu_log_mask(CPU_LOG_MMU, "%s Translate fail: D not set\n",
-                      __func__);
-        return TRANSLATE_FAIL;
-    }
-#endif
-#if defined(TARGET_CHERI_RISCV_V9) && RISCV_PTE_TRAPPY
-    if (access_type == MMU_DATA_CAP_STORE && !(pte & PTE_CD)) {
-        /* CD clear; force the software trap handler to get involved */
-        return TRANSLATE_CHERI_FAIL;
-    }
-#endif
+    target_ulong updated_pte = pte;
 
-    /* If necessary, set accessed and dirty bits. */
-    target_ulong updated_pte = pte | PTE_A;
-    if (access_type == MMU_DATA_STORE) {
-        updated_pte |= PTE_D;
-    }
+    /*
+     * If ADUE is enabled, set accessed and dirty bits.
+     * Otherwise raise an exception if necessary.
+     */
+    if (adue) {
+        updated_pte |= PTE_A;
+        if (access_type == MMU_DATA_STORE) {
+            updated_pte |= PTE_D;
+        }
 #if defined(TARGET_CHERI)
-    else if (access_type == MMU_DATA_CAP_STORE) {
-        updated_pte |= PTE_D;
+        else if (access_type == MMU_DATA_CAP_STORE) {
+            updated_pte |= PTE_D;
 #if defined(TARGET_CHERI_RISCV_V9) && !defined(TARGET_RISCV32)
-        updated_pte |= PTE_CD;
+            updated_pte |= PTE_CD;
+#endif
+        }
+#endif
+    } else {
+        if (!(pte & PTE_A)) {
+            return TRANSLATE_FAIL;
+        }
+        if (access_type == MMU_DATA_STORE && !(pte & PTE_D)) {
+            return TRANSLATE_FAIL;
+        }
+#if defined(TARGET_CHERI)
+        if (access_type == MMU_DATA_CAP_STORE && !(pte & PTE_D)) {
+            return TRANSLATE_FAIL;
+        }
+#if defined(TARGET_CHERI_RISCV_V9) && !defined(TARGET_RISCV32)
+        if (access_type == MMU_DATA_CAP_STORE && !(pte & PTE_CD)) {
+            return TRANSLATE_CHERI_FAIL;
+        }
+#endif
 #endif
     }
-#endif
 
     /* Page table updates need to be atomic with MTTCG enabled */
     if (updated_pte != pte && !is_debug) {
@@ -1598,7 +1603,7 @@ hwaddr riscv_cpu_get_phys_page_debug(CPUState *cs, vaddr addr)
 
     if (env->virt_enabled) {
         if (get_physical_address(env, &phys_addr, &prot, phys_addr, NULL,
-                                 0, mmu_idx, false, true, true)) {
+                                 0, MMUIdx_U, false, true, true)) {
             return -1;
         }
     }
