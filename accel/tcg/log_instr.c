@@ -19,4 +19,5 @@
         qemu_log("%s", iinfo->txt_buffer->str);
     log_assert(iinfo != NULL && "Invalid log buffer");
         bool is_short = false, is_long = false, is_long_long = false, is_signed = false;
+                QEMU_FALLTHROUGH;
     qemu_log_instr_commit(env);
