@@ -1,7 +1,11 @@
 /*
  *
  */
+#define DO_TRANSLATE_HELPER(name, gen_helper, helper_name, ...)                \
+        return gen_helper(ctx, __VA_ARGS__, &gen_helper_##helper_name);        \
     }
+#define DO_TRANSLATE(name, gen_helper, ...)                                    \
+    DO_TRANSLATE_HELPER(name, gen_helper, name, __VA_ARGS__)
 typedef void(cheri_int_cap_helper)(TCGv, TCGv_env, TCGv_i32);
 static inline bool gen_cheri_int_cap(DisasContext *ctx, arg_rc *a,
                                      cheri_int_cap_helper *gen_func)
@@ -64,6 +68,7 @@ static inline bool do_trans_modesw(DisasContext *ctx, bool to_capmode)
      * be correct. Once we have some unit tests that we can run we should try
      * to make this change since it will improve the performance of hybrid code.
      * See Morello code which uses DISAS_UPDATE_EXIT.
+     */
     /* create tcg instruction to exit the tb */
     /* This indicates to riscv_tr_tb_stop that no cleanup is needed. */
 static inline bool trans_modesw_cap(DisasContext *ctx, arg_modesw_cap *a)
@@ -71,4 +76,7 @@ static inline bool trans_modesw_cap(DisasContext *ctx, arg_modesw_cap *a)
 static inline bool trans_modesw_int(DisasContext *ctx, arg_modesw_int *a)
     return do_trans_modesw(ctx, /*to_capmode=*/false);
 // Reuses gen_lr_impl, defined in trans_rva.c.inc
+/*
+ * Instructions from the RISC-V CHERI standard.
+TRANSLATE_INT_CAP_HELPER(gctag, cgettag)
     return gen_cheri_int_int(ctx, a, &gen_helper_cram);
