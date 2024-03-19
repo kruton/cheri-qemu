@@ -18,4 +18,5 @@
         qemu_log("    Write %s = " TARGET_FMT_lx "\n", rinfo->name,
         qemu_log("%s", iinfo->txt_buffer->str);
     log_assert(iinfo != NULL && "Invalid log buffer");
+        bool is_short = false, is_long = false, is_long_long = false, is_signed = false;
     qemu_log_instr_commit(env);
