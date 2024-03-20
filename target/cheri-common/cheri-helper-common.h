@@ -3,6 +3,7 @@
 DEF_HELPER_FLAGS_2(cgetaddr, TCG_CALL_NO_WG, tl, env, i32)
 DEF_HELPER_2(cgetbase, tl, env, i32)
 DEF_HELPER_2(cgetflags, tl, env, i32)
+DEF_HELPER_2(cgethigh, tl, env, i32)
 DEF_HELPER_2(cgetlen, tl, env, i32)
 DEF_HELPER_2(cgetperm, tl, env, i32)
 DEF_HELPER_2(cgetoffset, tl, env, i32)
