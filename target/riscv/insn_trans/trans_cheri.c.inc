@@ -79,4 +79,5 @@ static inline bool trans_modesw_int(DisasContext *ctx, arg_modesw_int *a)
 /*
  * Instructions from the RISC-V CHERI standard.
 TRANSLATE_INT_CAP_HELPER(gctag, cgettag)
+TRANSLATE_INT_CAP_HELPER(gcperm, cgetperm)
     return gen_cheri_int_int(ctx, a, &gen_helper_cram);
