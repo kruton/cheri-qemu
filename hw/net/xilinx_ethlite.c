@@ -99,6 +99,9 @@ struct XlnxXpsEthLite
     UnimplementedDeviceState rsvd;
     UnimplementedDeviceState mdio;
     XlnxXpsEthLitePort port[2];
+    struct MDIOBus mdio_bus;
+    struct PHY phy;
+    unsigned int c_phyaddr;
 };
 
 static inline void eth_pulse_irq(XlnxXpsEthLite *s)
@@ -124,6 +127,10 @@ static void *rxbuf_ptr(XlnxXpsEthLite *s, unsigned port_index)
     return memory_region_get_ram_ptr(&s->port[port_index].rxbuf);
 }
 
+    case MDIO_ADDR:
+    case MDIO_WDATA:
+    case MDIO_RDATA:
+    case MDIO_CTRL:
 static uint64_t port_tx_read(void *opaque, hwaddr addr, unsigned int size)
 {
     XlnxXpsEthLite *s = opaque;
@@ -368,6 +375,8 @@ static void xilinx_ethlite_realize(DeviceState *dev, Error **errp)
                           object_get_typename(OBJECT(dev)), dev->id,
                           &dev->mem_reentrancy_guard, s);
     qemu_format_nic_info_str(qemu_get_queue(s->nic), s->conf.macaddr.a);
+    tdk_init(&s->phy);
+    mdio_attach(&s->mdio_bus, &s->phy, s->c_phyaddr);
 }
 
 static void xilinx_ethlite_init(Object *obj)
@@ -379,6 +388,7 @@ static void xilinx_ethlite_init(Object *obj)
 }
 
 static const Property xilinx_ethlite_properties[] = {
+    DEFINE_PROP_UINT32("phyaddr", XlnxXpsEthLite, c_phyaddr, 1),
     DEFINE_PROP_ENDIAN_NODEFAULT("endianness", XlnxXpsEthLite, model_endianness),
     DEFINE_PROP_UINT32("tx-ping-pong", XlnxXpsEthLite, c_tx_pingpong, 1),
     DEFINE_PROP_UINT32("rx-ping-pong", XlnxXpsEthLite, c_rx_pingpong, 1),
