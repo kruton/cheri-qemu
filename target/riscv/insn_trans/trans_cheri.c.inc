@@ -82,4 +82,5 @@ TRANSLATE_INT_CAP_HELPER(gctag, cgettag)
 TRANSLATE_INT_CAP_HELPER(gcperm, cgetperm)
 TRANSLATE_INT_CAP_HELPER(gchi, cgethigh)
 TRANSLATE_INT_CAP_HELPER(gcbase, cgetbase)
+TRANSLATE_INT_CAP_HELPER(gclen, cgetlen)
     return gen_cheri_int_int(ctx, a, &gen_helper_cram);
