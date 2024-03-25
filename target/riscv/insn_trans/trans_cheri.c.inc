@@ -71,7 +71,9 @@ static inline bool do_trans_modesw(DisasContext *ctx, bool to_capmode)
      */
     /* create tcg instruction to exit the tb */
     /* This indicates to riscv_tr_tb_stop that no cleanup is needed. */
+}
 static inline bool trans_modesw_cap(DisasContext *ctx, arg_modesw_cap *a)
+{
     return do_trans_modesw(ctx, /*to_capmode=*/true);
 static inline bool trans_modesw_int(DisasContext *ctx, arg_modesw_int *a)
     return do_trans_modesw(ctx, /*to_capmode=*/false);
@@ -84,3 +86,5 @@ TRANSLATE_INT_CAP_HELPER(gchi, cgethigh)
 TRANSLATE_INT_CAP_HELPER(gcbase, cgetbase)
 TRANSLATE_INT_CAP_HELPER(gclen, cgetlen)
     return gen_cheri_int_int(ctx, a, &gen_helper_cram);
+static bool trans_caddi(DisasContext *ctx, arg_caddi *a)
+    return gen_cheri_cap_cap_imm(a->cd, a->cs1, a->imm, &gen_helper_cincoffset);
