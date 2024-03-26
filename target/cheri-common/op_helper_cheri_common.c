@@ -17,6 +17,7 @@
 {
 }
                    bool precise_repr_check, uintptr_t retpc,
+                   struct oob_stats_info *oob_info)
 {
     DEFINE_RESULT_VALID;
 #endif
