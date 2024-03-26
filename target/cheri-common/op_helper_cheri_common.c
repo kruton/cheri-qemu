@@ -314,6 +314,7 @@ cincoffset_impl(CPUArchState *env, uint32_t cd, uint32_t cb, target_ulong rt,
         result.cr_tag = 0;
 #endif
     update_capreg(env, cd, &result);
+    cincoffset_impl(env, cd, cb, rt, GETPC(), OOB_INFO(cincoffset));
 void CHERI_HELPER_IMPL(candaddr(CPUArchState *env, uint32_t cd, uint32_t cb,
     target_ulong cursor = get_capreg_cursor(env, cb);
     target_ulong target_addr = cursor & rt;
