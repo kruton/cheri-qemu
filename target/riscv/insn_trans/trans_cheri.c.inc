@@ -13,6 +13,7 @@ static inline bool gen_cheri_int_cap(DisasContext *ctx, arg_rc *a,
     gen_set_gpr(ctx, a->rd, result);
     return true;
 }
+#define TRANSLATE_INT_CAP_HELPER(name, helper)                                 \
                                      cheri_cap_cap_helper *gen_func)
 {
 }
@@ -31,6 +32,9 @@ gen_cheri_cap_int_plus_imm(DisasContext *ctx, int cd, int rs, target_long imm,
 static inline bool gen_cheri_cap_loadstore(DisasContext *ctx, int srcdst,
 static inline bool gen_cheri_int_cap_cap(DisasContext *ctx, arg_rcc *a,
                                          cheri_int_cap_cap_helper *gen_func)
+#define TRANSLATE_INT_CAP_CAP_HELPER(name, helper)                             \
+    DO_TRANSLATE_HELPER(name, gen_cheri_int_cap_cap, helper, a)
+#define TRANSLATE_INT_CAP_CAP(name) TRANSLATE_INT_CAP_CAP_HELPER(name, name)
 static inline bool gen_cheri_cap_cap_imm(int cd, int cs1, target_long imm,
 #define TRANSLATE_CAP_CAP_IMM(name)                                            \
     /* Mask the LSB to match the RISC-V spec for JAL. */
@@ -53,6 +57,7 @@ TRANSLATE_INT_CAP(cloadtags)
         if (a->cs1 != 0 && a->cs2 == CheriSCR_DDC) {
             tcg_gen_exit_tb(NULL, 0);
 TRANSLATE_CAP_CAP_INT(csethigh)
+TRANSLATE_INT_CAP_CAP(cseqx)
 static inline bool gen_cap_load(DisasContext *ctx, int32_t rd, int32_t cs,
 static inline bool do_trans_modesw(DisasContext *ctx, bool to_capmode)
     if (ctx->capmode == to_capmode) {
