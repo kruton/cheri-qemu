@@ -25,6 +25,9 @@ gen_cheri_cap_int_plus_imm(DisasContext *ctx, int cd, int rs, target_long imm,
     tcg_gen_addi_tl(gpr_value, gpr_value, imm);
     DO_TRANSLATE_HELPER(name, gen_cheri_cap_cap_cap, helper, a)
                                          cheri_cap_cap_int_helper *gen_func)
+#define TRANSLATE_CAP_CAP_INT_HELPER(name, helper)                             \
+    DO_TRANSLATE_HELPER(name, gen_cheri_cap_cap_int, helper, a)
+#define TRANSLATE_CAP_CAP_INT(name) TRANSLATE_CAP_CAP_INT_HELPER(name, name)
 static inline bool gen_cheri_cap_loadstore(DisasContext *ctx, int srcdst,
 static inline bool gen_cheri_int_cap_cap(DisasContext *ctx, arg_rcc *a,
                                          cheri_int_cap_cap_helper *gen_func)
@@ -93,6 +96,7 @@ TRANSLATE_INT_CAP_HELPER(gclen, cgetlen)
 static bool trans_cadd(DisasContext *ctx, arg_cadd *a)
     assert(a->rs2 != 0 && "This encoding is reserved");
     return gen_cheri_cap_cap_int(ctx, a, &gen_helper_cincoffset);
+TRANSLATE_CAP_CAP_INT_HELPER(scaddr, csetaddr)
 TRANSLATE_INT_CAP_CAP_HELPER(sceq, cseqx)
     return gen_cheri_int_int(ctx, a, &gen_helper_cram);
 static bool trans_caddi(DisasContext *ctx, arg_caddi *a)
