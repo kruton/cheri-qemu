@@ -5488,8 +5488,14 @@ static RISCVException write_mnstatus(CPURISCVState *env, int csrno,
 }
 static RISCVException stid(CPURISCVState *env, int csrno)
 {
+    }
+{
 {
 #endif
+#endif
+#ifdef TARGET_CHERI
+/* handlers for capability csr registers */
+        return &env->mscratchc;
     case CSR_MEPCC:
     case CSR_MTIDC:
     case CSR_STIDC:
@@ -5506,6 +5512,7 @@ static RISCVException stid(CPURISCVState *env, int csrno)
     return true;
 #endif
     return false;
+static cap_register_t read_xepcc(CPURISCVState *env,
     ccsr = set_field(ccsr, XCCSR_ENABLE, cpu->cfg.ext_cheri);
     /* Read-only feature bits. */
     ccsr = set_field(ccsr, XCCSR_TAG_CLEARING, CHERI_TAG_CLEAR_ON_INVALID(env));
@@ -6766,3 +6773,17 @@ riscv_csr_operations csr_ops[CSR_TABLE_SIZE] = {
 
 #endif /* !CONFIG_USER_ONLY */
 };
+#ifdef TARGET_CHERI
+/*
+ * We don't have as many CSR Cap ops, and haven't fully defined what we need in
+ * the table, so keep this table separate instead of merging it into the main
+ * table for now.
+ */
+static riscv_csr_cap_ops csr_cap_ops[] = {
+#endif
+};
+riscv_csr_cap_ops *get_csr_cap_info(uint32_t csrnum)
+{
+            return &csr_cap_ops[i];
+    }
+    return NULL;
