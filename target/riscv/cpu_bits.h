@@ -220,6 +220,10 @@
 #define CSR_STVAL           0x143
 #define CSR_SIP             0x144
 
+#ifdef TARGET_CHERI
+/* Supervisor trap setup, scratch and handling */
+#define CSR_SEPCC           CSR_SEPC
+#endif
 /* Sstc supervisor CSRs */
 #define CSR_STIMECMP        0x14D
 #define CSR_STIMECMPH       0x15D
@@ -467,6 +471,11 @@
 #define CSR_DCSR            0x7b0
 #define CSR_DPC             0x7b1
 #define CSR_DSCRATCH        0x7b2
+#define CSR_DSCRATCH1       0x7b3
+#ifdef TARGET_CHERI
+#define CSR_DDC             0x416
+#endif
+#define CSR_MTID           0x780
 
 /* Performance Counters */
 #define CSR_MHPMCOUNTER3    0xb03
