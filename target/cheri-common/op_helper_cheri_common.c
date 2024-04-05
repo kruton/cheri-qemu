@@ -409,6 +409,8 @@ target_ulong CHERI_HELPER_IMPL(cap_check_addr(CPUArchState *env,
     if (tag && !cap_has_perms(cbp, CAP_PERM_LOAD_CAP)) {
     if ((tag && (prot & PAGE_LC_TRAP)) || (prot & PAGE_LC_TRAP_ANY))
  *
+static void update_loaded_cap_perms(CPUArchState *env, target_ulong *pesbt,
+                                    const cap_register_t *source)
     if (!cap_has_perms(source, CAP_PERM_MUTABLE_LOAD)) {
 #if defined(TARGET_AARCH64)
             perms &= ~(CAP_PERM_MUTABLE_LOAD | CAP_PERM_STORE_LOCAL |
