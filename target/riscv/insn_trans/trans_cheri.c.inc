@@ -98,6 +98,7 @@ TRANSLATE_INT_CAP_HELPER(gcperm, cgetperm)
 TRANSLATE_INT_CAP_HELPER(gchi, cgethigh)
 TRANSLATE_INT_CAP_HELPER(gcbase, cgetbase)
 TRANSLATE_INT_CAP_HELPER(gclen, cgetlen)
+TRANSLATE_CAP_CAP_HELPER(sentry, csealentry)
 static bool trans_cadd(DisasContext *ctx, arg_cadd *a)
     assert(a->rs2 != 0 && "This encoding is reserved");
     return gen_cheri_cap_cap_int(ctx, a, &gen_helper_cincoffset);
