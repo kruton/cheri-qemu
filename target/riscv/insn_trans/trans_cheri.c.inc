@@ -25,6 +25,7 @@ gen_cheri_cap_int_plus_imm(DisasContext *ctx, int cd, int rs, target_long imm,
                            cheri_cap_int_helper *gen_func)
     tcg_gen_addi_tl(gpr_value, gpr_value, imm);
     DO_TRANSLATE_HELPER(name, gen_cheri_cap_cap_cap, helper, a)
+static inline bool gen_cheri_cap_cap_int(DisasContext *ctx, arg_ccr *a,
                                          cheri_cap_cap_int_helper *gen_func)
 #define TRANSLATE_CAP_CAP_INT_HELPER(name, helper)                             \
     DO_TRANSLATE_HELPER(name, gen_cheri_cap_cap_int, helper, a)
@@ -59,6 +60,7 @@ TRANSLATE_INT_CAP(cloadtags)
 TRANSLATE_CAP_CAP_INT(csethigh)
 TRANSLATE_INT_CAP_CAP(cseqx)
 static inline bool gen_cap_load(DisasContext *ctx, int32_t rd, int32_t cs,
+        gen_cheri_cap_cap_cap(ctx, &ccc, &gen_helper_amoswap_cap);
 static inline bool do_trans_modesw(DisasContext *ctx, bool to_capmode)
     if (ctx->capmode == to_capmode) {
         qemu_log_mask_and_addr(CPU_LOG_INSTR, ctx->base.pc_first,
@@ -113,6 +115,7 @@ TRANSLATE_CAP_CAP_INT_HELPER(scbnds, csetboundsexact)
 TRANSLATE_CAP_CAP_INT_HELPER(scbndsr, csetbounds)
 TRANSLATE_CAP_CAP_INT_HELPER(schi, csethigh)
 TRANSLATE_CAP_CAP_INT(scmode)
+TRANSLATE_CAP_CAP_CAP_HELPER(cbld, cbuildcap)
 TRANSLATE_INT_CAP_CAP_HELPER(sceq, cseqx)
 static bool trans_scbndsi(DisasContext *ctx, arg_scbndsi *a)
     if (a->scale == 1 && a->imm <= 1) {
