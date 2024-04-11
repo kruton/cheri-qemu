@@ -4123,6 +4123,7 @@ static RISCVException read_stvec(CPURISCVState *env, int csrno,
                                  target_ulong *val)
 {
     *val = env->stvec;
+    *val = GET_SPECIAL_REG_ARCH(env, stvec, stvecc);
     return RISCV_EXCP_NONE;
 }
 
@@ -4132,6 +4133,7 @@ static RISCVException write_stvec(CPURISCVState *env, int csrno,
     /* bits [1:0] encode mode; 0 = direct, 1 = vectored, 2 >= reserved */
     if ((val & 3) < 2) {
         env->stvec = val;
+        SET_SPECIAL_REG(env, stvec, stvecc, val);
     } else {
         qemu_log_mask(LOG_UNIMP, "CSR_STVEC: reserved mode not supported\n");
     }
@@ -5517,6 +5519,8 @@ static RISCVException write_mnstatus(CPURISCVState *env, int csrno,
 static RISCVException stid(CPURISCVState *env, int csrno)
 {
     }
+}
+{
 {
 {
 #endif
@@ -5524,6 +5528,7 @@ static RISCVException stid(CPURISCVState *env, int csrno)
 #ifdef TARGET_CHERI
 /* handlers for capability csr registers */
         return &env->mscratchc;
+        return &env->stvecc;
     case CSR_MEPCC:
     case CSR_MTIDC:
     case CSR_STIDC:
@@ -5532,6 +5537,7 @@ static RISCVException stid(CPURISCVState *env, int csrno)
     case CSR_PCC:
 /*
  */
+static cap_register_t read_capcsr_reg(CPURISCVState *env,
         break;
     }
 
@@ -5540,7 +5546,13 @@ static RISCVException stid(CPURISCVState *env, int csrno)
     return true;
 #endif
     return false;
+    /* The low two bits encode the mode, but only 0 and 1 are valid. */
+    if ((new_tvec & 3) > 1) {
+        /* Invalid mode, keep the old one. */
+        new_tvec &= ~(target_ulong)3;
+        new_tvec |= cap_get_cursor(csr) & 3;
 static cap_register_t read_xepcc(CPURISCVState *env,
+    target_ulong val = cap_get_cursor(&retval);
     ccsr = set_field(ccsr, XCCSR_ENABLE, cpu->cfg.ext_cheri);
     /* Read-only feature bits. */
     ccsr = set_field(ccsr, XCCSR_TAG_CLEARING, CHERI_TAG_CLEAR_ON_INVALID(env));
