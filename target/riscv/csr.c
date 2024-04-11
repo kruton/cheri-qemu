@@ -5521,6 +5521,8 @@ static RISCVException stid(CPURISCVState *env, int csrno)
     }
 }
 {
+}
+{
 {
 {
 #endif
@@ -5538,6 +5540,7 @@ static RISCVException stid(CPURISCVState *env, int csrno)
 /*
  */
 static cap_register_t read_capcsr_reg(CPURISCVState *env,
+    return retval;
         break;
     }
 
@@ -5545,6 +5548,7 @@ static cap_register_t read_capcsr_reg(CPURISCVState *env,
 */
     return true;
 #endif
+    target_ulong address = cap_get_cursor(&cap);
     return false;
     /* The low two bits encode the mode, but only 0 and 1 are valid. */
     if ((new_tvec & 3) > 1) {
@@ -5553,6 +5557,18 @@ static cap_register_t read_capcsr_reg(CPURISCVState *env,
         new_tvec |= cap_get_cursor(csr) & 3;
 static cap_register_t read_xepcc(CPURISCVState *env,
     target_ulong val = cap_get_cursor(&retval);
+    // RISC-V privileged spec 4.1.7 Supervisor Exception Program Counter
+    // (sepc) "The low bit of sepc (sepc[0]) is always zero. [...] Whenever
+    // IALIGN=32, sepc[1] is masked on reads so that it appears to be 0."
+    val &= ~(target_ulong)(riscv_has_ext(env, RVC) ? 1 : 3);
+    if (val != cap_get_cursor(&retval)) {
+        warn_report("Clearing low bit(s) of %s (contained an unaligned "
+                    PRINT_CAP_ARGS(&retval));
+        if (!cap_is_unsealed(&retval)) {
+            warn_report("Invalidating sealed %s (contained an unaligned "
+                        "capability): " PRINT_CAP_FMTSTR,
+            retval.cr_tag = false;
+        cap_set_cursor(&retval, val);
     ccsr = set_field(ccsr, XCCSR_ENABLE, cpu->cfg.ext_cheri);
     /* Read-only feature bits. */
     ccsr = set_field(ccsr, XCCSR_TAG_CLEARING, CHERI_TAG_CLEAR_ON_INVALID(env));
