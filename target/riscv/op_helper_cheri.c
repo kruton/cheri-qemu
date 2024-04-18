@@ -49,25 +49,14 @@
 
 enum SCRAccessMode {
     SCR_Invalid = 0,
-    ASR_Flag = 1,
-    U_Always = (PRV_U + 1) << 1,
-    U_ASR = U_Always | ASR_Flag,
-    S_Always = (PRV_S + 1) << 1,
-    S_ASR = S_Always | ASR_Flag,
-    H_Always = (PRV_H + 1) << 1,
-    H_ASR = H_Always | ASR_Flag,
-    M_Always = (PRV_M + 1) << 1,
-    M_ASR = M_Always | ASR_Flag,
 };
 
 static inline int scr_min_priv(enum SCRAccessMode mode)
 {
-    return ((int)mode >> 1) - 1;
+    }
     }
 }
-static inline int scr_needs_asr(enum SCRAccessMode mode)
 {
-    return (mode & ASR_Flag) == ASR_Flag;
 }
 
 struct SCRInfo {
@@ -116,6 +105,7 @@ struct SCRInfo {
 
 {
 
+{
 
 
 
