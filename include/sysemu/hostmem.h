@@ -75,6 +75,7 @@ struct HostMemoryBackend {
     bool merge, dump, use_canonical_path;
     bool cheri_tags;
     bool prealloc, is_mapped, share, reserve;
+    bool guest_memfd;
     uint32_t prealloc_threads;
     ThreadContext *prealloc_context;
     DECLARE_BITMAP(host_nodes, MAX_NODES + 1);
