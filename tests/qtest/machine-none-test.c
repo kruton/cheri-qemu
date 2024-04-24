@@ -40,7 +40,6 @@ static struct arch2cpu cpus_map[] = {
     { "mips64cheri128", "BERI" },
     { "mips64el", "I6500" },
     { "morello", "morello" },
-    { "nios2", "FIXME" },
     { "or1k", "or1200" },
     { "ppc", "604" },
     { "ppc64", "power8e_v2.1" },
