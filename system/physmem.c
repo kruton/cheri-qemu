@@ -3649,11 +3649,11 @@ int cpu_memory_rw_debug(CPUState *cpu, vaddr addr,
 }
 
 #ifdef TARGET_CHERI
-int cpu_memory_readcap_debug(CPUState *cpu, target_ulong addr, void *ptr,
-                             target_ulong len)
+int cpu_memory_readcap_debug(CPUState *cpu, vaddr addr, void *ptr,
+                             size_t len)
 {
     hwaddr phys_addr;
-    target_ulong l, page, tagged_l;
+    vaddr l, page, tagged_l;
     uint8_t *buf = ptr;
 
     cpu_synchronize_state(cpu);
@@ -3689,36 +3689,6 @@ int cpu_memory_readcap_debug(CPUState *cpu, target_ulong addr, void *ptr,
     return 0;
 }
 #endif
-
-/*
- * Allows code that needs to deal with migration bitmaps etc to still be built
- * target independent.
- */
-size_t qemu_target_page_size(void)
-{
-    return TARGET_PAGE_SIZE;
-}
-
-int qemu_target_page_bits(void)
-{
-    return TARGET_PAGE_BITS;
-}
-
-int qemu_target_page_bits_min(void)
-{
-    return TARGET_PAGE_BITS_MIN;
-}
-
-/* Convert target pages to MiB (2**20). */
-size_t qemu_target_pages_to_MiB(size_t pages)
-{
-    int page_bits = TARGET_PAGE_BITS;
-
-    /* So far, the largest (non-huge) page size is 64k, i.e. 16 bits. */
-    g_assert(page_bits < 20);
-
-    return pages >> (20 - page_bits);
-}
 
 bool cpu_physical_memory_is_io(hwaddr phys_addr)
 {

@@ -27,19 +27,19 @@
 # else
 #  define TARGET_PAGE_BITS 12
 # endif
-#else
+#else /* !CONFIG_USER_ONLY */
 /*
  * ARMv7 and later CPUs have 4K pages minimum, but ARMv5 and v6
  * have to support 1K tiny pages.
  */
 # define TARGET_PAGE_BITS_VARY
 # define TARGET_PAGE_BITS_MIN  10
-
-
-#endif
-
-#endif
+#endif /* !CONFIG_USER_ONLY */
+/* ARM processors have a weak memory model */
+#define TCG_GUEST_DEFAULT_MO      (0)
 
 #ifdef CONFIG_TCG_LOG_INSTR
 #define TARGET_MAX_INSN_SIZE 4
+#endif
+
 #endif

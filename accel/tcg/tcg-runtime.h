@@ -120,7 +120,7 @@ GEN_ATOMIC_HELPERS(xchg)
 
 #undef GEN_ATOMIC_HELPERS
 
-#ifdef NEED_CPU_H
+#ifdef COMPILING_PER_TARGET
 #ifdef TARGET_CHERI
 // Check that the second arg (addr) + third arg (num_bytes) is within the bounds
 // of DDC and raise an exception otherwise. Tag+usealed+load/store perms must
@@ -354,7 +354,7 @@ DEF_HELPER_FLAGS_0(qemu_log_instr_allcpu_stop, TCG_CALL_NO_WG, void)
 DEF_HELPER_FLAGS_1(qemu_log_instr_commit, TCG_CALL_NO_WG, void, env)
 DEF_HELPER_FLAGS_3(log_value, TCG_CALL_NO_WG, void, env, cptr, i64)
 
-#ifdef NEED_CPU_H
+#ifdef COMPILING_PER_TARGET
 DEF_HELPER_FLAGS_2(qemu_log_instr_start, TCG_CALL_NO_WG, void, env, tl)
 DEF_HELPER_FLAGS_2(qemu_log_instr_user_start, TCG_CALL_NO_WG, void, env, tl)
 DEF_HELPER_FLAGS_2(qemu_log_instr_stop, TCG_CALL_NO_WG, void, env, tl)
@@ -372,5 +372,5 @@ DEF_HELPER_FLAGS_5(qemu_log_instr_reg, TCG_CALL_NO_WG, void, env, cptr, tl, i32,
 DEF_HELPER_FLAGS_5(qemu_log_instr_cap, TCG_CALL_NO_WG, void, env, cptr, cptr,
                    i32, i32)
 #endif
-#endif /* NEED_CPU_H */
+#endif /* COMPILING_PER_TARGET */
 #endif

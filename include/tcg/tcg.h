@@ -345,7 +345,7 @@ typedef struct TCGv_ptr_d *TCGv_ptr;
 typedef struct TCGv_vec_d *TCGv_vec;
 typedef TCGv_ptr TCGv_env;
 
-#ifdef NEED_CPU_H
+#ifdef COMPILING_PER_TARGET
 #include "cpu.h"
 
 #if TARGET_LONG_BITS == 32
@@ -604,7 +604,7 @@ extern __thread TCGContext *tcg_ctx;
 extern const void *tcg_code_gen_epilogue;
 extern uintptr_t tcg_splitwx_diff;
 extern TCGv_env tcg_env;
-#ifdef NEED_CPU_H
+#ifdef COMPILING_PER_TARGET
 #ifdef TARGET_CHERI
 extern TCGv ddc_interposition;
 #endif
@@ -678,7 +678,7 @@ static inline TCGTemp *tcgv_ptr_temp(TCGv_ptr v)
     return tcgv_i32_temp((TCGv_i32)v);
 }
 
-#ifdef NEED_CPU_H
+#ifdef COMPILING_PER_TARGET
 static inline TCGTemp *tcgv_cap_checked_ptr_temp(TCGv_cap_checked_ptr v)
 {
     return tcgv_i32_temp((TCGv_i32)v);

@@ -15,8 +15,6 @@
 #include "cheri-lazy-capregs-types.h"
 #endif
 
-#define TCG_GUEST_DEFAULT_MO (0)
-
 typedef struct CPUMIPSTLBContext CPUMIPSTLBContext;
 
 /* MSA Context */

@@ -38,6 +38,8 @@
 #include "cpu.h"
 #include "cheri-helper-utils.h"
 #include "exec/cpu-all.h"
+#include "user/tswap-target.h"
+
 
 static inline void append(GByteArray *buf, target_ulong value)
 {

@@ -337,6 +337,27 @@ void *cheri_tagmem_for_addr(CPUArchState *env, target_ulong vaddr,
     return ALL_ZERO_TAGBLK;
 }
 
+#ifndef CONFIG_USER_ONLY
+static inline uintptr_t cheri_tlb_index(CPUState *cpu, uintptr_t mmu_idx,
+                                        vaddr addr)
+{
+    uintptr_t size_mask = cpu->neg.tlb.f[mmu_idx].mask >> CPU_TLB_ENTRY_BITS;
+
+    return (addr >> TARGET_PAGE_BITS) & size_mask;
+}
+
+static inline CPUTLBEntry *cheri_tlb_entry(CPUState *cpu, uintptr_t mmu_idx,
+                                           vaddr addr)
+{
+    return &cpu->neg.tlb.f[mmu_idx].table[cheri_tlb_index(cpu, mmu_idx, addr)];
+}
+
+static inline target_ulong cheri_tlb_addr_write(const CPUTLBEntry *entry)
+{
+    return qatomic_read(&entry->addr_write);
+}
+#endif
+
 static inline void *get_tagmem_from_iotlb_entry(CPUArchState *env,
                                                 target_ulong vaddr, int mmu_idx,
                                                 bool isWrite,
@@ -350,11 +371,11 @@ static inline void *get_tagmem_from_iotlb_entry(CPUArchState *env,
      * matching tlb entry + iotlb entry.
      */
 #ifdef CONFIG_DEBUG_TCG
-    CPUTLBEntry *entry = tlb_entry(env_cpu(env), mmu_idx, vaddr);
-    g_assert(tlb_hit(isWrite ? tlb_addr_write(entry) : entry->addr_read, vaddr));
+    CPUTLBEntry *entry = cheri_tlb_entry(env_cpu(env), mmu_idx, vaddr);
+    g_assert(tlb_hit(isWrite ? cheri_tlb_addr_write(entry) : entry->addr_read, vaddr));
 #endif
     CPUTLBEntryFull *iotlbentry =
-        &env_cpu(env)->neg.tlb.d[mmu_idx].fulltlb[tlb_index(env_cpu(env), mmu_idx, vaddr)];
+        &env_cpu(env)->neg.tlb.d[mmu_idx].fulltlb[cheri_tlb_index(env_cpu(env), mmu_idx, vaddr)];
     if (isWrite) {
         *flags_out = IOTLB_GET_TAGMEM_FLAGS(iotlbentry, write);
         return IOTLB_GET_TAGMEM(iotlbentry, write);
@@ -551,7 +572,7 @@ void cheri_tag_phys_invalidate(CPUArchState *env, RAMBlock *ram,
     do {                                                                       \
         if (ret_paddr) {                                                       \
             *ret_paddr = (vaddr & ~TARGET_PAGE_MASK) |                         \
-                         (tlb_entry(env_cpu(env), mmu_idx, vaddr)->addr_##rw &  \
+                         (cheri_tlb_entry(env_cpu(env), mmu_idx, vaddr)->addr_##rw &  \
                           TARGET_PAGE_MASK);                                   \
         }                                                                      \
     } while (0)

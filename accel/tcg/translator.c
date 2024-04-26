@@ -13,6 +13,7 @@
 #include "exec/exec-all.h"
 #include "exec/log_instr.h"
 #include "exec/translator.h"
+#include "exec/cpu_ldst.h"
 #include "exec/plugin-gen.h"
 #include "tcg/tcg-op-common.h"
 #ifdef TARGET_CHERI
