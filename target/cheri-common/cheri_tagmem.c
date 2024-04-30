@@ -126,6 +126,9 @@ static inline QEMU_ALWAYS_INLINE void tagblock_clear_tag(CheriTagBlock *block,
 #ifdef CONFIG_DEBUG_TCG
     CPUTLBEntry *entry = cheri_tlb_entry(env_cpu(env), mmu_idx, vaddr);
     g_assert(tlb_hit(isWrite ? cheri_tlb_addr_write(entry) : entry->addr_read, vaddr));
+static inline QEMU_ALWAYS_INLINE TagOffset addr_to_tag_offset(target_ulong addr)
+static inline QEMU_ALWAYS_INLINE target_ulong
+tag_offset_to_addr(TagOffset offset)
                                       int32_t size, uintptr_t pc, int mmu_idx);
                                    uintptr_t pc, int mmu_idx)
     return cheri_tag_invalidate_one(env, vaddr, CHERI_CAP_SIZE, pc, mmu_idx);
