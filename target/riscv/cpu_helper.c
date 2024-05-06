@@ -25,6 +25,7 @@
 #include "pmu.h"
 #include "exec/exec-all.h"
 #include "exec/log_instr.h"
+#include "exec/page-protection.h"
 #include "instmap.h"
 #include "tcg/tcg-op.h"
 #include "trace.h"

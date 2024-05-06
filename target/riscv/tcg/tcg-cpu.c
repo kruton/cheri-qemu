@@ -101,7 +101,7 @@ static void riscv_cpu_synchronize_from_tb(CPUState *cs,
         CPURISCVState *env = &cpu->env;
         RISCVMXL xl = FIELD_EX32(tb->flags, TB_FLAGS, XL);
 
-        tcg_debug_assert(!(cs->tcg_cflags & CF_PCREL));
+        tcg_debug_assert(!tcg_cflags_has(cs, CF_PCREL));
         riscv_update_pc(env, tb->pc, xl, /*can_be_unrepresentable=*/false);
 #ifdef TARGET_CHERI
         cheri_debug_assert(tb_in_capmode(tb) == cheri_in_capmode(env));
@@ -942,7 +942,7 @@ static bool riscv_tcg_cpu_realize(CPUState *cs, Error **errp)
 #ifdef TARGET_CHERI
     CPU(cs)->tcg_cflags &= ~CF_PCREL;
 #else
-    CPU(cs)->tcg_cflags |= CF_PCREL;
+    tcg_cflags_set(CPU(cs), CF_PCREL);
 #endif
 
     if (cpu->cfg.ext_sstc) {
