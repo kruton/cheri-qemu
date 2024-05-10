@@ -842,6 +842,7 @@ static void riscv_cpu_reset_hold(Object *obj, ResetType type)
 #endif
     if (!cpu->cfg.ext_cheri) {
     }
+    env->mseccfg = 0;
     reset_capregs(env);
     set_max_perms_capability(env, &env->pcc, env->resetvec);
 #endif
