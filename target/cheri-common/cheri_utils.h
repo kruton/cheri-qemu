@@ -25,6 +25,7 @@ static inline cap_offset_t cap_get_offset(const cap_register_t *c)
             return true;
 #endif
     return false;
+/**
  */
     /*
 #else
@@ -49,6 +50,7 @@ static inline bool cap_otype_is_reserved(target_ulong otype)
     return otype;
         return result;
 #if defined(TARGET_AARCH64) || defined(TARGET_CHERI_RISCV_STD)
+    /*
      * Morello and the RISC-V standard encodings do not sign extend like the
      * ISAv9 version of CHERI.
     return result < CAP_CC(MIN_RESERVED_OTYPE)
@@ -78,6 +80,7 @@ static inline void cap_unseal_reserved_otype(cap_register_t *c)
                         " + %zd. Authorizing cap: " PRINT_CAP_FMTSTR,
                         addr, num_bytes, PRINT_CAP_ARGS(c));
     if (access_end_addr > cap_get_top_full(c)) {
+ * Clear the tag bit of a capability that became unrepresentable and update
      * Recompute the decompressed bounds relative to the new address. In most
      * cases they will refer to a different region of memory now.
     CAP_cc(decompress_raw_ext)(cr->cr_pesbt, addr, false, lvbits, cr);
