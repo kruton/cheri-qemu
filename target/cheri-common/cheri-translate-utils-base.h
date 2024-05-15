@@ -73,6 +73,8 @@ static inline void gen_raise_pcc_violation(DisasContextBase *db,
 
 #define ALL_CAPREG_STATES 0b1111
 
+_Static_assert(NUM_LAZY_CAP_REGS <= 64, "NUM_LAZY_CAP_REGS exceeds DisasContextBase storage");
+
 static inline void disas_capreg_reset_all(DisasContextBase *ctx)
 {
     for (size_t i = 0; i != NUM_LAZY_CAP_REGS; i++) {
@@ -82,4 +84,14 @@ static inline void disas_capreg_reset_all(DisasContextBase *ctx)
     }
 }
 
+/**
+ * @return the value by which PC should be relocated (or zero if PCC relocation
+ * is off). For Morello this is toggleable at runtime, but other architectures
+ * either use no relocation or PCC.base unconditionally.
+ * @related CHERI_TRANSLATE_PCC_RELOCATION(ctx)
+ */
+#define pcc_reloc(ctx)                                                         \
+    (CHERI_TRANSLATE_PCC_RELOCATION(ctx) ? (ctx)->base.pcc_base : 0)
+#else
+#define pcc_reloc(ctx) 0
 #endif // TARGET_CHERI

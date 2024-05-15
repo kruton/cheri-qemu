@@ -23,7 +23,6 @@
 #include "translate.h"
 #include "translate-a32.h"
 #include "qemu/log.h"
-#include "disas/disas.h"
 #include "arm_ldst.h"
 #include "semihosting/semihost.h"
 #include "cpregs.h"
@@ -9733,14 +9732,6 @@ static void arm_tr_tb_stop(DisasContextBase *dcbase, CPUState *cpu)
     }
 }
 
-static void arm_tr_disas_log(const DisasContextBase *dcbase, CPUState *cpu,
-                             FILE *logfile)
-{
-    DisasContext *dc = container_of(dcbase, DisasContext, base);
-
-    fprintf(logfile, "IN: %s\n", lookup_symbol(dc->base.pc_first));
-    target_disas(logfile, cpu, dc->base.pc_first, dc->base.tb->size);
-}
 
 static const TranslatorOps arm_translator_ops = {
     .init_disas_context = arm_tr_init_disas_context,
@@ -9748,7 +9739,6 @@ static const TranslatorOps arm_translator_ops = {
     .insn_start         = arm_tr_insn_start,
     .translate_insn     = arm_tr_translate_insn,
     .tb_stop            = arm_tr_tb_stop,
-    .disas_log          = arm_tr_disas_log,
 };
 
 static const TranslatorOps thumb_translator_ops = {
@@ -9757,7 +9747,6 @@ static const TranslatorOps thumb_translator_ops = {
     .insn_start         = arm_tr_insn_start,
     .translate_insn     = thumb_tr_translate_insn,
     .tb_stop            = arm_tr_tb_stop,
-    .disas_log          = arm_tr_disas_log,
 };
 
 /* generate intermediate code for basic block 'tb'.  */

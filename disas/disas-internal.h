@@ -14,8 +14,14 @@ typedef struct CPUDebug {
     CPUState *cpu;
 } CPUDebug;
 
+void disas_initialize_debug(CPUDebug *s);
 void disas_initialize_debug_target(CPUDebug *s, CPUState *cpu);
 int disas_gstring_printf(FILE *stream, const char *fmt, ...)
     G_GNUC_PRINTF(2, 3);
+
+int print_insn_od_host(bfd_vma pc, disassemble_info *info);
+int print_insn_od_target(bfd_vma pc, disassemble_info *info);
+int host_read_memory(bfd_vma memaddr, bfd_byte *myaddr, int length,
+                     struct disassemble_info *info);
 
 #endif

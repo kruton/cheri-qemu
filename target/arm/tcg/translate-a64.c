@@ -23,7 +23,6 @@
 #include "exec/log_instr.h"
 #include "translate-a64.h"
 #include "qemu/log.h"
-#include "disas/disas.h"
 #include "arm_ldst.h"
 #include "semihosting/semihost.h"
 #include "cpregs.h"
@@ -15048,21 +15047,10 @@ void cheri_tcg_prepare_for_unconditional_exception(DisasContextBase *db)
     db->is_jmp = DISAS_NORETURN;
 }
 #endif
-
-static void aarch64_tr_disas_log(const DisasContextBase *dcbase, CPUState *cpu,
-                                 FILE *logfile)
-{
-    DisasContext *dc = container_of(dcbase, DisasContext, base);
-
-    fprintf(logfile, "IN: %s\n", lookup_symbol(dc->base.pc_first));
-    target_disas(logfile, cpu, dc->base.pc_first, dc->base.tb->size);
-}
-
 const TranslatorOps aarch64_translator_ops = {
     .init_disas_context = aarch64_tr_init_disas_context,
     .tb_start           = aarch64_tr_tb_start,
     .insn_start         = aarch64_tr_insn_start,
     .translate_insn     = aarch64_tr_translate_insn,
     .tb_stop            = aarch64_tr_tb_stop,
-    .disas_log          = aarch64_tr_disas_log,
 };

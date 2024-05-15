@@ -2,15 +2,21 @@
 #define QEMU_DISAS_H
 
 /* Disassemble this for me please... (debugging). */
+#ifdef CONFIG_TCG
 void disas(FILE *out, const void *code, size_t size);
-void target_disas(FILE *out, CPUState *cpu, uint64_t code, size_t size);
+void target_disas(FILE *out, CPUState *cpu, const struct DisasContextBase *db);
 void target_disas_buf(FILE *out, CPUState *cpu, void *code, size_t size,
                       uint64_t pc, uint64_t max_insns);
+void target_disas_vaddr(FILE *out, CPUState *cpu, uint64_t vaddr, size_t size);
+#endif
 
 void monitor_disas(Monitor *mon, CPUState *cpu, uint64_t pc,
                    int nb_insn, bool is_physical);
 
-char *plugin_disas(CPUState *cpu, uint64_t addr, size_t size);
+#ifdef CONFIG_PLUGIN
+char *plugin_disas(CPUState *cpu, const DisasContextBase *db,
+                   uint64_t addr, size_t size);
+#endif
 
 /* Look up symbol for debugging purpose.  Returns "" if unknown. */
 const char *lookup_symbol(uint64_t orig_addr);
