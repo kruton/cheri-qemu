@@ -103,6 +103,7 @@ static bool trans_cadd(DisasContext *ctx, arg_cadd *a)
     assert(a->rs2 != 0 && "This encoding is reserved");
     return gen_cheri_cap_cap_int(ctx, a, &gen_helper_cincoffset);
 TRANSLATE_CAP_CAP_INT_HELPER(scaddr, csetaddr)
+TRANSLATE_CAP_CAP_INT_HELPER(scbnds, csetboundsexact)
 TRANSLATE_CAP_CAP_INT_HELPER(scbndsr, csetbounds)
 TRANSLATE_CAP_CAP_INT_HELPER(schi, csethigh)
 TRANSLATE_INT_CAP_CAP_HELPER(sceq, cseqx)
