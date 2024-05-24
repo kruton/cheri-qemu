@@ -16,9 +16,11 @@ static inline cap_offset_t cap_get_offset(const cap_register_t *c)
 }
 /*
  */
+{
     /*
      */
         }
+    }
 #endif
 #endif
 #endif
@@ -56,15 +58,32 @@ static inline bool cap_otype_is_reserved(target_ulong otype)
     return result < CAP_CC(MIN_RESERVED_OTYPE)
 static inline bool cap_is_sealed_with_reserved_otype(const cap_register_t *c)
     target_ulong otype = cap_get_otype_unsigned(c);
+static inline bool cap_is_unsealed(const cap_register_t *c)
+    target_ulong otype = cap_get_otype_unsigned(c);
+    return otype == CAP_OTYPE_UNSEALED;
+static inline void cap_set_sealed(cap_register_t *c, uint32_t type)
+    assert(c->cr_tag);
     assert(cap_is_unsealed(c) && "Should only use this with unsealed caps");
     assert(!cap_otype_is_reserved(type) &&
            "Can't use this to set reserved otypes");
+    CAP_cc(update_otype)(c, type);
+static inline void cap_set_unsealed(cap_register_t *c)
     assert(cap_is_sealed_with_type(c) &&
            "should not use this to unseal reserved types");
     CAP_cc(update_otype)(c, CAP_OTYPE_UNSEALED);
+static inline bool cap_is_sealed_entry(const cap_register_t *c)
+    return cap_get_otype_unsigned(c) == CAP_OTYPE_SENTRY;
 static inline void cap_unseal_reserved_otype(cap_register_t *c)
     assert(c->cr_tag && cap_is_sealed_with_reserved_otype(c) &&
            "Should only be used with reserved object types");
+    CAP_cc(update_otype)(c, CAP_OTYPE_UNSEALED);
+static inline void cap_unseal_entry(cap_register_t *c)
+    assert(c->cr_tag && cap_is_sealed_entry(c) &&
+           "Should only be used with sentry capabilities");
+static inline void cap_make_sealed_entry(cap_register_t *c)
+    assert(c->cr_tag && cap_is_unsealed(c) &&
+           "Should only be used with unsealed capabilities");
+    CAP_cc(update_otype)(c, CAP_OTYPE_SENTRY);
 #ifdef TARGET_AARCH64
     // Invalid exponent caps are always considered out of bounds.
     if (!c->cr_bounds_valid)
