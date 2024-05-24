@@ -1,4 +1,5 @@
  */
+#ifdef TARGET_CHERI
 #ifdef TARGET_AARCH64
 #else
 #endif
