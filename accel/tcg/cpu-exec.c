@@ -722,7 +722,17 @@ static inline bool cpu_handle_halt(CPUState *cpu)
             bql_unlock();
         }
 #endif /* TARGET_I386 */
-        if (!cpu_has_work(cpu)) {
+
+        const TCGCPUOps *tcg_ops = cpu->cc->tcg_ops;
+        bool leave_halt;
+
+        if (tcg_ops->cpu_exec_halt) {
+            leave_halt = tcg_ops->cpu_exec_halt(cpu);
+        } else {
+            leave_halt = cpu_has_work(cpu);
+        }
+
+        if (!leave_halt) {
             return true;
         }
 
