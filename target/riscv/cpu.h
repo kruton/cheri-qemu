@@ -687,6 +687,9 @@ char *riscv_isa_string(RISCVCPU *cpu);
 int riscv_cpu_max_xlen(RISCVCPUClass *mcc);
 bool riscv_cpu_option_set(const char *optname);
 
+#ifdef TARGET_CHERI
+static inline bool riscv_cpu_mode_cre(CPURISCVState *env);
+#endif
 #ifndef CONFIG_USER_ONLY
 void riscv_cpu_do_interrupt(CPUState *cpu);
 void riscv_isa_write_fdt(RISCVCPU *cpu, void *fdt, char *nodename);
@@ -1061,6 +1064,7 @@ void riscv_set_csr_ops(int csrno, const riscv_csr_operations *ops);
 
 void riscv_cpu_register_gdb_regs_for_features(CPUState *cs);
 
+/* Do the CRE bits allow cheri access in the current CPU mode? */
 static inline bool riscv_cpu_mode_cre(CPURISCVState *env)
 {
 #else
@@ -1068,10 +1072,24 @@ static inline bool riscv_cpu_mode_cre(CPURISCVState *env)
      */
         return true;
     }
+    if (env->mseccfg & MSECCFG_CRE) {
+        /* CRE bits allow cheri in M mode */
+        if (env->priv == PRV_M)
+            return true;
+        if (env->menvcfg & MENVCFG_CRE) {
+            /* CRE bits allow cheri in S mode (and in M mode) */
+            if (env->priv == PRV_S)
+            if (env->senvcfg & SENVCFG_CRE) {
+                /* CRE bits allow cheri in U mode (and in M, S modes) */
+                if (env->priv == PRV_U)
             }
         }
+    }
     /*
+     * For now, we do not support the hypervisor extension. It'll probably
+     * have another CRE bit for H mode.
      */
+    return false;
 #endif
 target_ulong riscv_new_csr_seed(target_ulong new_value,
                                 target_ulong write_mask);
