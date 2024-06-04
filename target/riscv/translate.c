@@ -29,7 +29,6 @@
 #include "exec/log_instr.h"
 #include "semihosting/semihost.h"
 
-#include "instmap.h"
 #include "internals.h"
 
 #define HELPER_H "helper.h"

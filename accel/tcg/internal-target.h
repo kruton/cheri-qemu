@@ -69,20 +69,13 @@ void tb_invalidate_phys_range_fast(ram_addr_t ram_addr,
 G_NORETURN void cpu_io_recompile(CPUState *cpu, uintptr_t retaddr);
 #endif /* CONFIG_SOFTMMU */
 
+
 TranslationBlock *tb_gen_code(CPUState *cpu, vaddr pc,
                               uint64_t cs_base, target_ulong pcc_base,
                               target_ulong pcc_top, uint32_t cheri_flags,
                               uint32_t flags, int cflags);
-void page_init(void);
-void tb_htable_init(void);
-void tb_reset_jump(TranslationBlock *tb, int n);
-TranslationBlock *tb_link_page(TranslationBlock *tb);
-bool tb_invalidate_phys_page_unwind(tb_page_addr_t addr, uintptr_t pc);
-void cpu_restore_state_from_tb(CPUState *cpu, TranslationBlock *tb,
-                               uintptr_t host_pc);
 
-bool tcg_exec_realizefn(CPUState *cpu, Error **errp);
-void tcg_exec_unrealizefn(CPUState *cpu);
+bool tb_invalidate_phys_page_unwind(tb_page_addr_t addr, uintptr_t pc);
 
 /* Return the current PC from CPU, which may be cached in TB. */
 static inline vaddr log_pc(CPUState *cpu, const TranslationBlock *tb)
@@ -93,8 +86,6 @@ static inline vaddr log_pc(CPUState *cpu, const TranslationBlock *tb)
         return tb->pc;
     }
 }
-
-extern bool one_insn_per_tb;
 
 /**
  * tcg_req_mo:
