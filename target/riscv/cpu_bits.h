@@ -790,7 +790,6 @@ typedef enum RISCVException {
     RISCV_EXCP_INST_PAGE_FAULT = 0xc, /* since: priv-1.10.0 */
     RISCV_EXCP_LOAD_PAGE_FAULT = 0xd, /* since: priv-1.10.0 */
     RISCV_EXCP_STORE_PAGE_FAULT = 0xf, /* since: priv-1.10.0 */
-    RISCV_EXCP_SEMIHOST = 0x10,
     RISCV_EXCP_INST_GUEST_PAGE_FAULT = 0x14,
     RISCV_EXCP_LOAD_GUEST_ACCESS_FAULT = 0x15,
     RISCV_EXCP_VIRT_INSTRUCTION_FAULT = 0x16,
@@ -802,6 +801,7 @@ typedef enum RISCVException {
 #endif
     RISCV_EXCP_CHERI = 0x1c,
 #endif
+    RISCV_EXCP_SEMIHOST = 0x3f,
 } RISCVException;
 
 #define RISCV_HICAUSE                            0x3f
