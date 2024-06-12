@@ -127,6 +127,7 @@ config HOBGOBLIN
     select XILINX_SPI
     select XILINX_AXI_GPIO
     select XILINX_ETHLITE
+    select XILINX_AXI
 config XIANGSHAN_KUNMINGHU
     bool
     default y
