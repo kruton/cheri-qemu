@@ -67,7 +67,9 @@ static void print_pte(Monitor *mon, int va_bits, target_ulong vaddr,
 
     monitor_printf(mon, TARGET_FMT_lx " " HWADDR_FMT_plx " " TARGET_FMT_lx
                    " %c%c%c%c%c%c%c\n",
+#if defined(TARGET_CHERI_RISCV_V9) && !defined(TARGET_RISCV32)
                    "%c%c%c%c%c"
+#elif defined(TARGET_CHERI_RISCV_STD_093) && !defined(TARGET_RISCV32)
                    "%c%c"
                    addr_canonical(va_bits, vaddr),
                    paddr, size,
@@ -81,9 +83,11 @@ static void print_pte(Monitor *mon, int va_bits, target_ulong vaddr,
                    attr & PTE_D ? 'd' : '-'
                    ,
                    attr & PTE_CRG ? 'G' : '-',
+#if defined(TARGET_CHERI_RISCV_V9)
                    attr & PTE_CRM ? 'M' : '-',
                    attr & PTE_CD  ? 'D' : '-',
                    attr & PTE_CR  ? 'R' : '-',
+#endif
                    attr & PTE_CW  ? 'W' : '-'
 }
 
@@ -115,7 +119,9 @@ static void walk_pte(Monitor *mon, AddressSpace *as,
         address_space_read(as, pte_addr, attrs, &pte, ptesize);
 
         paddr = (hwaddr)(pte >> PTE_PPN_SHIFT) << PGSHIFT;
+#if defined(TARGET_CHERI_RISCV_V9) && !defined(TARGET_RISCV32)
         attr = pte & (PTE_CR | PTE_CW | PTE_CD | PTE_CRM | PTE_CRG | 0xff);
+#elif defined(TARGET_CHERI_RISCV_STD_093) && !defined(TARGET_RISCV32)
         attr = pte & (PTE_CW | PTE_CRG | 0xff);
         attr = pte & 0xff;
 
