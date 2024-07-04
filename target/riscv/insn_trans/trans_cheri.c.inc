@@ -54,7 +54,9 @@ static inline bool gen_cheri_cap_cap_imm(int cd, int cs1, target_long imm,
     gen_helper_cjalr(tcg_env, tcg_constant_i32(cd), tcg_constant_i32(cs1),
                      tcg_constant_tl(imm), t0);
     ctx->base.is_jmp = DISAS_NORETURN;
+}
 static bool gen_cmv(DisasContext *ctx, arg_cc *a)
+{
     gen_move_cap_gp_gp(ctx, a->cd, a->cs1);
     gen_reg_modified_cap(ctx, a->cd);
     return true;
@@ -66,6 +68,7 @@ TRANSLATE_INT_CAP(cloadtags)
 TRANSLATE_CAP_CAP_INT(csethigh)
 TRANSLATE_INT_CAP_CAP(cseqx)
 static inline bool gen_cap_load(DisasContext *ctx, int32_t rd, int32_t cs,
+static inline bool trans_lc(DisasContext *ctx, arg_lc *a)
         gen_cheri_cap_cap_cap(ctx, &ccc, &gen_helper_amoswap_cap);
 static inline bool do_trans_modesw(DisasContext *ctx, bool to_capmode)
     if (ctx->capmode == to_capmode) {
@@ -135,7 +138,10 @@ static bool trans_scbndsi(DisasContext *ctx, arg_scbndsi *a)
     }
     tcg_debug_assert(a->imm >= 0);
     target_ulong imm = a->scale ? a->imm << 4 : a->imm;
+}
 #endif
+static inline bool trans_cram(DisasContext *ctx, arg_cram *a)
+{
     return gen_cheri_int_int(ctx, a, &gen_helper_cram);
 static bool trans_caddi(DisasContext *ctx, arg_caddi *a)
     return gen_cheri_cap_cap_imm(a->cd, a->cs1, a->imm, &gen_helper_cincoffset);
