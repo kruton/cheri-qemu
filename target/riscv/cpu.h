@@ -588,6 +588,7 @@ struct ArchCPU {
 
     GDBFeature dyn_csr_feature;
     GDBFeature dyn_vreg_feature;
+#elif defined(TARGET_CHERI_RISCV_V9)
 
     /* Configuration Settings */
     RISCVCPUConfig cfg;
