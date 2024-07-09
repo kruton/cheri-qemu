@@ -1,8 +1,12 @@
 #include "cheri_defs.h"
 #include "cheri_utils.h"
 }
+}
     cheri_debug_assert(!pcc->cr_tag || cap_is_unsealed(pcc) ||
                        pcc->_cr_cursor == pc_addr);
+#ifdef TARGET_CHERI_RISCV_STD
+        return true;
+#endif
     cheri_debug_assert(*cheri_flags == 0);
         *cheri_flags |= TB_FLAG_CHERI_CAPMODE;
     if (cheri_cap_perms_valid_for_exec(pcc))
