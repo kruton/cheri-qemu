@@ -1064,8 +1064,7 @@ static vaddr riscv_cpu_get_pc(CPUState *cs)
     return pc;
 }
 
-
-static bool riscv_cpu_has_work(CPUState *cs)
+bool riscv_cpu_has_work(CPUState *cs)
 {
 #ifndef CONFIG_USER_ONLY
     RISCVCPU *cpu = RISCV_CPU(cs);

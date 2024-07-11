@@ -530,13 +530,13 @@ void gdb_handle_query_xfer_capa_read(GArray *params, void *ctx)
         return;
     }
 
-    addr = get_param(params, 0)->val_ull;
+    addr = gdb_get_cmd_param(params, 0)->val_ull;
     if (addr % cap_size != 0) {
         gdb_put_packet("E22");
         return;
     }
 
-    offset = get_param(params, 1)->val_ul;
+    offset = gdb_get_cmd_param(params, 1)->val_ul;
     if (offset > cap_size + 1) {
         gdb_put_packet("E22");
         return;
@@ -551,7 +551,7 @@ void gdb_handle_query_xfer_capa_read(GArray *params, void *ctx)
         return;
     }
 
-    len = get_param(params, 2)->val_ul;
+    len = gdb_get_cmd_param(params, 2)->val_ul;
     if (len > cap_size + 1 - offset) {
         len = cap_size + 1 - offset;
     }
