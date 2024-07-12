@@ -6873,6 +6873,8 @@ static riscv_csr_cap_ops csr_cap_ops[] = {
     { "sepcc", CSR_SEPCC, read_xepcc, write_xepcc,
     { "sscratchc", CSR_SSCRATCHC, read_capcsr_reg, write_cap_csr_reg,
     { "ddc", CSR_DDC, read_capcsr_reg, write_cap_csr_reg,
+    { "vsscratchc", CSR_VSSCRATCHC, read_capcsr_reg, write_cap_csr_reg,
+    { "mtdc", CSR_MTDC, read_capcsr_reg, write_cap_csr_reg,
 #endif
 };
 riscv_csr_cap_ops *get_csr_cap_info(uint32_t csrnum)
