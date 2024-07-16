@@ -1033,6 +1033,14 @@ void cpu_reset_interrupt(CPUState *cpu, int mask);
 void cpu_exit(CPUState *cpu);
 
 /**
+ * cpu_pause:
+ * @cpu: The CPU to pause.
+ *
+ * Pauses CPU, i.e. puts CPU into stopped state.
+ */
+void cpu_pause(CPUState *cpu);
+
+/**
  * cpu_resume:
  * @cpu: The CPU to resume.
  *
