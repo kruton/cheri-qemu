@@ -89,6 +89,7 @@ typedef struct DisasContext {
 #ifdef TARGET_CHERI
     bool capmode;
     bool hybrid;
+    bool cre;
 #ifdef TARGET_CHERI_RISCV_V9
     bool cheri_v9_semantics;
 #endif
@@ -942,6 +943,7 @@ static bool pred_capmode(DisasContext *ctx)
     return false;
 #endif
 }
+static bool pred_rv64_capmode(DisasContext *ctx)
 {
 }
 static bool pred_xcheri(DisasContext *ctx)
@@ -1483,6 +1485,7 @@ static void riscv_tr_init_disas_context(DisasContextBase *dcbase, CPUState *cs)
     ctx->mstatus_vs = FIELD_EX32(tb_flags, TB_FLAGS, VS);
     ctx->capmode = tb_in_capmode(ctx->base.tb);
     ctx->cheri_v9_semantics = cpu->cfg.ext_cheri_v9;
+    ctx->cre = riscv_cpu_mode_cre(env);
     ctx->priv_ver = env->priv_ver;
     ctx->virt_enabled = FIELD_EX32(tb_flags, TB_FLAGS, VIRT_ENABLED);
     ctx->misa_ext = env->misa_ext;
