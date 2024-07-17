@@ -5655,6 +5655,7 @@ static void write_cap_csr_reg(CPURISCVState *env,
                 src = cap_scaddr(newval, src);
             } else if (changed) {
                 /* Only use scaddr if validate changed the address (e.g. epc) */
+            }
         /* Otherwise just fall through to direct write */
     } else {
             /* For XLEN writes we ignore the result as we always use scaddr */
@@ -5665,11 +5666,21 @@ static void write_cap_csr_reg(CPURISCVState *env,
     cheri_log_instr_changed_capreg(env, csr_cap_info->name, &src,
 static void write_xtvecc(CPURISCVState *env, riscv_csr_cap_ops *csr_cap_info,
                          cap_register_t src, target_ulong new_tvec, bool clen)
+{
     /* The low two bits encode the mode, but only 0 and 1 are valid. */
     if ((new_tvec & 3) > 1) {
         /* Invalid mode, keep the old one. */
         new_tvec &= ~(target_ulong)3;
         new_tvec |= cap_get_cursor(csr) & 3;
+        error_report("Attempting to set vector register with unrepresentable "
+                     "range (0x" TARGET_FMT_lx ") on %s: " PRINT_CAP_FMTSTR
+                     "\r\n",
+        qemu_log_instr_extra(
+            env,
+            "Attempting to set unrepresentable vector register with "
+            "unrepresentable range (0x" TARGET_FMT_lx
+            ") on %s: " PRINT_CAP_FMTSTR "\r\n",
+        cap_mark_unrepresentable(new_tvec, auth);
     write_cap_csr_reg(env, csr_cap_info, src, new_tvec, clen);
 static void write_xepcc(CPURISCVState *env, riscv_csr_cap_ops *csr_cap_info,
                         cap_register_t src, target_ulong new_xepcc, bool clen)
