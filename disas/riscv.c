@@ -869,6 +869,8 @@ typedef enum {
     rv_op_sc_c_int_ptr,
     /* Special case scbndsi 2 registers, 1 immediate, 1 flag */
     rv_op_scbndsi,
+    // CHERI compressed capmode load/stores
+    rv_op_c_lc,
     rv_op_fcvt_s_bf16 = 792,
     rv_op_vfncvtbf16_f_f_w = 793,
     rv_op_vfwcvtbf16_f_f_v = 794,
@@ -2193,6 +2195,9 @@ const rv_opcode_data rvi_opcode_data[] = {
     [rv_op_csw] = { "sw", rv_codec_s, rv_fmt_rs2_offset_cs1, NULL, 0, 0, 0 },
     [rv_op_csd] = { "sd", rv_codec_s, rv_fmt_rs2_offset_cs1, NULL, 0, 0, 0 },
     [rv_op_csd] = { "csd", rv_codec_s, rv_fmt_rs2_offset_cs1, NULL, 0, 0, 0 },
+    // compressed capmode loads
+    [rv_op_c_lc] = { "lc", rv_codec_cl_lq, rv_fmt_cd_offset_cs1, NULL, 0, 0,
+                     0 },
     // Three operand
     [rv_op_cspecialrw] = { "cspecialrw", rv_codec_r, rv_fmt_cd_scr_cs1, NULL, 0, 0, 0 },
     [rv_op_csetbounds] = { "csetbounds", rv_codec_r, rv_fmt_cd_cs1_rs2, NULL, 0, 0, 0 },
@@ -2760,7 +2765,8 @@ static rv_opcode decode_cheri_inst(rv_inst inst) {
             if (isa == rv128) {
                 op = rv_op_c_lq;
             } else {
-                op = rv_op_c_fld;
+                op = (flags & RISCV_DIS_FLAG_CAPMODE) ? rv_op_c_lc : rv_op_c_fld;
+                break;
             }
             break;
         case 2: op = rv_op_c_lw; break;
