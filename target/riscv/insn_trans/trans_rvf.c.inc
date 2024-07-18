@@ -43,14 +43,19 @@ static bool trans_flw(DisasContext *ctx, arg_flw *a)
 {
     TCGv_i64 dest;
     TCGv_cap_checked_ptr addr;
-    const MemOp mop = MO_TEUL;
+    MemOp memop = MO_TEUL;
 
     REQUIRE_FPU;
     REQUIRE_EXT(ctx, RVF);
+
+    if (ctx->cfg_ptr->ext_zama16b && (ctx->cur_insn_len != 2)) {
+        memop |= MO_ATOM_WITHIN16;
+    }
+
     decode_save_opc(ctx);
-    addr = get_capmode_dependent_load_addr(ctx, a->rs1, a->imm, mop);
+    addr = get_capmode_dependent_load_addr(ctx, a->rs1, a->imm, memop);
     dest = cpu_fpr[a->rd];
-    tcg_gen_qemu_ld_i64_with_checked_addr(dest, addr, ctx->mem_idx, mop);
+    tcg_gen_qemu_ld_i64_with_checked_addr(dest, addr, ctx->mem_idx, memop);
     gen_nanbox_s(dest, dest);
 
     mark_fs_dirty(ctx);
@@ -60,15 +65,19 @@ static bool trans_flw(DisasContext *ctx, arg_flw *a)
 static bool trans_fsw(DisasContext *ctx, arg_fsw *a)
 {
     TCGv_cap_checked_ptr addr;
-    const MemOp mop = MO_TEUL;
+    MemOp memop = MO_TEUL;
 
     REQUIRE_FPU;
     REQUIRE_EXT(ctx, RVF);
-    decode_save_opc(ctx);
-    addr = get_capmode_dependent_store_addr(ctx, a->rs1, a->imm, mop);
-    tcg_gen_qemu_st_i64_with_checked_addr(cpu_fpr[a->rs2], addr, ctx->mem_idx,
-                                          mop);
 
+    if (ctx->cfg_ptr->ext_zama16b && (ctx->cur_insn_len != 2)) {
+        memop |= MO_ATOM_WITHIN16;
+    }
+
+    decode_save_opc(ctx);
+    addr = get_capmode_dependent_store_addr(ctx, a->rs1, a->imm, memop);
+    tcg_gen_qemu_st_i64_with_checked_addr(cpu_fpr[a->rs2], addr, ctx->mem_idx,
+                                          memop);
     return true;
 }
 

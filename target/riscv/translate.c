@@ -1373,6 +1373,76 @@ static bool gen_unary_per_ol(DisasContext *ctx, arg_r2 *a, DisasExtend ext,
     return gen_unary(ctx, a, ext, f_tl);
 }
 
+#ifdef TARGET_CHERI
+static inline TCGv_cap_checked_ptr
+get_capmode_dependent_rmw_addr(DisasContext *ctx, int reg_num,
+                               target_long regoffs, MemOp mop);
+#endif
+
+static bool gen_amo(DisasContext *ctx, arg_atomic *a,
+#ifdef TARGET_CHERI
+                    void(*func)(TCGv, TCGv_cap_checked_ptr, TCGv, TCGArg, MemOp),
+#else
+                    void(*func)(TCGv, TCGv, TCGv, TCGArg, MemOp),
+#endif
+                    MemOp mop)
+{
+    TCGv dest = dest_gpr(ctx, a->rd);
+#ifdef TARGET_CHERI
+    TCGv_cap_checked_ptr src1;
+#else
+    TCGv src1;
+#endif
+    TCGv src2 = get_gpr(ctx, a->rs2, EXT_NONE);
+    MemOp size = mop & MO_SIZE;
+
+    if (ctx->cfg_ptr->ext_zama16b && size >= MO_32) {
+        mop |= MO_ATOM_WITHIN16;
+    } else {
+        mop |= MO_ALIGN;
+    }
+
+    decode_save_opc(ctx);
+#ifdef TARGET_CHERI
+    src1 = get_capmode_dependent_rmw_addr(ctx, a->rs1, 0, mop);
+#else
+    src1 = get_address(ctx, a->rs1, 0);
+#endif
+
+#ifdef TARGET_CHERI
+    if (mop & MO_ALIGN) {
+        cheri_debug_assert((mop & MO_ALIGN) && "RMW AMOs must be aligned");
+    }
+    if (memop_size(mop) > 1) {
+        TCGv_i32 tmop = tcg_constant_i32(mop);
+        TCGv_i32 tcode = tcg_constant_i32(RISCV_EXCP_STORE_AMO_ADDR_MIS);
+        gen_helper_check_alignment(tcg_env, (TCGv)src1, tmop, tcode);
+    }
+#endif
+
+    func(dest, src1, src2, ctx->mem_idx, mop);
+
+    gen_set_gpr(ctx, a->rd, dest);
+    return true;
+}
+
+static bool gen_cmpxchg(DisasContext *ctx, arg_atomic *a, MemOp mop)
+{
+    TCGv dest = get_gpr(ctx, a->rd, EXT_NONE);
+#ifdef TARGET_CHERI
+    TCGv_cap_checked_ptr src1 = get_capmode_dependent_rmw_addr(ctx, a->rs1, 0, mop);
+#else
+    TCGv src1 = get_address(ctx, a->rs1, 0);
+#endif
+    TCGv src2 = get_gpr(ctx, a->rs2, EXT_NONE);
+
+    decode_save_opc(ctx);
+    tcg_gen_atomic_cmpxchg_tl(dest, src1, dest, src2, ctx->mem_idx, mop);
+
+    gen_set_gpr(ctx, a->rd, dest);
+    return true;
+}
+
 static uint32_t opcode_at(DisasContextBase *dcbase, target_ulong pc)
 {
     DisasContext *ctx = container_of(dcbase, DisasContext, base);
@@ -1464,8 +1534,10 @@ get_capmode_dependent_rmw_addr(DisasContext *ctx, int reg_num,
 #include "insn_trans/trans_rvb.c.inc"
 #include "insn_trans/trans_rvzicond.c.inc"
 #include "insn_trans/trans_rvzacas.c.inc"
+#include "insn_trans/trans_rvzabha.c.inc"
 #include "insn_trans/trans_rvzawrs.c.inc"
 #include "insn_trans/trans_rvzicbo.c.inc"
+#include "insn_trans/trans_rvzimop.c.inc"
 #include "insn_trans/trans_rvzfa.c.inc"
 #include "insn_trans/trans_rvzfh.c.inc"
 #include "insn_trans/trans_rvk.c.inc"
@@ -1480,6 +1552,7 @@ get_capmode_dependent_rmw_addr(DisasContext *ctx, int reg_num,
 /* Include the auto-generated decoder for 16 bit insn */
 #include "decode-insn16.c.inc"
 #include "insn_trans/trans_rvzce.c.inc"
+#include "insn_trans/trans_rvzcmop.c.inc"
 
 /* Include decoders for factored-out extensions */
 #include "decode-XVentanaCondOps.c.inc"

@@ -42,15 +42,20 @@
 static bool trans_fld(DisasContext *ctx, arg_fld *a)
 {
     TCGv_cap_checked_ptr addr;
+    MemOp memop = MO_TEUQ;
 
     REQUIRE_FPU;
     REQUIRE_EXT(ctx, RVD);
+
+    if (ctx->cfg_ptr->ext_zama16b && (ctx->cur_insn_len != 2)) {
+        memop |= MO_ATOM_WITHIN16;
+    }
+
     decode_save_opc(ctx);
-    const MemOp mop = MO_TEUQ;
-    addr = get_capmode_dependent_load_addr(ctx, a->rs1, a->imm, mop);
+    addr = get_capmode_dependent_load_addr(ctx, a->rs1, a->imm, memop);
 
     tcg_gen_qemu_ld_i64_with_checked_addr(cpu_fpr[a->rd], addr, ctx->mem_idx,
-                                          mop);
+                                          memop);
 
     mark_fs_dirty(ctx);
     return true;
@@ -59,15 +64,20 @@ static bool trans_fld(DisasContext *ctx, arg_fld *a)
 static bool trans_fsd(DisasContext *ctx, arg_fsd *a)
 {
     TCGv_cap_checked_ptr addr;
+    MemOp memop = MO_TEUQ;
 
     REQUIRE_FPU;
     REQUIRE_EXT(ctx, RVD);
+
+    if (ctx->cfg_ptr->ext_zama16b && (ctx->cur_insn_len != 2)) {
+        memop |= MO_ATOM_WITHIN16;
+    }
+
     decode_save_opc(ctx);
-    const MemOp mop = MO_TEUQ;
-    addr = get_capmode_dependent_store_addr(ctx, a->rs1, a->imm, mop);
+    addr = get_capmode_dependent_store_addr(ctx, a->rs1, a->imm, memop);
 
     tcg_gen_qemu_st_i64_with_checked_addr(cpu_fpr[a->rs2], addr, ctx->mem_idx,
-                                          mop);
+                                          memop);
     return true;
 }
 
