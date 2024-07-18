@@ -873,6 +873,7 @@ typedef enum {
     rv_op_c_lc,
     rv_op_c_sc,
     rv_op_c_lcsp,
+    rv_op_c_scsp,
     rv_op_fcvt_s_bf16 = 792,
     rv_op_vfncvtbf16_f_f_w = 793,
     rv_op_vfwcvtbf16_f_f_v = 794,
@@ -2204,6 +2205,7 @@ const rv_opcode_data rvi_opcode_data[] = {
                      0 },
     [rv_op_c_lcsp] = { "lc", rv_codec_ci_lqsp, rv_fmt_cd_offset_cs1, NULL, 0, 0,
                        0 },
+    [rv_op_c_scsp] = { "sc", rv_codec_css_sqsp, rv_fmt_cs2_offset_cs1, NULL, 0,
     // Three operand
     [rv_op_cspecialrw] = { "cspecialrw", rv_codec_r, rv_fmt_cd_scr_cs1, NULL, 0, 0, 0 },
     [rv_op_csetbounds] = { "csetbounds", rv_codec_r, rv_fmt_cd_cs1_rs2, NULL, 0, 0, 0 },
@@ -2805,13 +2807,14 @@ static rv_opcode decode_cheri_inst(rv_inst inst) {
             if (isa == rv128) {
                 op = rv_op_c_sq;
             } else {
-                op = rv_op_c_fsd;
             }
             break;
         case 6: op = rv_op_c_sw; break;
         case 7:
             if (isa == rv32) {
                 op = rv_op_c_fsw;
+                op = (flags & RISCV_DIS_FLAG_CAPMODE) ? rv_op_c_sc_rv32
+                                                      : rv_op_c_fsw;
             } else {
                 op = rv_op_c_sd;
             }
