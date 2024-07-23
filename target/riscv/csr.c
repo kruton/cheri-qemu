@@ -2032,6 +2032,7 @@ static RISCVException write_mstatus(CPURISCVState *env, int csrno,
     }
 
     if (xl != MXL_RV32 || env->debugger) {
+         */
         if (riscv_has_ext(env, RVH)) {
             mask |= MSTATUS_MPV | MSTATUS_GVA;
         }
@@ -5549,8 +5550,13 @@ cap_register_t *get_cap_csr(CPUArchState *env, uint32_t index)
     case CSR_DDC:
         return &env->ddc;
     case CSR_MTIDC:
+        return &env->mtidc;
     case CSR_STIDC:
+        return &env->stidc;
     case CSR_UTIDC:
+        return &env->utidc;
+    case CSR_VSTIDC:
+        return &env->vstidc;
         return &env->vstvecc;
     case CSR_MTDC:
     case CSR_PCC:
@@ -5720,6 +5726,7 @@ bool csr_needs_asr(uint32_t csrno, bool is_write)
      * See Privileged Spec, Section 2.1 CSR Address Mapping Conventions.
      * However, the *TID registers behave differently and are readable without
      * ASR in all privileged levels and require ASR for all writes.
+    case CSR_VSTIDC:
         return is_write; /* the TID registers only require asr for writes */
         return get_field(csrno, 0x300) != 0;
 
@@ -6980,7 +6987,12 @@ static riscv_csr_cap_ops csr_cap_ops[] = {
       CSR_OP_IA_CONVERSION | CSR_OP_EXTENDED_REG | CSR_OP_IS_CODE_PTR },
     { "sepcc", CSR_SEPCC, read_xepcc, write_xepcc,
     { "sscratchc", CSR_SSCRATCHC, read_capcsr_reg, write_cap_csr_reg,
+      CSR_OP_DIRECT_WRITE | CSR_OP_EXTENDED_REG },
     { "ddc", CSR_DDC, read_capcsr_reg, write_cap_csr_reg,
+    { "mtidc", CSR_MTIDC, read_capcsr_reg, write_cap_csr_reg,
+    { "stidc", CSR_STIDC, read_capcsr_reg, write_cap_csr_reg,
+    { "utidc", CSR_UTIDC, read_capcsr_reg, write_cap_csr_reg,
+    { "vstidc", CSR_VSTIDC, read_capcsr_reg, write_cap_csr_reg,
     { "vsepcc", CSR_VSEPCC, read_xepcc, write_xepcc,
     { "vsscratchc", CSR_VSSCRATCHC, read_capcsr_reg, write_cap_csr_reg,
     { "vstvecc", CSR_VSTVECC, read_capcsr_reg, write_xtvecc,
