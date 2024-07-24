@@ -874,6 +874,10 @@ typedef enum {
     rv_op_c_sc,
     rv_op_c_lcsp,
     rv_op_c_scsp,
+    rv_op_c_lc_rv32,
+    rv_op_c_sc_rv32,
+    rv_op_c_lcsp_rv32,
+    rv_op_c_scsp_rv32,
     rv_op_fcvt_s_bf16 = 792,
     rv_op_vfncvtbf16_f_f_w = 793,
     rv_op_vfwcvtbf16_f_f_v = 794,
@@ -2206,6 +2210,13 @@ const rv_opcode_data rvi_opcode_data[] = {
     [rv_op_c_lcsp] = { "lc", rv_codec_ci_lqsp, rv_fmt_cd_offset_cs1, NULL, 0, 0,
                        0 },
     [rv_op_c_scsp] = { "sc", rv_codec_css_sqsp, rv_fmt_cs2_offset_cs1, NULL, 0,
+                       0, 0 },
+    [rv_op_c_lc_rv32] = { "lc", rv_codec_cl_ld, rv_fmt_cd_offset_cs1, NULL, 0,
+    [rv_op_c_sc_rv32] = { "sc", rv_codec_cs_sd, rv_fmt_cs2_offset_cs1, NULL, 0,
+    [rv_op_c_lcsp_rv32] = { "lc", rv_codec_ci_ldsp, rv_fmt_cd_offset_cs1, NULL,
+                            0, 0, 0 },
+    [rv_op_c_scsp_rv32] = { "sc", rv_codec_css_sdsp, rv_fmt_cs2_offset_cs1,
+                            NULL, 0, 0, 0 },
     // Three operand
     [rv_op_cspecialrw] = { "cspecialrw", rv_codec_r, rv_fmt_cd_scr_cs1, NULL, 0, 0, 0 },
     [rv_op_csetbounds] = { "csetbounds", rv_codec_r, rv_fmt_cd_cs1_rs2, NULL, 0, 0, 0 },
@@ -2780,7 +2791,8 @@ static rv_opcode decode_cheri_inst(rv_inst inst) {
         case 2: op = rv_op_c_lw; break;
         case 3:
             if (isa == rv32) {
-                op = rv_op_c_flw;
+                op = (flags & RISCV_DIS_FLAG_CAPMODE) ? rv_op_c_lc_rv32
+                                                      : rv_op_c_flw;
             } else {
                 op = rv_op_c_ld;
             }
@@ -2807,12 +2819,12 @@ static rv_opcode decode_cheri_inst(rv_inst inst) {
             if (isa == rv128) {
                 op = rv_op_c_sq;
             } else {
+                op =  (flags & RISCV_DIS_FLAG_CAPMODE) ? rv_op_c_sc : rv_op_c_fsd;
             }
             break;
         case 6: op = rv_op_c_sw; break;
         case 7:
             if (isa == rv32) {
-                op = rv_op_c_fsw;
                 op = (flags & RISCV_DIS_FLAG_CAPMODE) ? rv_op_c_sc_rv32
                                                       : rv_op_c_fsw;
             } else {
@@ -2908,7 +2920,8 @@ static rv_opcode decode_cheri_inst(rv_inst inst) {
         case 2: op = rv_op_c_lwsp; break;
         case 3:
             if (isa == rv32) {
-                op = rv_op_c_flwsp;
+                op = (flags & RISCV_DIS_FLAG_CAPMODE) ? rv_op_c_lcsp_rv32
+                                                      : rv_op_c_flwsp;
             } else {
                 op = rv_op_c_ldsp;
             }
@@ -2991,6 +3004,7 @@ static rv_opcode decode_cheri_inst(rv_inst inst) {
         case 7:
             if (isa == rv32) {
                 op = (flags & RISCV_DIS_FLAG_CAPMODE) ? rv_op_c_scsp_rv32
+                                                      : rv_op_c_fswsp;
             } else {
                 op = rv_op_c_sdsp;
             }
