@@ -5488,23 +5488,44 @@ static RISCVException write_mnstatus(CPURISCVState *env, int csrno,
 }
 static RISCVException stid(CPURISCVState *env, int csrno)
 {
+{
 #endif
+    case CSR_MEPCC:
+    case CSR_MTIDC:
+    case CSR_STIDC:
+    case CSR_UTIDC:
+    case CSR_MTDC:
+    case CSR_PCC:
 /*
  */
+        break;
     }
 
+/*
+*/
+    return true;
 #endif
+    return false;
     ccsr = set_field(ccsr, XCCSR_ENABLE, cpu->cfg.ext_cheri);
     /* Read-only feature bits. */
     ccsr = set_field(ccsr, XCCSR_TAG_CLEARING, CHERI_TAG_CLEAR_ON_INVALID(env));
 #if !defined(TARGET_RISCV32)
     if (csrno == CSR_SCCSR)
         ccsr |= env->sccsr;
+    case CSR_SCCSR: {
          * Our TLB effectively caches whether the PTE and CCSR bits match at the
          * time the PTE is copied up into the TLB.  While PTE updates use
          * SFENCE.VMA to ensure visibility in the TLB, the CCSR writes must
          * implicitly cause TLB invalidation.
         tlb_flush(env_cpu(env));
+bool csr_needs_asr(uint32_t csrno, bool is_write)
+     * Based on CSR number and write mask determineif the CSR is privileged
+     * based on bits 8-9 being set.
+     * See Privileged Spec, Section 2.1 CSR Address Mapping Conventions.
+     * However, the *TID registers behave differently and are readable without
+     * ASR in all privileged levels and require ASR for all writes.
+        return is_write; /* the TID registers only require asr for writes */
+        return get_field(csrno, 0x300) != 0;
 
 /* Crypto Extension */
 target_ulong riscv_new_csr_seed(target_ulong new_value,
