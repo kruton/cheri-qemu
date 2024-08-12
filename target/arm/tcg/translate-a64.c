@@ -1838,7 +1838,14 @@ static void set_btype_for_br(DisasContext *s, int rn)
 {
     if (dc_isar_feature(aa64_bti, s)) {
         /* BR to {x16,x17} or !guard -> 1, else 3.  */
-        set_btype(s, rn == 16 || rn == 17 || !s->guarded_page ? 1 : 3);
+        if (rn == 16 || rn == 17) {
+            set_btype(s, 1);
+        } else {
+            TCGv_i64 pc = tcg_temp_new_i64();
+            gen_pc_plus_diff(s, pc, 0);
+            gen_helper_guarded_page_br(tcg_env, pc);
+            s->btype = -1;
+        }
     }
 }
 
@@ -1852,8 +1859,8 @@ static void set_btype_for_blr(DisasContext *s)
 
 static bool trans_BR(DisasContext *s, arg_r *a)
 {
-    gen_a64_set_pc_pccbo(s, cpu_reg(s, a->rn));
     set_btype_for_br(s, a->rn);
+    gen_a64_set_pc_pccbo(s, cpu_reg(s, a->rn));
     s->base.is_jmp = DISAS_JUMP;
     return true;
 }
@@ -1912,8 +1919,8 @@ static bool trans_BRAZ(DisasContext *s, arg_braz *a)
     }
 
     dst = auth_branch_target(s, cpu_reg(s, a->rn), tcg_constant_i64(0), !a->m);
-    gen_a64_set_pc_pccbo(s, dst);
     set_btype_for_br(s, a->rn);
+    gen_a64_set_pc_pccbo(s, dst);
     s->base.is_jmp = DISAS_JUMP;
     return true;
 }
@@ -12500,44 +12507,7 @@ static bool trans_FAIL(DisasContext *s, arg_OK *a)
 }
 
 /**
- * is_guarded_page:
- * @env: The cpu environment
- * @s: The DisasContext
- *
- * Return true if the page is guarded.
- */
-static bool is_guarded_page(CPUARMState *env, DisasContext *s)
-{
-    uint64_t addr = s->base.pc_first;
-#ifdef CONFIG_USER_ONLY
-    return page_get_flags(addr) & PAGE_BTI;
-#else
-    CPUTLBEntryFull *full;
-    void *host;
-    int mmu_idx = arm_to_core_mmu_idx(s->mmu_idx);
-    int flags;
 
-    /*
-     * We test this immediately after reading an insn, which means
-     * that the TLB entry must be present and valid, and thus this
-     * access will never raise an exception.
-     *
-     * The only exception would be for executing from flash or device memory, which
-     * does not retain the TLB entry.
-     *
-     * FIXME: Assume false for those, for now.  We could use
-     * arm_cpu_get_phys_page_attrs_debug to re-read the page
-     * table entry even for that case.
-     */
-    flags = probe_access_full(env, addr, 0, MMU_INST_FETCH, mmu_idx,
-                              false, &host, &full, 0);
-    assert(!(flags & TLB_INVALID_MASK));
-
-    return full->extra.arm.guarded;
-#endif
-}
-
-/**
  * btype_destination_ok:
  * @insn: The instruction at the branch destination
  * @bt: SCTLR_ELx.BT
@@ -12797,19 +12767,6 @@ static void aarch64_tr_translate_insn(DisasContextBase *dcbase, CPUState *cpu)
 
     if (dc_isar_feature(aa64_bti, s)) {
         if (s->base.num_insns == 1) {
-            /*
-             * At the first insn of the TB, compute s->guarded_page.
-             * We delayed computing this until successfully reading
-             * the first insn of the TB, above.  This (mostly) ensures
-             * that the softmmu tlb entry has been populated, and the
-             * page table GP bit is available.
-             *
-             * Note that we need to compute this even if btype == 0,
-             * because this value is used for BR instructions later
-             * where ENV is not available.
-             */
-            s->guarded_page = is_guarded_page(env, s);
-
             /* First insn can have btype set to non-zero.  */
             tcg_debug_assert(s->btype >= 0);
 
@@ -12818,12 +12775,13 @@ static void aarch64_tr_translate_insn(DisasContextBase *dcbase, CPUState *cpu)
              * priority -- below debugging exceptions but above most
              * everything else.  This allows us to handle this now
              * instead of waiting until the insn is otherwise decoded.
+             *
+             * We can check all but the guarded page check here;
+             * defer the latter to a helper.
              */
             if (s->btype != 0
-                && s->guarded_page
                 && !btype_destination_ok(insn, s->bt, s->btype)) {
-                gen_exception_insn(s, 0, EXCP_UDEF, syn_btitrap(s->btype));
-                return;
+                gen_helper_guarded_page_check(tcg_env);
             }
         } else {
             /* Not the first insn: btype must be 0.  */
