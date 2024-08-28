@@ -1356,6 +1356,12 @@ get_capmode_dependent_rmw_addr(DisasContext *ctx, int reg_num,
 /* Include decoders for factored-out extensions */
 #include "decode-XVentanaCondOps.c.inc"
 
+static bool trans_c_hint(DisasContext *ctx, arg_c_hint *a)
+{
+}
+#ifndef TARGET_CHERI
+/* Stubs needed for mode-dependent compressed instructions */
+#endif
 /* The specification allows for longer insns, but not supported by qemu. */
 #define MAX_INSN_LEN  4
 
