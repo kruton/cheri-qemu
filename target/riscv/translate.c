@@ -1360,7 +1360,19 @@ static bool trans_c_hint(DisasContext *ctx, arg_c_hint *a)
 {
 }
 #ifndef TARGET_CHERI
+#define TRANS_STUB(instr)                                                      \
+    static bool trans_##instr(DisasContext *ctx, arg_##instr *a)               \
+    {                                                                          \
+        g_assert_not_reached();                                                \
+        return false;                                                          \
+    }
 /* Stubs needed for mode-dependent compressed instructions */
+TRANS_STUB(lc)
+TRANS_STUB(sc)
+TRANS_STUB(caddi)
+TRANS_STUB(lr_c)
+TRANS_STUB(sc_c)
+TRANS_STUB(amoswap_c)
 #endif
 /* The specification allows for longer insns, but not supported by qemu. */
 #define MAX_INSN_LEN  4
