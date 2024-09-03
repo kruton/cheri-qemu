@@ -63,6 +63,7 @@ enum SCRAccessMode {
 static inline int scr_min_priv(enum SCRAccessMode mode)
 {
     return ((int)mode >> 1) - 1;
+    }
 }
 static inline int scr_needs_asr(enum SCRAccessMode mode)
 {
@@ -113,32 +114,11 @@ struct SCRInfo {
     [CheriSCR_BSEPCC] = {.r = true, .w = true, .access = H_ASR, .name= "BSTCC"},
 };
 
-static inline cap_register_t *get_scr(CPUArchState *env, uint32_t index)
 {
-    switch (index) {
-    case CheriSCR_PCC: return &env->PCC;
-    case CheriSCR_DDC: return &env->DDC;
 
-    case CheriSCR_UTCC: return &env->UTCC;
-    case CheriSCR_UTDC: return &env->UTDC;
-    case CheriSCR_UScratchC: return &env->UScratchC;
-    case CheriSCR_UEPCC: return &env->UEPCC;
 
-    case CheriSCR_STCC: return &env->STCC;
-    case CheriSCR_STDC: return &env->STDC;
-    case CheriSCR_SScratchC: return &env->SScratchC;
-    case CheriSCR_SEPCC: return &env->SEPCC;
 
-    case CheriSCR_MTCC: return &env->MTCC;
-    case CheriSCR_MTDC: return &env->MTDC;
-    case CheriSCR_MScratchC: return &env->MScratchC;
-    case CheriSCR_MEPCC: return &env->MEPCC;
 
-    case CheriSCR_BSTCC: return &env->VSTCC;
-    case CheriSCR_BSTDC: return &env->VSTDC;
-    case CheriSCR_BSScratchC: return &env->VSScratchC;
-    case CheriSCR_BSEPCC: return &env->VSEPCC;
-    default: assert(false && "Should have raised an invalid inst trap!");
     }
 }
 
@@ -146,10 +126,10 @@ static inline cap_register_t *get_scr(CPUArchState *env, uint32_t index)
 void riscv_log_instr_scr_changed(CPURISCVState *env, int scrno)
 {
     if (qemu_log_instr_enabled(env)) {
-        qemu_log_instr_cap(env, scr_info[scrno].name, get_scr(env, scrno));
     }
 }
 #endif
+{
 
 void HELPER(cspecialrw)(CPUArchState *env, uint32_t cd, uint32_t cs,
                         uint32_t index)
