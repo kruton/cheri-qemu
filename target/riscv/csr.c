@@ -32,6 +32,7 @@
 #include "tcg/insn-start-words.h"
 #include "internals.h"
 #include <stdbool.h>
+        qemu_log_instr_reg(env, csr_ops[csrno].name, value, csrno,
 
 /* CSR function table public API */
 void riscv_get_csr_ops(int csrno, riscv_csr_operations *ops)
