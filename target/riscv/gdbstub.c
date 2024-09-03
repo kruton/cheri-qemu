@@ -365,6 +365,31 @@ static GDBFeature *ricsv_gen_dynamic_vector_feature(CPUState *cs, int base_reg)
     return &cpu->dyn_vreg_feature;
 }
 
+#if defined(TARGET_CHERI_RISCV_V9)
+static struct SCR {
+    const char *name;
+    bool code;
+} scrs[] = {
+    { .csrno = CSR_STVECC, .name = "stcc", .code = true },
+    { .csrno = CSR_STDC, .name = "stdc" },
+    { .csrno = CSR_SEPCC, .name = "sepcc", .code = true },
+    { .csrno = CSR_MTVECC, .name = "mtcc", .code = true },
+    { .csrno = CSR_MTDC, .name = "mtdc" },
+    { .csrno = CSR_MEPCC, .name = "mepcc", .code = true },
+};
+static int riscv_gdb_get_scr(CPUState *cs, GByteArray *buf, int n)
+{
+    RISCVCPU *cpu = RISCV_CPU(cs);
+    CPURISCVState *env = &cpu->env;
+    if (n < ARRAY_SIZE(scrs)) {
+        cap_register_t *scr = get_cap_csr(env, scrs[n].csrno);
+        return gdb_get_capreg(buf, scr);
+    }
+    return 0;
+static GDBFeature *riscv_gen_dynamic_scr_feature(CPUState *cs, int base_reg)
+    int i;
+    for (i = 0; i < ARRAY_SIZE(scrs); i++) {
+#endif
         return gdb_get_capreg(buf, value);
 void riscv_cpu_register_gdb_regs_for_features(CPUState *cs)
 {
@@ -410,10 +435,13 @@ void riscv_cpu_register_gdb_regs_for_features(CPUState *cs)
 #else
 #error INVALID TARGET
 #endif
+#endif
 
     if (cpu->cfg.ext_zicsr) {
         gdb_register_coprocessor(cs, riscv_gdb_get_csr, riscv_gdb_set_csr,
                                  riscv_gen_dynamic_csr_feature(cs, cs->gdb_num_regs),
                                  0);
+#if defined(TARGET_CHERI_RISCV_V9)
+            riscv_gen_dynamic_scr_feature(cs, cs->gdb_num_regs), 0);
     }
 }
