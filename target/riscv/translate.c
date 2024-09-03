@@ -1624,6 +1624,8 @@ void riscv_translate_init(void)
     }
 
 #ifdef TARGET_CHERI
+                                offsetof(CPURISCVState, pcc._cr_cursor), "pc");
+        tcg_env, offsetof(CPURISCVState, ddc._cr_cursor), "ddc_interpose");
     cpu_pc = tcg_global_mem_new(tcg_env, offsetof(CPURISCVState, pc), "pc");
     cpu_vl = tcg_global_mem_new(tcg_env, offsetof(CPURISCVState, vl), "vl");
     cpu_vstart = tcg_global_mem_new(tcg_env, offsetof(CPURISCVState, vstart),
