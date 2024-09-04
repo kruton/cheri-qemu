@@ -1084,6 +1084,8 @@ static inline bool riscv_cpu_mode_cre(CPURISCVState *env)
 {
 #else
     /*
+     * CRE bits are defined only if Zcherihybrid is supported.
+     * For Zcheripurecap, cheri register access is always allowed.
      */
         return true;
     }
@@ -1094,6 +1096,7 @@ static inline bool riscv_cpu_mode_cre(CPURISCVState *env)
         if (env->menvcfg & MENVCFG_CRE) {
             /* CRE bits allow cheri in S mode (and in M mode) */
             if (env->priv == PRV_S)
+                return true;
             if (env->senvcfg & SENVCFG_CRE) {
                 /* CRE bits allow cheri in U mode (and in M, S modes) */
                 if (env->priv == PRV_U)
@@ -1106,6 +1109,7 @@ static inline bool riscv_cpu_mode_cre(CPURISCVState *env)
      */
     return false;
 #endif
+}
 target_ulong riscv_new_csr_seed(target_ulong new_value,
                                 target_ulong write_mask);
 
