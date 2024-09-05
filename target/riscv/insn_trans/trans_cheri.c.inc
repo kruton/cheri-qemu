@@ -14,6 +14,8 @@ static inline bool gen_cheri_int_cap(DisasContext *ctx, arg_rc *a,
     return true;
 }
 #define TRANSLATE_INT_CAP_HELPER(name, helper)                                 \
+    DO_TRANSLATE_HELPER(name, gen_cheri_int_cap, helper, a)
+static inline bool gen_cheri_cap_cap(DisasContext *ctx G_GNUC_UNUSED, arg_cc *a,
                                      cheri_cap_cap_helper *gen_func)
 {
 }
@@ -24,6 +26,7 @@ static inline QEMU_ALWAYS_INLINE bool
 gen_cheri_cap_int_plus_imm(DisasContext *ctx, int cd, int rs, target_long imm,
                            cheri_cap_int_helper *gen_func)
     tcg_gen_addi_tl(gpr_value, gpr_value, imm);
+                                         cheri_cap_cap_cap_helper *gen_func)
     DO_TRANSLATE_HELPER(name, gen_cheri_cap_cap_cap, helper, a)
 static inline bool gen_cheri_cap_cap_int(DisasContext *ctx, arg_ccr *a,
                                          cheri_cap_cap_int_helper *gen_func)
@@ -69,6 +72,7 @@ TRANSLATE_CAP_CAP_INT(csethigh)
 TRANSLATE_INT_CAP_CAP(cseqx)
 static inline bool gen_cap_load(DisasContext *ctx, int32_t rd, int32_t cs,
 static inline bool trans_lc(DisasContext *ctx, arg_lc *a)
+        gen_cheri_cap_cap(ctx, &cc, helper);
         gen_cheri_cap_cap_cap(ctx, &ccc, &gen_helper_amoswap_cap);
 static inline bool do_trans_modesw(DisasContext *ctx, bool to_capmode)
     if (ctx->capmode == to_capmode) {
@@ -122,6 +126,7 @@ static bool trans_cadd(DisasContext *ctx, arg_cadd *a)
 {
     assert(a->rs2 != 0 && "This encoding is reserved");
     return gen_cheri_cap_cap_int(ctx, a, &gen_helper_cincoffset);
+}
 TRANSLATE_CAP_CAP_INT_HELPER(acperm, candperm)
 TRANSLATE_CAP_CAP_INT_HELPER(scaddr, csetaddr)
 TRANSLATE_CAP_CAP_INT_HELPER(scbnds, csetboundsexact)
