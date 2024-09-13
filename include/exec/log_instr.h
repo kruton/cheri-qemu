@@ -1,4 +1,8 @@
  */
+#define LRI_CAP_REG    1
+#define LRI_HOLDS_CAP  2
+#define LRI_CSR_ACCESS 4
+#define LRI_GPR_ACCESS 8
 /*
 /* Should only be called in a place it cannot be skipped by a branch! */
 void qemu_log_gen_printf_flush(struct DisasContextBase *base, bool flush_early,
