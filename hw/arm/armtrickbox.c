@@ -290,7 +290,7 @@ static void arm_trickbox_class_init(ObjectClass *oc, void *data)
     DeviceClass *dc = DEVICE_CLASS(oc);
 
     dc->realize = arm_trickbox_realize;
-    dc->reset = arm_trickbox_reset;
+    device_class_set_legacy_reset(dc, arm_trickbox_reset);
     device_class_set_props(dc, arm_trickbox_properties);
     set_bit(DEVICE_CATEGORY_INPUT, dc->categories);
 }

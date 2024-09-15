@@ -262,7 +262,7 @@ static void codasip_timer_class_init(ObjectClass *klass, void *data)
      * deprecated, modern code should use the ResettableClass interface to
      * implement a multi-phase reset.
      */
-    dc->reset = codasip_timer_reset;
+    device_class_set_legacy_reset(dc, codasip_timer_reset);
     /* called after instance_init() */
     dc->realize = codasip_timer_realize;
     device_class_set_props(dc, codasip_timer_properties);
