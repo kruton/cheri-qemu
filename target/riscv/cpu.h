@@ -424,6 +424,7 @@ struct CPUArchState {
     target_ulong stvec_hs;
     target_ulong sscratch_hs;
     target_ulong sepc_hs;
+#endif
     target_ulong scause_hs;
     target_ulong stval_hs;
     target_ulong satp_hs;
