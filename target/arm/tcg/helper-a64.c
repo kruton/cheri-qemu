@@ -55,7 +55,7 @@ static inline void set_xreg_addr_cheri(CPUARMState *env, int reg, uint64_t addr)
 #include "qemu/int128.h"
 #include "qemu/atomic128.h"
 #include "fpu/softfloat.h"
-#include <zlib.h> /* For crc32 */
+#include <zlib.h> /* for crc32 */
 #include "exec/log_instr.h"
 
 #ifdef TARGET_CHERI
