@@ -269,7 +269,7 @@ static int hobgoblin_load_images(HobgoblinState *s, const memmapEntry_t *dram)
         start_addr = memmap[HOBGOBLIN_BOOT_ROM].base;
         firmware_end_addr = riscv_find_and_load_firmware(machine,
                                                          "fsbl_rom.xexe",
-                                                         start_addr,
+                                                         &start_addr,
                                                          NULL);
     } else {
         target_ulong kernel_start_addr = 0;
@@ -289,7 +289,7 @@ static int hobgoblin_load_images(HobgoblinState *s, const memmapEntry_t *dram)
         /* Load SBI into RAM */
         firmware_end_addr = riscv_find_and_load_firmware(machine,
                                                          RISCV64_BIOS_BIN,
-                                                         start_addr,
+                                                         &start_addr,
                                                          NULL);
 
         /* Load Kernel into RAM */

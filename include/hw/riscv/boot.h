@@ -46,13 +46,13 @@ target_ulong riscv_calc_kernel_start_addr(RISCVHartArrayState *harts,
 G_GNUC_WARN_UNUSED_RESULT
 target_ulong riscv_find_and_load_firmware(MachineState *machine,
                                           const char *default_machine_firmware,
-                                          hwaddr firmware_load_addr,
+                                          hwaddr *firmware_load_addr,
                                           symbol_fn_t sym_cb);
 const char *riscv_default_firmware_name(RISCVHartArrayState *harts);
 char *riscv_find_firmware(const char *firmware_filename,
                           const char *default_machine_firmware);
 target_ulong riscv_load_firmware(const char *firmware_filename,
-                                 hwaddr firmware_load_addr,
+                                 hwaddr *firmware_load_addr,
                                  symbol_fn_t sym_cb);
 target_ulong riscv_load_kernel(MachineState *machine,
                                RISCVHartArrayState *harts,
