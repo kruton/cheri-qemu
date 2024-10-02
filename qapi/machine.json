@@ -39,7 +39,7 @@
              'ppc64', 'riscv32', 'riscv64', 'riscv32xcheri', 'riscv64xcheri',
              'riscv32cheristd', 'riscv64cheristd',
              'rx', 's390x', 'sh4',
-             'sh4eb', 'sparc', 'sparc64', 'tricore',
+             'sparc', 'sparc64', 'tricore',
              'x86_64', 'xtensa', 'xtensaeb' ] }
 
 ##
