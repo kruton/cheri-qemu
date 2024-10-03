@@ -1,5 +1,8 @@
  */
 #include "system/memory.h"
+/* Invalidate intended to be called outside CPU*/
+void cheri_tag_phys_invalidate_external(RAMBlock *ram,
+                               ram_addr_t ram_offset, ram_addr_t len);
 void cheri_tag_init(MemoryRegion* mr, uint64_t memory_size);
 /**
 void cheri_tag_invalidate(CPUArchState *env, target_ulong vaddr, int32_t size,
