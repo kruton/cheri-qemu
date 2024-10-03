@@ -124,6 +124,7 @@ config HOBGOBLIN
     bool
     select RISCV_ACLINT
     select SIFIVE_PLIC
+    select CODASIP_TRNG
     select XILINX_SPI
     select XILINX_AXI_GPIO
     select XILINX_ETHLITE
