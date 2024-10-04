@@ -44,6 +44,7 @@
 #include "hw/riscv/hobgoblin.h"
 #include "hw/riscv/boot.h"
 #include "hw/char/serial.h"
+#include "hw/char/serial-mm.h"
 #include "hw/char/xilinx_uartlite.h"
 #include "hw/misc/codasip_trng.h"
 #include "hw/pci-host/xilinx-pcie.h"
