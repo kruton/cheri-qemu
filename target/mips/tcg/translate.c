@@ -11979,7 +11979,7 @@ static void gen_branch(DisasContext *ctx, int insn_bytes)
             tcg_gen_movi_tl(_pc_is_current, 1); // PC has been updated.
 #endif
 
-            if (ctx->base.singlestep_enabled) {
+            if (tb_cflags(ctx->base.tb) & CF_SINGLE_STEP) {
                 save_cpu_state(ctx, 0);
                 gen_helper_raise_exception(tcg_env,
                                            tcg_constant_i32(EXCP_DEBUG));
@@ -16324,7 +16324,8 @@ static void mips_tr_init_disas_context(DisasContextBase *dcbase, CPUState *cs)
      * hardware does (e.g. if a delay slot instruction faults, the
      * reported PC is the PC of the branch).
      */
-    if (ctx->base.singlestep_enabled && (ctx->hflags & MIPS_HFLAG_BMASK)) {
+    if ((tb_cflags(ctx->base.tb) & CF_SINGLE_STEP) &&
+        (ctx->hflags & MIPS_HFLAG_BMASK)) {
         ctx->base.max_insns = 2;
     }
 
@@ -16494,7 +16495,7 @@ static void mips_tr_translate_insn(DisasContextBase *dcbase, CPUState *cs)
      * together with its delay slot.
      */
     if (ctx->base.pc_next - ctx->page_start >= TARGET_PAGE_SIZE
-        && !ctx->base.singlestep_enabled) {
+        && !(tb_cflags(ctx->base.tb) & CF_SINGLE_STEP)) {
         ctx->base.is_jmp = DISAS_TOO_MANY;
     }
 }

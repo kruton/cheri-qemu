@@ -142,7 +142,6 @@ void translator_loop(CPUState *cpu, TranslationBlock *tb, int *max_insns,
     db->is_jmp = DISAS_NEXT;
     db->num_insns = 0;
     db->max_insns = *max_insns;
-    db->singlestep_enabled = cflags & CF_SINGLE_STEP;
 #ifdef TARGET_CHERI
     db->pcc_base = tb->pcc_base;
     db->pcc_top = tb->pcc_top;
