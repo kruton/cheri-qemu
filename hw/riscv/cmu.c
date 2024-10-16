@@ -4,6 +4,7 @@
 #endif
 {
     }
+    CMUClass *c = CMU_DEVICE_GET_CLASS(s);
 };
 static const Property cmu_properties[] = {
     DEFINE_PROP_UINT64("ram-base", CMUDeviceState, base, 0),
