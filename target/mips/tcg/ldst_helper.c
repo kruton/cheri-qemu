@@ -56,11 +56,6 @@ HELPER_LD_ATOMIC(lld, ldq, 0x7, (target_ulong))
 
 #endif /* !CONFIG_USER_ONLY */
 
-static inline bool cpu_is_bigendian(CPUMIPSState *env)
-{
-    return extract32(env->CP0_Config0, CP0C0_BE, 1);
-}
-
 static inline target_ulong get_lmask(CPUMIPSState *env,
                                      target_ulong value, unsigned bits)
 {
@@ -68,7 +63,7 @@ static inline target_ulong get_lmask(CPUMIPSState *env,
 
     value &= mask;
 
-    if (!cpu_is_bigendian(env)) {
+    if (!mips_env_is_bigendian(env)) {
         value ^= mask;
     }
 
@@ -110,7 +105,7 @@ void helper_swl(CPUMIPSState *env, target_ulong arg1, target_ulong arg2,
                 int mem_idx)
 {
     target_ulong lmask = get_lmask(env, arg2, 32);
-    int dir = cpu_is_bigendian(env) ? 1 : -1;
+    int dir = mips_env_is_bigendian(env) ? 1 : -1;
 
 #ifdef TARGET_CHERI
     const int num_bytes = 4 - lmask;
@@ -139,7 +134,7 @@ void helper_swr(CPUMIPSState *env, target_ulong arg1, target_ulong arg2,
                 int mem_idx)
 {
     target_ulong lmask = get_lmask(env, arg2, 32);
-    int dir = cpu_is_bigendian(env) ? 1 : -1;
+    int dir = mips_env_is_bigendian(env) ? 1 : -1;
 
 #ifdef TARGET_CHERI
     arg2 = ccheck_store_right(env, arg2, 4, GETPC());
@@ -173,7 +168,7 @@ void helper_sdl(CPUMIPSState *env, target_ulong arg1, target_ulong arg2,
                 int mem_idx)
 {
     target_ulong lmask = get_lmask(env, arg2, 64);
-    int dir = cpu_is_bigendian(env) ? 1 : -1;
+    int dir = mips_env_is_bigendian(env) ? 1 : -1;
 
 #ifdef TARGET_CHERI
     const int num_bytes = 4 - lmask;
@@ -222,7 +217,7 @@ void helper_sdr(CPUMIPSState *env, target_ulong arg1, target_ulong arg2,
                 int mem_idx)
 {
     target_ulong lmask = get_lmask(env, arg2, 64);
-    int dir = cpu_is_bigendian(env) ? 1 : -1;
+    int dir = mips_env_is_bigendian(env) ? 1 : -1;
 
 #ifdef TARGET_CHERI
     arg2 = ccheck_store_right(env, arg2, 8, GETPC());
