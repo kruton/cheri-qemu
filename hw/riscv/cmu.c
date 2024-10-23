@@ -1,4 +1,7 @@
 #include "hw/qdev-properties.h"
+#ifdef TARGET_CHERI
+#include "cheri_tagmem.h"
+#endif
 {
     }
 };
