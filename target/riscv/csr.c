@@ -5647,7 +5647,9 @@ static void write_cap_csr_reg(CPURISCVState *env,
     cap_register_t csr = *get_cap_csr(env, csr_cap_info->reg_num);
     /* CLEN writes only for csrrw calls, all other writes are XLEN */
     if (clen) {
+        if (csr_cap_info->flags & CSR_OP_IA_CONVERSION) {
             bool changed = validate_cap_address(env, &src, &newval);
+            if (csr_cap_info->flags & CSR_OP_UPDATE_SCADDR) {
                 /* E.g. xtvec always invalidates sealed caps */
                 src = cap_scaddr(newval, src);
             } else if (changed) {
