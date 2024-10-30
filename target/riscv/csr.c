@@ -5675,6 +5675,7 @@ static void write_xepcc(CPURISCVState *env, riscv_csr_cap_ops *csr_cap_info,
     new_xepcc &= (~0x1); // Zero bit zero
     write_cap_csr_reg(env, csr_cap_info, src, new_xepcc, clen);
 static cap_register_t read_xepcc(CPURISCVState *env,
+                                 riscv_csr_cap_ops *csr_cap_info)
     target_ulong val = cap_get_cursor(&retval);
     // RISC-V privileged spec 4.1.7 Supervisor Exception Program Counter
     // (sepc) "The low bit of sepc (sepc[0]) is always zero. [...] Whenever
