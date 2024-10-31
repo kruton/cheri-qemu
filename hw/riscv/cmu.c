@@ -3,7 +3,17 @@
 #include "cheri_tagmem.h"
 #endif
 {
+    assert(addr + size <= 0x10000);
+    assert(size <= 8);
+    if (addr + size > CMU_REGS_SIZE) {
     }
+    uint64_t retval = 0;
+    uint8_t *ptr = (uint8_t *)&retval;
+        uint8_t *regptr = ((uint8_t *)&s->regs) + addr;
+    while (size--) {
+        *ptr++ = *regptr++;
+    }
+    return retval;
     CMUClass *c = CMU_DEVICE_GET_CLASS(s);
     ram_addr_t start_addr, end_addr, len;
 };
