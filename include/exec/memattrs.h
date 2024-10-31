@@ -54,6 +54,11 @@ typedef struct MemTxAttrs {
     unsigned int requester_id:16;
     /* This operation is also writing a tag */
     unsigned int tag_setting : 1;
+
+    /*
+     * PID (PCI PASID) support: Limited to 8 bits process identifier.
+     */
+    unsigned int pid:8;
 } MemTxAttrs;
 
 /* Bus masters which don't specify any attributes will get this,

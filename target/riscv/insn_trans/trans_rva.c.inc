@@ -33,7 +33,7 @@
 static inline bool gen_lr_impl(DisasContext *ctx, TCGv_cap_checked_ptr addr,
                                arg_atomic *a, MemOp mop)
 {
-    decode_save_opc(ctx);
+    decode_save_opc(ctx, 0);
     /* Put addr in load_res, data in load_val.  */
     if (a->rl) {
         tcg_gen_mb(TCG_MO_ALL | TCG_BAR_STRL);
@@ -72,7 +72,7 @@ static inline bool gen_sc_impl(DisasContext *ctx, TCGv_cap_checked_ptr addr,
     TCGLabel *l1 = gen_new_label();
     TCGLabel *l2 = gen_new_label();
 
-    decode_save_opc(ctx);
+    decode_save_opc(ctx, 0);
     /*
      * Alignment must always be checked (even on reservation address mismatch):
      * "If the address is not naturally aligned, an address-misaligned
@@ -89,7 +89,7 @@ static inline bool gen_sc_impl(DisasContext *ctx, TCGv_cap_checked_ptr addr,
         TCGv_i32 tcode = tcg_constant_i32(RISCV_EXCP_STORE_AMO_ADDR_MIS);
         gen_helper_check_alignment(tcg_env, (TCGv)addr, tmop, tcode);
     }
-
+ 
 #ifdef TARGET_CHERI
     tcg_gen_brcond_cap_checked(TCG_COND_NE, load_res, addr, l1);
 #else

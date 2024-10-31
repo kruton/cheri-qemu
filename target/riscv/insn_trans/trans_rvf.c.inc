@@ -52,7 +52,7 @@ static bool trans_flw(DisasContext *ctx, arg_flw *a)
         memop |= MO_ATOM_WITHIN16;
     }
 
-    decode_save_opc(ctx);
+    decode_save_opc(ctx, 0);
     addr = get_capmode_dependent_load_addr(ctx, a->rs1, a->imm, memop);
     dest = cpu_fpr[a->rd];
     tcg_gen_qemu_ld_i64_with_checked_addr(dest, addr, ctx->mem_idx, memop);
@@ -74,7 +74,7 @@ static bool trans_fsw(DisasContext *ctx, arg_fsw *a)
         memop |= MO_ATOM_WITHIN16;
     }
 
-    decode_save_opc(ctx);
+    decode_save_opc(ctx, 0);
     addr = get_capmode_dependent_store_addr(ctx, a->rs1, a->imm, memop);
     tcg_gen_qemu_st_i64_with_checked_addr(cpu_fpr[a->rs2], addr, ctx->mem_idx,
                                           memop);

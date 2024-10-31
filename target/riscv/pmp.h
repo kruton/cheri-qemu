@@ -59,7 +59,8 @@ typedef enum {
     MSECCFG_CRE  = 1 << 3,
 #endif
     MSECCFG_USEED = 1 << 8,
-    MSECCFG_SSEED = 1 << 9
+    MSECCFG_SSEED = 1 << 9,
+    MSECCFG_MLPE =  1 << 10,
 } mseccfg_field_t;
 
 typedef struct {
