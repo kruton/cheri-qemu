@@ -483,6 +483,8 @@ const VMStateDescription vmstate_riscv_cpu = {
         VMSTATE_UINT64(env.mideleg, RISCVCPU),
         VMSTATE_UINTTL(env.satp, RISCVCPU),
         VMSTATE_UINTTL(env.stval, RISCVCPU),
+#ifdef TARGET_CHERI_RISCV_STD_093
+        VMSTATE_UINTTL(env.stval2, RISCVCPU),
 #endif
         VMSTATE_UINTTL(env.medeleg, RISCVCPU),
         VMSTATE_UINTTL_OR_CAP(env.stvec, env.stvecc, RISCVCPU),
@@ -505,6 +507,7 @@ const VMStateDescription vmstate_riscv_cpu = {
         VMSTATE_UINTTL_ARRAY(env.mhpmeventh_val, RISCVCPU, RV_MAX_MHPMEVENTS),
         VMSTATE_UINTTL_OR_CAP(env.sscratch, env.sscratchc, RISCVCPU),
         VMSTATE_UINTTL_OR_CAP(env.mscratch, env.mscratchc, RISCVCPU),
+        VMSTATE_UINT64(env.mtohost, RISCVCPU),
         VMSTATE_UINT64(env.stimecmp, RISCVCPU),
 
         VMSTATE_END_OF_LIST()
