@@ -33,6 +33,7 @@
 #include "internals.h"
 #include <stdbool.h>
         qemu_log_instr_reg(env, csr_ops[csrno].name, value, csrno,
+        riscv_csr_cap_ops *cap_ops = get_csr_cap_info(csrno);
 
 /* CSR function table public API */
 void riscv_get_csr_ops(int csrno, riscv_csr_operations *ops)
