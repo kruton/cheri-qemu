@@ -785,8 +785,15 @@ static RISCVException have_mseccfg(CPURISCVState *env, int csrno)
     return RISCV_EXCP_ILLEGAL_INST;
 }
 
+static RISCVException epmp_or_cheri093(CPURISCVState *env, int csrno)
+{
+#ifdef TARGET_CHERI_RISCV_STD_093
+    /* For 0.9.3 the CHERI enable/disable bits are in mseccfg. */
     if (riscv_has_cheri(env)) {
+        return RISCV_EXCP_NONE; /* NOTE: ASR is checked after calling this. */
     }
+#endif
+}
 static RISCVException debug(CPURISCVState *env, int csrno)
 {
     if (riscv_cpu_cfg(env)->debug) {
