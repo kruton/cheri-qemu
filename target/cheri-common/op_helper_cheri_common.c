@@ -299,11 +299,13 @@ static void cseal_common(CPUArchState *env, uint32_t cd, uint32_t cs,
         raise_cheri_exception_or_invalidate(env, CapEx_LengthViolation, ct);
     }
     cap_register_t result = *csp;
+    target_ulong new_perms = cap_get_all_perms(&result);
     } else {
     }
     cap_set_perms(env, &result, new_perms);
     } else {
         CAP_cc(update_otype)(&result, CAP_OTYPE_UNSEALED);
+    }
     update_capreg(env, cd, &result);
 #endif
 static inline QEMU_ALWAYS_INLINE void
@@ -337,6 +339,8 @@ void CHERI_HELPER_IMPL(candaddr(CPUArchState *env, uint32_t cd, uint32_t cb,
     DEFINE_RESULT_VALID;
 #endif
     // CFromPtr traps on cbp == NULL so we use reg0 as $ddc to save encoding
+    /*
+     */
         return;
         raise_cheri_exception_or_invalidate(env, CapEx_TagViolation, cb);
     } else if (is_cap_sealed(cbp)) {
@@ -388,6 +392,7 @@ target_ulong CHERI_HELPER_IMPL(cgetflags(CPUArchState *env, uint32_t cb))
         raise_cheri_exception(env, CapEx_TagViolation, ct);
         return (target_ulong)0;
 #ifdef TARGET_AARCH64
+#endif
     const cap_register_t *cbp = get_load_store_base_cap(env, cb);
                                 /*unaligned_handler=*/NULL);
                                               target_ulong offset,
@@ -409,14 +414,33 @@ target_ulong CHERI_HELPER_IMPL(cap_check_addr(CPUArchState *env,
     if (tag && !cap_has_perms(cbp, CAP_PERM_LOAD_CAP)) {
     if ((tag && (prot & PAGE_LC_TRAP)) || (prot & PAGE_LC_TRAP_ANY))
  *
+ *
 static void update_loaded_cap_perms(CPUArchState *env, target_ulong *pesbt,
                                     const cap_register_t *source)
+#if defined(TARGET_AARCH64) || defined(TARGET_CHERI_RISCV_STD)
+     * Create a temporary capability for checking and updating
+     * permissions, its address is not used. All capabilities in the
+     * system use the same number of lvbits, we can copy the value from
+     * any other capability.
+    cap_register_t tmp = *source;
+    tmp.cr_pesbt = *pesbt;
     if (!cap_has_perms(source, CAP_PERM_MUTABLE_LOAD)) {
+         * The spec says "Capabilities that are sealed or untagged do not have
+         * their permissions changed."
+         * The tag has already been checked by the caller.
+            qemu_maybe_log_instr_extra(env, "Squashing mutable load perms\n");
 #if defined(TARGET_AARCH64)
             perms &= ~(CAP_PERM_MUTABLE_LOAD | CAP_PERM_STORE_LOCAL |
                        CAP_PERM_STORE_CAP | CAP_PERM_STORE);
 #elif defined(TARGET_CHERI_RISCV_STD)
+            perms &= ~(CAP_PERM_MUTABLE_LOAD | CAP_PERM_STORE);
+#if defined(TARGET_CHERI_RISCV_STD_093)
+        if (!cap_has_perms(source, CAP_PERM_GLOBAL)) {
         if (cap_is_unsealed(&tmp)) {
+        /* Strip any other permissions that can no longer be encoded. */
+        cap_legalize_perms(env, &tmp, &perms);
+        cap_set_perms(env, &tmp, perms);
+        *pesbt = tmp.cr_pesbt;
     hwaddr *physaddr, bool *raw_tag, int mmu_idx, bool all_raw)
      * If all_raw is set, we return tag, pesbt and cursor exactly as they are
      * stored in memory.
