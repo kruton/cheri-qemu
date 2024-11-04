@@ -132,6 +132,7 @@ config HOBGOBLIN
     select VIRTIO_MMIO
     select SERIAL
     select SSI_SD
+    select HOBGOBLIN_NVEMU
 config XIANGSHAN_KUNMINGHU
     bool
     default y
