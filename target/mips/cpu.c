@@ -488,9 +488,9 @@ static void mips_cpu_reset_hold(Object *obj, ResetType type)
     }
 
     msa_reset(env);
+    fp_reset(env);
 
     compute_hflags(env);
-    restore_fp_status(env);
     restore_pamask(env);
 #ifdef TARGET_CHERI
     if (strcmp(env->cpu_model->name, "BERI") == 0) {
