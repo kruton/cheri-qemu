@@ -5518,17 +5518,40 @@ static RISCVException write_mnstatus(CPURISCVState *env, int csrno,
     env->mnstatus = (env->mnstatus & MNSTATUS_NMIE) | (val & mask);
     return RISCV_EXCP_NONE;
 }
+#ifndef TARGET_CHERI
 static RISCVException stid(CPURISCVState *env, int csrno)
 {
+        return RISCV_EXCP_NONE;
     }
+    return RISCV_EXCP_ILLEGAL_INST;
 }
+/* Thread ID (Zstid) */
+static RISCVException read_mtid(CPURISCVState *env, int csrno,
+                                target_ulong *val)
 {
+    *val = env->mtid;
 }
+static RISCVException write_mtid(CPURISCVState *env, int csrno,
 {
+    env->mtid = val;
 }
+static RISCVException read_stid(CPURISCVState *env, int csrno,
 {
+    *val = env->stid;
+}
+static RISCVException write_stid(CPURISCVState *env, int csrno,
 {
+    env->stid = val;
+static RISCVException read_vstid(CPURISCVState *env, int csrno,
+    *val = env->vstid;
+static RISCVException write_vstid(CPURISCVState *env, int csrno,
 {
+    env->vstid = val;
+static RISCVException read_utid(CPURISCVState *env, int csrno,
+{
+    *val = env->utid;
+static RISCVException write_utid(CPURISCVState *env, int csrno,
+    env->utid = val;
 #endif
 #endif
 #ifdef TARGET_CHERI
