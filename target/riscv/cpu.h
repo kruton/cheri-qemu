@@ -335,6 +335,9 @@ struct CPUArchState {
     target_ulong stval;
     target_ulong medeleg;
 
+#endif
+#ifdef TARGET_CHERI
+    cap_register_t stvecc;    // SCR 12 Supervisor trap code cap. (STCC)
     target_ulong stvec;
     target_ulong sepc;
     target_ulong scause;
@@ -411,6 +414,13 @@ struct CPUArchState {
     target_ulong mtinst;
 
     /* HS Backup CSRs */
+#ifdef TARGET_CHERI
+    cap_register_t stcc_hs;
+    target_ulong stval2;
+    target_ulong vstval2;
+    target_ulong stval2_hs;
+#endif
+#else
     target_ulong stvec_hs;
     target_ulong sscratch_hs;
     target_ulong sepc_hs;
@@ -448,6 +458,7 @@ struct CPUArchState {
     /* PMU event selector configured values. First three are unused */
     target_ulong mhpmevent_val[RV_MAX_MHPMEVENTS];
 
+    cap_register_t vstidc;
     /* PMU event selector configured values for RV32 */
     target_ulong mhpmeventh_val[RV_MAX_MHPMEVENTS];
 
