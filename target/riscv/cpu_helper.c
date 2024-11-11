@@ -635,9 +635,20 @@ void riscv_cpu_swap_hypervisor_regs(CPURISCVState *env)
 
         env->vstval = env->stval;
         env->stval = env->stval_hs;
+#endif
 
         env->vsatp = env->satp;
         env->satp = env->satp_hs;
+#ifdef TARGET_CHERI
+        env->vstidc = env->stidc;
+        env->stidc = env->stidc_hs;
+        riscv_log_instr_csr_changed(env, CSR_VSTIDC);
+        riscv_log_instr_csr_changed(env, CSR_STIDC);
+#else
+        env->vstid = env->stid;
+        env->stid = env->stid_hs;
+        riscv_log_instr_csr_changed(env, CSR_VSTID);
+        riscv_log_instr_csr_changed(env, CSR_STID);
     } else {
         /* Current V=0 and we are about to change to V=1 */
         env->mstatus_hs = env->mstatus & mstatus_mask;
@@ -2533,6 +2544,7 @@ void riscv_cpu_do_interrupt(CPUState *cs)
             }
             env->hstatus = set_field(env->hstatus, HSTATUS_GVA, write_gva);
         }
+        riscv_log_instr_csr_changed(env, CSR_HSTATUS);
 
         s = env->mstatus;
         s = set_field(s, MSTATUS_SPIE, get_field(s, MSTATUS_SIE));
