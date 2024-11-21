@@ -259,8 +259,8 @@ amominu_w  11000 . . ..... ..... 010 ..... 0101111 @atom_st
 amomaxu_w  11100 . . ..... ..... 010 ..... 0101111 @atom_st
 
 # *** RV64A Standard Extension (in addition to RV32A) ***
-sc_d       00011 . . ..... ..... 011 ..... 0101111 @atom_st
   lr_c       00010 . . 00000 ..... 011 ..... 0101111 @atom_ld ?pred_xcheri_rv32
+  sc_c       00011 . . ..... ..... 011 ..... 0101111 @atom_st ?pred_xcheri_rv32
   amoswap_c  00001 . . ..... ..... 011 ..... 0101111 @atom_st ?pred_xcheri_rv32
 ssamoswap_d 01001 . . ..... ..... 011 ..... 0101111 @atom_st
 amoadd_d   00000 . . ..... ..... 011 ..... 0101111 @atom_st
