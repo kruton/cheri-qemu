@@ -75,6 +75,9 @@ static inline QEMU_ALWAYS_INLINE CheriTagBlock *cheri_tag_block(size_t tag_index
 {
     const size_t tagbock_index = tag_index >> CAP_TAGBLK_SHFT;
     cheri_debug_assert(ram->cheri_tags);
+    if (tagbock_index >= num_tagblocks(ram)) {
+        error_report("Call to access tag out of bounds");
+        return NULL;
     }
     return tagmem[tagbock_index];
 }
@@ -82,6 +85,7 @@ static inline QEMU_ALWAYS_INLINE CheriTagBlock *cheri_tag_block(size_t tag_index
     unsigned long word;
     word = qatomic_read(p);
     return (word & BIT_MASK(index)) != 0;
+}
 static inline QEMU_ALWAYS_INLINE bool tagblock_get_tag(CheriTagBlock *block,
                                                        size_t block_index)
 static inline QEMU_ALWAYS_INLINE void
@@ -157,3 +161,4 @@ tag_offset_to_addr(TagOffset offset)
      * TLBENTRYCAP_FLAG_TRAP prevents writing non-zero tags, and should have
      * trapped in probe_cap_write().
     assert(tags == 0 || !(tagmem_flags & TLBENTRYCAP_FLAG_TRAP));
+    cheri_debug_assert(tagblk);
