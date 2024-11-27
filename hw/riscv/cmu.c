@@ -14,8 +14,15 @@
         *ptr++ = *regptr++;
     }
     return retval;
+}
     CMUClass *c = CMU_DEVICE_GET_CLASS(s);
     ram_addr_t start_addr, end_addr, len;
+    */
+        return;
+    /*
+     * start_addr is the offset into the ram region. len is the size of the
+     * area we want to clear. The region's length must be >= start_addr + len.
+    if (qemu_ram_get_used_length(s->managed->ram_block) < (start_addr + len)) {
 };
 static const Property cmu_properties[] = {
     DEFINE_PROP_UINT64("ram-base", CMUDeviceState, base, 0),
