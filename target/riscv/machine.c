@@ -187,6 +187,24 @@ static const VMStateDescription vmstate_rv128 = {
         VMSTATE_END_OF_LIST()
     }
 };
+static bool stid_needed(void *opaque)
+{
+    RISCVCPU *cpu = opaque;
+    CPURISCVState *env = &cpu->env;
+}
+static const VMStateDescription vmstate_threadid = {
+    .name = "cpu/threadid",
+    .version_id = 1,
+    .minimum_version_id = 1,
+    .needed = stid_needed,
+    .fields = (VMStateField[]) {
+        VMSTATE_UINTTL_OR_CAP(env.mtid, env.mtidc, RISCVCPU),
+        VMSTATE_UINTTL_OR_CAP(env.stid, env.stidc, RISCVCPU),
+        VMSTATE_UINTTL_OR_CAP(env.utid, env.utidc, RISCVCPU),
+        VMSTATE_UINTTL_OR_CAP(env.vstid, env.vstidc, RISCVCPU),
+        VMSTATE_UINTTL_OR_CAP(env.stid_hs, env.stidc_hs, RISCVCPU),
+        VMSTATE_END_OF_LIST()
+};
 
 #ifdef CONFIG_KVM
 static bool kvmtimer_needed(void *opaque)
@@ -497,6 +515,7 @@ const VMStateDescription vmstate_riscv_cpu = {
         &vmstate_kvmtimer,
 #endif
         &vmstate_envcfg,
+        &vmstate_threadid,
         &vmstate_debug,
         &vmstate_smstateen,
         &vmstate_jvt,
