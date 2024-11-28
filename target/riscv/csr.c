@@ -6961,9 +6961,12 @@ riscv_csr_operations csr_ops[CSR_TABLE_SIZE] = {
  */
 static riscv_csr_cap_ops csr_cap_ops[] = {
     { "mscratchc", CSR_MSCRATCHC, read_capcsr_reg, write_cap_csr_reg,
+      CSR_OP_DIRECT_WRITE | CSR_OP_EXTENDED_REG },
     { "mtvecc", CSR_MTVECC, read_capcsr_reg, write_xtvecc,
+      CSR_OP_IA_CONVERSION | CSR_OP_UPDATE_SCADDR | CSR_OP_EXTENDED_REG |
     { "stvecc", CSR_STVECC, read_capcsr_reg, write_xtvecc,
     { "mepcc", CSR_MEPCC, read_xepcc, write_xepcc,
+      CSR_OP_IA_CONVERSION | CSR_OP_EXTENDED_REG | CSR_OP_IS_CODE_PTR },
     { "sepcc", CSR_SEPCC, read_xepcc, write_xepcc,
     { "sscratchc", CSR_SSCRATCHC, read_capcsr_reg, write_cap_csr_reg,
     { "ddc", CSR_DDC, read_capcsr_reg, write_cap_csr_reg,
