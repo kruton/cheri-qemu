@@ -285,6 +285,7 @@ static void cseal_common(CPUArchState *env, uint32_t cd, uint32_t cs,
 }
     /*
      */
+}
     GET_HOST_RETPC_IF_TRAPPING_CHERI_ARCH();
     DEFINE_RESULT_VALID;
     /*
@@ -303,6 +304,8 @@ static void cseal_common(CPUArchState *env, uint32_t cd, uint32_t cs,
 static inline QEMU_ALWAYS_INLINE void
 cincoffset_impl(CPUArchState *env, uint32_t cd, uint32_t cb, target_ulong rt,
                 uintptr_t retpc, struct oob_stats_info *oob_info)
+    /*
+     */
     target_ulong new_addr = cap_get_cursor(cbp) + rt;
     GET_HOST_RETPC_IF_TRAPPING_CHERI_ARCH();
     DEFINE_RESULT_VALID;
@@ -322,6 +325,7 @@ void CHERI_HELPER_IMPL(candaddr(CPUArchState *env, uint32_t cd, uint32_t cb,
     cincoffset_impl(env, cd, cb, diff, GETPC(), OOB_INFO(csetoffset));
     GET_HOST_RETPC();
     DEFINE_RESULT_VALID;
+#endif
     // CFromPtr traps on cbp == NULL so we use reg0 as $ddc to save encoding
         return;
         raise_cheri_exception_or_invalidate(env, CapEx_TagViolation, cb);
@@ -382,17 +386,20 @@ target_ulong CHERI_HELPER_IMPL(cgetflags(CPUArchState *env, uint32_t cb))
 target_ulong CHERI_HELPER_IMPL(cap_check_addr(CPUArchState *env,
                                               uint32_t required_perms))
     GET_HOST_RETPC();
+    const cap_register_t *cbp = get_capreg_or_special(env, authreg);
     GET_HOST_RETPC();
     const cap_register_t *ddc = cheri_get_ddc(env);
     const target_ulong checked_addr =
     GET_HOST_RETPC();
     GET_HOST_RETPC();
     if (tag && (prot & PAGE_LC_CLEAR)) {
+    if (tag && !cap_has_perms(cbp, CAP_PERM_LOAD_CAP)) {
     if ((tag && (prot & PAGE_LC_TRAP)) || (prot & PAGE_LC_TRAP_ANY))
     if (!cap_has_perms(source, CAP_PERM_MUTABLE_LOAD)) {
 #if defined(TARGET_AARCH64)
             perms &= ~(CAP_PERM_MUTABLE_LOAD | CAP_PERM_STORE_LOCAL |
                        CAP_PERM_STORE_CAP | CAP_PERM_STORE);
+#elif defined(TARGET_CHERI_RISCV_STD)
         if (cap_is_unsealed(&tmp)) {
     /* No TLB fault possible, should be safe to get a host pointer now */
     void *host = probe_read(env, vaddr, CHERI_CAP_SIZE, mmu_idx, retpc);
@@ -430,6 +437,10 @@ cap_register_t load_and_decompress_cap_from_memory_raw(
                                         retpc, physaddr);
     CAP_cc(decompress_raw_ext)(pesbt, cursor, tag, lvbits, &result);
     return result;
+/*
+ * cs is the register of the capability that will be stored
+ * cb is the register of the authorizing capability
+ */
                                    uint32_t cb __attribute__((unused)),
     target_ulong pesbt_for_mem = get_capreg_pesbt(env, cs) ^ CAP_MEM_XOR_MASK;
 #ifdef CONFIG_DEBUG_TCG
