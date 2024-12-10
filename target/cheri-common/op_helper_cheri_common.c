@@ -430,6 +430,7 @@ cap_register_t load_and_decompress_cap_from_memory_raw(
                                         retpc, physaddr);
     CAP_cc(decompress_raw_ext)(pesbt, cursor, tag, lvbits, &result);
     return result;
+                                   uint32_t cb __attribute__((unused)),
     target_ulong pesbt_for_mem = get_capreg_pesbt(env, cs) ^ CAP_MEM_XOR_MASK;
 #ifdef CONFIG_DEBUG_TCG
     if (get_capreg_state(cheri_get_gpcrs(env), cs) == CREG_INTEGER) {
