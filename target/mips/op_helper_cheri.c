@@ -326,6 +326,7 @@ target_ulong CHERI_HELPER_IMPL(cstorecond(CPUArchState *env, uint32_t cb, uint32
         do_raise_c0_exception(env, EXCP_AdES, addr);
     return (target_ulong)addr;
     uintptr_t retpc = GETPC();
+    store_cap_to_memory(env, cs, cb, vaddr, retpc);
     env->lladdr = 1;
     // CLLC traps on cbp == NULL so we use reg0 as $ddc to save encoding
     // space and increase code density since loading relative to $ddc is common
