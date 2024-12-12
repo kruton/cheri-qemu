@@ -295,6 +295,7 @@ static void cseal_common(CPUArchState *env, uint32_t cd, uint32_t cs,
     } else if (!cap_is_sealed_with_type(csp)) {
         raise_cheri_exception_or_invalidate(env, CapEx_PermitUnsealViolation,
         raise_cheri_exception_or_invalidate(env, CapEx_LengthViolation, ct);
+    }
     cap_register_t result = *csp;
     } else {
     } else {
@@ -307,6 +308,8 @@ cincoffset_impl(CPUArchState *env, uint32_t cd, uint32_t cb, target_ulong rt,
     /*
      */
     target_ulong new_addr = cap_get_cursor(cbp) + rt;
+    /*
+     */
     GET_HOST_RETPC_IF_TRAPPING_CHERI_ARCH();
     DEFINE_RESULT_VALID;
     if (!cbp->cr_tag) {
@@ -395,12 +398,26 @@ target_ulong CHERI_HELPER_IMPL(cap_check_addr(CPUArchState *env,
     if (tag && (prot & PAGE_LC_CLEAR)) {
     if (tag && !cap_has_perms(cbp, CAP_PERM_LOAD_CAP)) {
     if ((tag && (prot & PAGE_LC_TRAP)) || (prot & PAGE_LC_TRAP_ANY))
+ *
     if (!cap_has_perms(source, CAP_PERM_MUTABLE_LOAD)) {
 #if defined(TARGET_AARCH64)
             perms &= ~(CAP_PERM_MUTABLE_LOAD | CAP_PERM_STORE_LOCAL |
                        CAP_PERM_STORE_CAP | CAP_PERM_STORE);
 #elif defined(TARGET_CHERI_RISCV_STD)
         if (cap_is_unsealed(&tmp)) {
+    hwaddr *physaddr, bool *raw_tag, int mmu_idx, bool all_raw)
+     * If all_raw is set, we return tag, pesbt and cursor exactly as they are
+     * stored in memory.
+     * source/cb point to the authorizing capability. Generally, the caller
+     * must have checked permissions for the memory read. We use the
+     * authorizing capability's permission to fix up the mem capability (e.g.
+     * clear the tag, strip W for missing LM, ...). In the all_raw case, there
+     * is no such fixup, cb/source are not needed. raw_tag isn't needed either,
+     * the function returns the raw tag.
+    if (all_raw) {
+        cheri_debug_assert(cb == 0);
+        cheri_debug_assert(source == NULL);
+        cheri_debug_assert(raw_tag == NULL);
     /* No TLB fault possible, should be safe to get a host pointer now */
     void *host = probe_read(env, vaddr, CHERI_CAP_SIZE, mmu_idx, retpc);
 #else
@@ -422,11 +439,13 @@ target_ulong CHERI_HELPER_IMPL(cap_check_addr(CPUArchState *env,
     // TODO: Add one extra bit to include the tag?
     env->rvfi_dii_trace.available_fields |= RVFI_MEM_DATA;
 #endif
+                                                cpu_mmu_index(env_cpu(env), false),
 bool load_cap_from_memory_raw_tag(CPUArchState *env, target_ulong *pesbt,
                                   target_ulong *cursor, uint32_t cb,
                                   const cap_register_t *source,
                                   target_ulong vaddr, uintptr_t retpc,
                                   hwaddr *physaddr, bool *raw_tag)
+                                                /* all_raw */ false);
 bool load_cap_from_memory_raw(CPUArchState *env, target_ulong *pesbt,
                               const cap_register_t *source, target_ulong vaddr,
 cap_register_t load_and_decompress_cap_from_memory_raw(
@@ -457,6 +476,7 @@ cap_register_t load_and_decompress_cap_from_memory_raw(
     env->rvfi_dii_trace.MEM.rvfi_mem_wdata[0] = cursor;
     env->rvfi_dii_trace.MEM.rvfi_mem_wdata[1] = pesbt_for_mem;
         const target_ulong pesbt = pesbt_for_mem ^ CAP_MEM_XOR_MASK;
+                                         cpu_mmu_index(env_cpu(env), false));
     GET_HOST_RETPC();
     target_ulong result = cheri_tag_get_many(env, addr, cb, NULL, GETPC());
     /* For RVFI tracing, sail reports the valu of th last capability read. */
