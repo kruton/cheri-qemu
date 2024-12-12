@@ -453,10 +453,15 @@ static void lr_c_impl(CPUArchState *env, uint32_t dest_reg, uint32_t auth_reg,
     } else if (!QEMU_IS_ALIGNED(addr, CHERI_CAP_SIZE)) {
         raise_unaligned_store_exception(env, addr, _host_return_address);
     }
+    /*
+     * For the reservation, we need the raw memory content without any fixups
+     * (tag clearing, W stripped due to missing LM, ...).
+     */
     target_ulong pesbt;
     target_ulong cursor;
-                                        addr, _host_return_address, NULL);
-    // If this didn't trap, update the lr state:
+    bool tag = load_raw_cap_from_memory(env, &pesbt, &cursor, addr,
+                                        _host_return_address);
+    /* If this didn't trap, update the lr state: */
     env->load_res = addr;
     env->load_val = cursor;
     env->load_pesbt = pesbt;
