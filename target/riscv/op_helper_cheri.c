@@ -503,18 +503,18 @@ static target_ulong sc_c_impl(CPUArchState *env, uint32_t addr_reg,
     assert(!qemu_tcg_mttcg_enabled() ||
         (cpu_in_exclusive_context(env_cpu(env)) &&
             "Should have raised EXCP_ATOMIC"));
-    const cap_register_t *cbp = get_load_store_base_cap(env, addr_reg);
+    const cap_register_t *auth_cap = get_load_store_base_cap(env, addr_reg);
 
-    if (!cbp->cr_tag) {
+    if (!auth_cap->cr_tag) {
         raise_cheri_exception(env, CapEx_TagViolation, addr_reg);
-    } else if (!cap_is_unsealed(cbp)) {
+    } else if (!cap_is_unsealed(auth_cap)) {
         raise_cheri_exception(env, CapEx_SealViolation, addr_reg);
-    } else if (!cap_has_perms(cbp, CAP_PERM_STORE)) {
+    } else if (!cap_has_perms(auth_cap, CAP_PERM_STORE)) {
         raise_cheri_exception(env, CapEx_PermitStoreViolation, addr_reg);
-    } else if (!cap_has_perms(cbp, CAP_PERM_STORE_CAP)) {
 #ifndef TARGET_CHERI_RISCV_STD
+    } else if (!cap_has_perms(auth_cap, CAP_PERM_STORE_CAP)) {
         raise_cheri_exception(env, CapEx_PermitStoreCapViolation, addr_reg);
-    } else if (!cap_has_perms(cbp, CAP_PERM_STORE_LOCAL) &&
+    } else if (!cap_has_perms(auth_cap, CAP_PERM_STORE_LOCAL) &&
                get_capreg_tag(env, val_reg) &&
                !(get_capreg_hwperms(env, val_reg) & CAP_PERM_GLOBAL)) {
         raise_cheri_exception(env, CapEx_PermitStoreLocalCapViolation, val_reg);
@@ -522,7 +522,7 @@ static target_ulong sc_c_impl(CPUArchState *env, uint32_t addr_reg,
     }
 
     uint64_t addr = (uint64_t)(cap_get_cursor(cbp) + (target_long)offset);
-    if (!cap_is_in_bounds(cbp, addr, CHERI_CAP_SIZE)) {
+    if (!cap_is_in_bounds(auth_cap, addr, CHERI_CAP_SIZE)) {
         qemu_log_instr_or_mask_msg(
             env, CPU_LOG_INT,
             "Failed capability bounds check: addr=" TARGET_FMT_ld
@@ -547,18 +547,26 @@ static target_ulong sc_c_impl(CPUArchState *env, uint32_t addr_reg,
     // real tag, and strip the LOAD_CAP
     // FIXME: permission to ensure no MMU load faults occur (this is not a real
     // load).
-    target_ulong current_pesbt;
-    target_ulong current_cursor;
 #ifdef CONFIG_RVFI_DII
     /* The read that is part of the cmpxchg should not be visible in traces. */
     uint32_t old_rmask = env->rvfi_dii_trace.MEM.rvfi_mem_rmask;
 #endif
+    /*
+     * For the reservation check below, we want to verify that the memory
+     * content has not changed since the lr. We need the "raw" memory content
+     * without tag clearing or LM fixups.
+     */
+    target_ulong curr_pesbt;
+    target_ulong curr_cursor;
+    bool curr_tag = load_raw_cap_from_memory(env, &curr_pesbt, &curr_cursor,
+                                             addr, _host_return_address);
 #ifdef CONFIG_RVFI_DII
     /* The read that is part of the cmpxchg should not be visible in traces. */
     env->rvfi_dii_trace.MEM.rvfi_mem_rmask = old_rmask;
 #endif
-    if (current_cursor != env->load_val || current_pesbt != env->load_pesbt ||
-        current_tag != env->load_tag) {
+    /* check that the reservation from the last lr is still valid */
+    if (curr_cursor != env->load_val || curr_pesbt != env->load_pesbt ||
+        curr_tag != env->load_tag) {
         goto sc_failed;
     }
     // This store may still trap, so we should update env->load_res before
