@@ -507,11 +507,13 @@ static target_ulong sc_c_impl(CPUArchState *env, uint32_t addr_reg,
     } else if (!cap_has_perms(cbp, CAP_PERM_STORE)) {
         raise_cheri_exception(env, CapEx_PermitStoreViolation, addr_reg);
     } else if (!cap_has_perms(cbp, CAP_PERM_STORE_CAP)) {
+#ifndef TARGET_CHERI_RISCV_STD
         raise_cheri_exception(env, CapEx_PermitStoreCapViolation, addr_reg);
     } else if (!cap_has_perms(cbp, CAP_PERM_STORE_LOCAL) &&
                get_capreg_tag(env, val_reg) &&
                !(get_capreg_hwperms(env, val_reg) & CAP_PERM_GLOBAL)) {
         raise_cheri_exception(env, CapEx_PermitStoreLocalCapViolation, val_reg);
+#endif
     }
 
     uint64_t addr = (uint64_t)(cap_get_cursor(cbp) + (target_long)offset);
@@ -536,10 +538,6 @@ static target_ulong sc_c_impl(CPUArchState *env, uint32_t addr_reg,
     if (addr != expected_addr) {
         goto sc_failed;
     }
-    // Now perform the "cmpxchg" operation by checking if the current values
-    // in memory are the same as the ones that the load-reserved observed.
-    // FIXME: There is a bug here. If the MMU / Cap Permissions squash the tag,
-    // we may think the location has changed
     // FIXME: when it has not. Use load_cap_from_memory_128_raw_tag to get the
     // real tag, and strip the LOAD_CAP
     // FIXME: permission to ensure no MMU load faults occur (this is not a real
@@ -550,9 +548,6 @@ static target_ulong sc_c_impl(CPUArchState *env, uint32_t addr_reg,
     /* The read that is part of the cmpxchg should not be visible in traces. */
     uint32_t old_rmask = env->rvfi_dii_trace.MEM.rvfi_mem_rmask;
 #endif
-    bool current_tag =
-        load_cap_from_memory_128(env, &current_pesbt, &current_cursor, addr_reg,
-                                 cbp, addr, _host_return_address, NULL);
 #ifdef CONFIG_RVFI_DII
     /* The read that is part of the cmpxchg should not be visible in traces. */
     env->rvfi_dii_trace.MEM.rvfi_mem_rmask = old_rmask;
