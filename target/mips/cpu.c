@@ -790,7 +790,7 @@ static void mips_register_cpudef_type(const struct mips_def_t *def)
         .class_data = (void *)def,
     };
 
-    type_register(&ti);
+    type_register_static(&ti);
     g_free(typename);
 }
 
