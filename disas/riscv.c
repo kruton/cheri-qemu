@@ -1071,6 +1071,10 @@ static const char rv_vreg_name_sym[32][4] = {
 #define rv_fmt_cd_cs1_imm             "O\tC0,C1,i"
 #define rv_fmt_rd_offset_cs1          "O\t0,i(C1)"
 #define rv_fmt_rs2_offset_cs1         "O\t2,i(C1)"
+/* The codec for the offs0 formats must set dec->imm = 0, e.g. rv_codec_r can
+   be used. */
+#define rv_fmt_cd_cs2_offs0_cs1       "O\tC0,C2,i(C1)"
+#define rv_fmt_cd_cs2_offs0_rs1       "O\tC0,C2,i(1)"
 /* The FLI.[HSDQ] numeric constants (0.0 for symbolic constants).
  * The constants use the hex floating-point literal representation
  * that is printed when using the printf %a format specifier,
@@ -2212,6 +2216,17 @@ const rv_opcode_data rvi_opcode_data[] = {
     [rv_op_sceq] = { "sceq", rv_codec_r, rv_fmt_rd_cs1_cs2, NULL, 0, 0, 0 },
     [rv_op_cbld] = { "cbld", rv_codec_r, rv_fmt_cd_cs1_cs2, NULL, 0, 0, 0 },
     [rv_op_scss] = { "scss", rv_codec_r, rv_fmt_rd_cs1_cs2, NULL, 0, 0, 0 },
+    /*
+     * Search for "case rv_codec_r:" to see the offsets where the register
+     * numbers are extracted. rv_codec_r works for integer and capability
+     * registers.
+     *
+     * The codec sets dec->imm = 0. The formats use this constant as offset.
+     */
+    [rv_op_amoswap_c_cap_ptr] = { "amoswap.c", rv_codec_r,
+                                   rv_fmt_cd_cs2_offs0_cs1, NULL, 0, 0, 0 },
+    [rv_op_amoswap_c_int_ptr] = { "amoswap.c", rv_codec_r,
+                                   rv_fmt_cd_cs2_offs0_rs1, NULL, 0, 0, 0 },
     /* 2 registers, 1 flag, 1 immediate */
     [rv_op_scbndsi] = { "scbdsi", rv_codec_scbndsi, rv_fmt_cd_cs1_imm, NULL, 0, 0, 0 },
     { "fcvt.s.bf16", rv_codec_r_m, rv_fmt_rm_frd_frs1, NULL, 0, 0, 0 },
@@ -3271,6 +3286,8 @@ static rv_opcode decode_cheri_inst(rv_inst inst) {
             case 10: op = rv_op_amoswap_w; break;
             case 11: op = rv_op_amoswap_d; break;
             case 12: op = rv_op_amoswap_q; break;
+                             ? rv_op_amoswap_c_cap_ptr
+                             : rv_op_amoswap_c_int_ptr;
             case 18:
                 switch ((inst >> 20) & 0b11111) {
                 case 0: op = rv_op_lr_w; break;
@@ -3284,6 +3301,7 @@ static rv_opcode decode_cheri_inst(rv_inst inst) {
             case 20:
                 switch ((inst >> 20) & 0b11111) {
                 case 0: op = rv_op_lr_q; break;
+                    if (flags & RISCV_DIS_FLAG_CHERI) {
                         op = (flags & RISCV_DIS_FLAG_CAPMODE)
                     } else {
                     }
@@ -3292,8 +3310,11 @@ static rv_opcode decode_cheri_inst(rv_inst inst) {
                 break;
             case 26: op = rv_op_sc_w; break;
             case 27: op = rv_op_sc_d; break;
-            case 28: op = rv_op_sc_q; break;
+                                                          : rv_op_sc_c_int_ptr;
+                } else {
                     op = rv_op_sc_q;
+                }
+                break;
             case 32: op = rv_op_amoxor_b; break;
             case 33: op = rv_op_amoxor_h; break;
             case 34: op = rv_op_amoxor_w; break;
