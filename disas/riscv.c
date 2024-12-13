@@ -865,6 +865,8 @@ typedef enum {
     rv_op_ccopytype,
     rv_op_ccseal,
     rv_op_ctestsubset,
+    rv_op_sc_c_cap_ptr,
+    rv_op_sc_c_int_ptr,
     /* Special case scbndsi 2 registers, 1 immediate, 1 flag */
     rv_op_scbndsi,
     rv_op_fcvt_s_bf16 = 792,
@@ -1077,6 +1079,8 @@ static const char rv_vreg_name_sym[32][4] = {
 #define rv_fmt_cd_cs2_offs0_rs1       "O\tC0,C2,i(1)"
 #define rv_fmt_cd_offs0_cs1           "O\tC0,i(C1)"
 #define rv_fmt_cd_offs0_rs1           "O\tC0,i(1)"
+#define rv_fmt_rd_cs2_offs0_cs1       "O\t0,C2,i(C1)"
+#define rv_fmt_rd_cs2_offs0_rs1       "O\t0,C2,i(1)"
 /* The FLI.[HSDQ] numeric constants (0.0 for symbolic constants).
  * The constants use the hex floating-point literal representation
  * that is printed when using the printf %a format specifier,
@@ -2232,6 +2236,9 @@ const rv_opcode_data rvi_opcode_data[] = {
     [rv_op_lr_c_cap_ptr] = { "lr.c", rv_codec_r_l, rv_fmt_cd_offs0_cs1, NULL,
                              0, 0, 0 },
     [rv_op_lr_c_int_ptr] = { "lr.c", rv_codec_r_l, rv_fmt_cd_offs0_rs1, NULL,
+    [rv_op_sc_c_cap_ptr] = { "sc.c", rv_codec_r, rv_fmt_rd_cs2_offs0_cs1,
+                            NULL, 0, 0, 0 },
+    [rv_op_sc_c_int_ptr] = { "sc.c", rv_codec_r, rv_fmt_rd_cs2_offs0_rs1,
     /* 2 registers, 1 flag, 1 immediate */
     [rv_op_scbndsi] = { "scbdsi", rv_codec_scbndsi, rv_fmt_cd_cs1_imm, NULL, 0, 0, 0 },
     { "fcvt.s.bf16", rv_codec_r_m, rv_fmt_rm_frd_frs1, NULL, 0, 0, 0 },
@@ -3309,18 +3316,21 @@ static rv_opcode decode_cheri_inst(rv_inst inst) {
                 break;
             case 20:
                 switch ((inst >> 20) & 0b11111) {
-                case 0: op = rv_op_lr_q; break;
                     if (flags & RISCV_DIS_FLAG_CHERI) {
                         op = (flags & RISCV_DIS_FLAG_CAPMODE)
                                  ? rv_op_lr_c_cap_ptr
                                  : rv_op_lr_c_int_ptr;
                     } else {
+                        op = rv_op_lr_q;
                     }
                     break;
                 }
                 break;
             case 26: op = rv_op_sc_w; break;
             case 27: op = rv_op_sc_d; break;
+            case 28:
+                if (flags & RISCV_DIS_FLAG_CHERI) {
+                    op = (flags & RISCV_DIS_FLAG_CAPMODE) ? rv_op_sc_c_cap_ptr
                                                           : rv_op_sc_c_int_ptr;
                 } else {
                     op = rv_op_sc_q;
