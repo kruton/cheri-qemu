@@ -1469,7 +1469,7 @@ TRANS_F(SEAL_CHKSSU)
     return true;
 }
 
-TRANS_F(CSEL)
+TRANS_F(CSEL_c)
 {
     if (capabilities_enabled_exception(ctx))
         return true;
