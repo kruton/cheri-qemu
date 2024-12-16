@@ -295,7 +295,7 @@ static void xilinx_ethlite_init(Object *obj)
     sysbus_init_mmio(SYS_BUS_DEVICE(obj), &s->mmio);
 }
 
-static Property xilinx_ethlite_properties[] = {
+static const Property xilinx_ethlite_properties[] = {
     DEFINE_PROP_UINT32("phyaddr", struct xlx_ethlite, c_phyaddr, 1),
     DEFINE_PROP_UINT32("tx-ping-pong", struct xlx_ethlite, c_tx_pingpong, 1),
     DEFINE_PROP_UINT32("rx-ping-pong", struct xlx_ethlite, c_rx_pingpong, 1),

@@ -372,7 +372,7 @@ const char * const riscv_cpu_mode_names[QEMU_LOG_INSTR_CPU_MODE_MAX] = {
 };
 #endif
 
-static Property riscv_cpu_properties[];
+static const Property riscv_cpu_properties[];
 const char *riscv_cpu_get_trap_name(target_ulong cause, bool async)
 {
     if (async) {
@@ -3201,7 +3201,7 @@ RISCVCPUImpliedExtsRule *riscv_multi_ext_implied_rules[] = {
     NULL
 };
 
-static Property riscv_cpu_properties[] = {
+static const Property riscv_cpu_properties[] = {
     DEFINE_PROP_BOOL("debug", RISCVCPU, cfg.debug, true),
 
     {.name = "pmu-mask", .info = &prop_pmu_mask},
