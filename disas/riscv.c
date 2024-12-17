@@ -1075,6 +1075,8 @@ static const char rv_vreg_name_sym[32][4] = {
    be used. */
 #define rv_fmt_cd_cs2_offs0_cs1       "O\tC0,C2,i(C1)"
 #define rv_fmt_cd_cs2_offs0_rs1       "O\tC0,C2,i(1)"
+#define rv_fmt_cd_offs0_cs1           "O\tC0,i(C1)"
+#define rv_fmt_cd_offs0_rs1           "O\tC0,i(1)"
 /* The FLI.[HSDQ] numeric constants (0.0 for symbolic constants).
  * The constants use the hex floating-point literal representation
  * that is printed when using the printf %a format specifier,
@@ -2227,6 +2229,9 @@ const rv_opcode_data rvi_opcode_data[] = {
                                    rv_fmt_cd_cs2_offs0_cs1, NULL, 0, 0, 0 },
     [rv_op_amoswap_c_int_ptr] = { "amoswap.c", rv_codec_r,
                                    rv_fmt_cd_cs2_offs0_rs1, NULL, 0, 0, 0 },
+    [rv_op_lr_c_cap_ptr] = { "lr.c", rv_codec_r_l, rv_fmt_cd_offs0_cs1, NULL,
+                             0, 0, 0 },
+    [rv_op_lr_c_int_ptr] = { "lr.c", rv_codec_r_l, rv_fmt_cd_offs0_rs1, NULL,
     /* 2 registers, 1 flag, 1 immediate */
     [rv_op_scbndsi] = { "scbdsi", rv_codec_scbndsi, rv_fmt_cd_cs1_imm, NULL, 0, 0, 0 },
     { "fcvt.s.bf16", rv_codec_r_m, rv_fmt_rm_frd_frs1, NULL, 0, 0, 0 },
@@ -3285,9 +3290,13 @@ static rv_opcode decode_cheri_inst(rv_inst inst) {
             case 9: op = rv_op_amoswap_h; break;
             case 10: op = rv_op_amoswap_w; break;
             case 11: op = rv_op_amoswap_d; break;
-            case 12: op = rv_op_amoswap_q; break;
+                if (flags & RISCV_DIS_FLAG_CHERI) {
+                    op = (flags & RISCV_DIS_FLAG_CAPMODE)
                              ? rv_op_amoswap_c_cap_ptr
                              : rv_op_amoswap_c_int_ptr;
+                } else {
+                }
+                break;
             case 18:
                 switch ((inst >> 20) & 0b11111) {
                 case 0: op = rv_op_lr_w; break;
@@ -3303,6 +3312,8 @@ static rv_opcode decode_cheri_inst(rv_inst inst) {
                 case 0: op = rv_op_lr_q; break;
                     if (flags & RISCV_DIS_FLAG_CHERI) {
                         op = (flags & RISCV_DIS_FLAG_CAPMODE)
+                                 ? rv_op_lr_c_cap_ptr
+                                 : rv_op_lr_c_int_ptr;
                     } else {
                     }
                     break;
