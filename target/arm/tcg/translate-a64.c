@@ -2323,6 +2323,15 @@ static bool trans_DSB_DMB(DisasContext *s, arg_DSB_DMB *a)
     return true;
 }
 
+static bool trans_DSB_nXS(DisasContext *s, arg_DSB_nXS *a)
+{
+    if (!dc_isar_feature(aa64_xs, s)) {
+        return false;
+    }
+    tcg_gen_mb(TCG_BAR_SC | TCG_MO_ALL);
+    return true;
+}
+
 static bool trans_ISB(DisasContext *s, arg_ISB *a)
 {
     /*
@@ -9102,8 +9111,9 @@ static bool trans_FCVT_s_ds(DisasContext *s, arg_rr *a)
     if (fp_access_check(s)) {
         TCGv_i32 tcg_rn = read_fp_sreg(s, a->rn);
         TCGv_i64 tcg_rd = tcg_temp_new_i64();
+        TCGv_ptr fpst = fpstatus_ptr(FPST_FPCR);
 
-        gen_helper_vfp_fcvtds(tcg_rd, tcg_rn, tcg_env);
+        gen_helper_vfp_fcvtds(tcg_rd, tcg_rn, fpst);
         write_fp_dreg(s, a->rd, tcg_rd);
     }
     return true;
@@ -9128,8 +9138,9 @@ static bool trans_FCVT_s_sd(DisasContext *s, arg_rr *a)
     if (fp_access_check(s)) {
         TCGv_i64 tcg_rn = read_fp_dreg(s, a->rn);
         TCGv_i32 tcg_rd = tcg_temp_new_i32();
+        TCGv_ptr fpst = fpstatus_ptr(FPST_FPCR);
 
-        gen_helper_vfp_fcvtsd(tcg_rd, tcg_rn, tcg_env);
+        gen_helper_vfp_fcvtsd(tcg_rd, tcg_rn, fpst);
         write_fp_sreg(s, a->rd, tcg_rd);
     }
     return true;
@@ -9702,7 +9713,7 @@ static void gen_fcvtxn_sd(TCGv_i64 d, TCGv_i64 n)
      * with von Neumann rounding (round to odd)
      */
     TCGv_i32 tmp = tcg_temp_new_i32();
-    gen_helper_fcvtx_f64_to_f32(tmp, n, tcg_env);
+    gen_helper_fcvtx_f64_to_f32(tmp, n, fpstatus_ptr(FPST_FPCR));
     tcg_gen_extu_i32_i64(d, tmp);
 }
 
@@ -9808,7 +9819,9 @@ static void gen_fcvtn_hs(TCGv_i64 d, TCGv_i64 n)
 static void gen_fcvtn_sd(TCGv_i64 d, TCGv_i64 n)
 {
     TCGv_i32 tmp = tcg_temp_new_i32();
-    gen_helper_vfp_fcvtsd(tmp, n, tcg_env);
+    TCGv_ptr fpst = fpstatus_ptr(FPST_FPCR);
+
+    gen_helper_vfp_fcvtsd(tmp, n, fpst);
     tcg_gen_extu_i32_i64(d, tmp);
 }
 
@@ -10090,11 +10103,13 @@ static bool trans_FCVTL_v(DisasContext *s, arg_qrr_e *a)
      * The only instruction like this is FCVTL.
      */
     int pass;
+    TCGv_ptr fpst;
 
     if (!fp_access_check(s)) {
         return true;
     }
 
+    fpst = fpstatus_ptr(FPST_FPCR);
     if (a->esz == MO_64) {
         /* 32 -> 64 bit fp conversion */
         TCGv_i64 tcg_res[2];
@@ -10104,7 +10119,7 @@ static bool trans_FCVTL_v(DisasContext *s, arg_qrr_e *a)
         for (pass = 0; pass < 2; pass++) {
             tcg_res[pass] = tcg_temp_new_i64();
             read_vec_element_i32(s, tcg_op, a->rn, srcelt + pass, MO_32);
-            gen_helper_vfp_fcvtds(tcg_res[pass], tcg_op, tcg_env);
+            gen_helper_vfp_fcvtds(tcg_res[pass], tcg_op, fpst);
         }
         for (pass = 0; pass < 2; pass++) {
             write_vec_element(s, tcg_res[pass], a->rd, pass, MO_64);
@@ -10113,7 +10128,6 @@ static bool trans_FCVTL_v(DisasContext *s, arg_qrr_e *a)
         /* 16 -> 32 bit fp conversion */
         int srcelt = a->q ? 4 : 0;
         TCGv_i32 tcg_res[4];
-        TCGv_ptr fpst = fpstatus_ptr(FPST_FPCR);
         TCGv_i32 ahp = get_ahp_flag();
 
         for (pass = 0; pass < 4; pass++) {
