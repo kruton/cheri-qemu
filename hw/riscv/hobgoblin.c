@@ -262,6 +262,7 @@ static int hobgoblin_load_images(HobgoblinState *s, const memmapEntry_t *dram)
     uint64_t kernel_entry = 0;
     uint64_t fdt_load_addr = 0;
     target_ulong firmware_end_addr;
+    RISCVBootInfo boot_info;
 
     const memmapEntry_t *memmap = address_maps[MAPVERSION(s)];
 
@@ -275,6 +276,8 @@ static int hobgoblin_load_images(HobgoblinState *s, const memmapEntry_t *dram)
     } else {
         target_ulong kernel_start_addr = 0;
         int fdt_size = 0;
+
+        riscv_boot_info_init(&boot_info, &s->soc);
 
         start_addr = dram->base;
 
@@ -295,11 +298,11 @@ static int hobgoblin_load_images(HobgoblinState *s, const memmapEntry_t *dram)
 
         /* Load Kernel into RAM */
         if (machine->kernel_filename) {
-            kernel_start_addr = riscv_calc_kernel_start_addr(&s->soc,
+            kernel_start_addr = riscv_calc_kernel_start_addr(&boot_info,
                                                              firmware_end_addr);
-            kernel_entry = riscv_load_kernel(machine, &s->soc,
-                                             kernel_start_addr,
-                                             true, NULL);
+            riscv_load_kernel(machine, &boot_info, kernel_start_addr,
+                              true, NULL);
+            kernel_entry = boot_info.image_low_addr;
 
             if (machine->fdt && machine->kernel_cmdline &&
                 *machine->kernel_cmdline) {
@@ -312,7 +315,8 @@ static int hobgoblin_load_images(HobgoblinState *s, const memmapEntry_t *dram)
         if (machine->fdt) {
             fdt_load_addr = riscv_compute_fdt_addr(dram->base,
                                                    dram->size,
-                                                   machine);
+                                                   machine,
+                                                   &boot_info);
             riscv_load_fdt(fdt_load_addr, machine->fdt);
         }
     }
