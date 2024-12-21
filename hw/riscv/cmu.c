@@ -146,14 +146,13 @@ typedef enum{
     VERSION_MAX=2
 } REG_VERSION;
 
-static Property cmu_properties[] = {
+static const Property cmu_properties[] = {
     DEFINE_PROP_UINT32("reg-map-version", CMUDeviceState, reg_map_ver, 0),
     DEFINE_PROP_UINT64("ram-base", CMUDeviceState, base, 0),
     DEFINE_PROP_UINT64("ram-size", CMUDeviceState, size, 0),
     DEFINE_PROP_UINT16("cache-line-size", CMUDeviceState, cache_line_size, 256),
     DEFINE_PROP_LINK("managed-ram", CMUDeviceState, managed,
             TYPE_MEMORY_REGION, MemoryRegion *),
-    DEFINE_PROP_END_OF_LIST(),
 };
 
 static void cmu_realize(DeviceState *dev, Error **errp)

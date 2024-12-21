@@ -244,7 +244,7 @@ const RISCVIsaExtData isa_edata_arr[] = {
     ISA_EXT_DATA_ENTRY(xtheadsync, PRIV_VERSION_1_11_0, ext_xtheadsync),
     ISA_EXT_DATA_ENTRY(xventanacondops, PRIV_VERSION_1_12_0, ext_XVentanaCondOps),
 
-    DEFINE_PROP_END_OF_LIST(),
+    { },
 };
 
 bool isa_ext_is_enabled(RISCVCPU *cpu, uint32_t ext_offset)
@@ -2115,7 +2115,7 @@ const RISCVCPUMultiExtConfig riscv_cpu_extensions[] = {
     MULTI_EXT_CFG_BOOL("zvksc", ext_zvksc, false),
     MULTI_EXT_CFG_BOOL("zvksg", ext_zvksg, false),
 
-    DEFINE_PROP_END_OF_LIST(),
+    { },
 };
 
 const RISCVCPUMultiExtConfig riscv_cpu_vendor_exts[] = {
@@ -2132,12 +2132,12 @@ const RISCVCPUMultiExtConfig riscv_cpu_vendor_exts[] = {
     MULTI_EXT_CFG_BOOL("xtheadsync", ext_xtheadsync, false),
     MULTI_EXT_CFG_BOOL("xventanacondops", ext_XVentanaCondOps, false),
 
-    DEFINE_PROP_END_OF_LIST(),
+    { },
 };
 
 /* These are experimental so mark with 'x-' */
 const RISCVCPUMultiExtConfig riscv_cpu_experimental_exts[] = {
-    DEFINE_PROP_END_OF_LIST(),
+    { },
 };
 
 /*
@@ -2150,7 +2150,7 @@ const RISCVCPUMultiExtConfig riscv_cpu_experimental_exts[] = {
 const RISCVCPUMultiExtConfig riscv_cpu_named_features[] = {
     MULTI_EXT_CFG_BOOL("zic64b", ext_zic64b, true),
 
-    DEFINE_PROP_END_OF_LIST(),
+    { },
 };
 
 /* Deprecated entries marked for future removal */
@@ -2167,7 +2167,7 @@ const RISCVCPUMultiExtConfig riscv_cpu_deprecated_exts[] = {
     MULTI_EXT_CFG_BOOL("Zve64f", ext_zve64f, false),
     MULTI_EXT_CFG_BOOL("Zve64d", ext_zve64d, false),
 
-    DEFINE_PROP_END_OF_LIST(),
+    { },
 };
 
 static void cpu_set_prop_err(RISCVCPU *cpu, const char *propname,
@@ -3242,7 +3242,6 @@ static const Property riscv_cpu_properties[] = {
 #if defined(TARGET_CHERI_RISCV_STD)
     DEFINE_PROP_UINT8("cheri_levels", RISCVCPU, cfg._compat_cheri_levels, 0),
 #endif
-    DEFINE_PROP_END_OF_LIST(),
 };
 
 #if defined(TARGET_RISCV64)

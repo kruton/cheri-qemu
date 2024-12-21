@@ -246,11 +246,10 @@ static const VMStateDescription vmstate_codasip_timer = {
     }
 };
 
-static Property codasip_timer_properties[] = {
+static const Property codasip_timer_properties[] = {
     /* default to 100 MHz */
     DEFINE_PROP_UINT64("clock-frequency", CodasipTimerState_t,
                        freq_hz, CODASIP_TIMER_FRQ_HZ),
-    DEFINE_PROP_END_OF_LIST(),
 };
 
 static void codasip_timer_class_init(ObjectClass *klass, void *data)

@@ -281,17 +281,12 @@ static void arm_trickbox_instance_init(Object *obj)
 
 static void arm_trickbox_realize(DeviceState *dev, Error **errp) {}
 
-static Property arm_trickbox_properties[] = {
-    DEFINE_PROP_END_OF_LIST(),
-};
-
 static void arm_trickbox_class_init(ObjectClass *oc, void *data)
 {
     DeviceClass *dc = DEVICE_CLASS(oc);
 
     dc->realize = arm_trickbox_realize;
     device_class_set_legacy_reset(dc, arm_trickbox_reset);
-    device_class_set_props(dc, arm_trickbox_properties);
     set_bit(DEVICE_CATEGORY_INPUT, dc->categories);
 }
 

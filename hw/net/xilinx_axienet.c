@@ -1056,7 +1056,6 @@ static const Property xilinx_enet_properties[] = {
                      tx_data_dev, TYPE_STREAM_SINK, StreamSink *),
     DEFINE_PROP_LINK("axistream-control-connected", XilinxAXIEnet,
                      tx_control_dev, TYPE_STREAM_SINK, StreamSink *),
-    DEFINE_PROP_END_OF_LIST(),
 };
 
 static void xilinx_enet_class_init(ObjectClass *klass, void *data)

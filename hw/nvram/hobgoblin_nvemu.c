@@ -62,10 +62,9 @@ static const MemoryRegionOps nvemu_reg_ops = {
     .valid.min_access_size = 1,
 };
 
-static Property nvemu_properties[] = {
+static const Property nvemu_properties[] = {
     DEFINE_PROP_LINK("memdev", NVEmuState, nvram_be, TYPE_MEMORY_BACKEND,
             HostMemoryBackend *),
-    DEFINE_PROP_END_OF_LIST(),
 };
 
 static void nvemu_enter_reset(Object *obj, ResetType type)
