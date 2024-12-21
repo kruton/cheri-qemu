@@ -46,6 +46,7 @@
 #include "exec/translator.h"
 #include "tcg/tcg.h"
 #include "tcg/tcg-op.h"
+#include "internal-common.h"
 
 /*
  * CHERI common instruction logging.

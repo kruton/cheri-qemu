@@ -14,7 +14,7 @@ mips_ss.add(when: ['CONFIG_TCG', 'CONFIG_TCG_LOG_INSTR'],
   if_true: files('op_helper_log_instr.c'))
 
 if have_system
-  subdir('sysemu')
+  subdir('system')
 endif
 
 if 'CONFIG_TCG' in config_all_accel

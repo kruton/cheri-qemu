@@ -38,7 +38,7 @@
 #include "hw/loader.h"
 #include "hw/arm/boot.h"
 #include "cheri_tagmem.h"
-#include "sysemu/sysemu.h"
+#include "system/system.h"
 #include "hw/arm/armtrickbox.h"
 
 /* A basic morello board. There is no need to use this if only a morello CPU

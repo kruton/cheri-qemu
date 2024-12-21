@@ -22,7 +22,7 @@
 #include "hw/register.h"
 #include "hw/nvram/hobgoblin_nvemu.h"
 #include "hw/sysbus.h"
-#include "sysemu/hostmem.h"
+#include "system/hostmem.h"
 
 #define NVEMU_REG_SIZE   0x100
 #define NVEMU_NVRAM_SIZE 0xC00

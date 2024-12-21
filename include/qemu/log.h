@@ -41,6 +41,7 @@ bool qemu_log_separate(void);
 #define CPU_LOG_CHERI_BOUNDS (1 << 24)
 #define CPU_LOG_GUEST_DEBUG_MSG (1 << 25)
 #define LOG_TB_OP_PLUGIN   (1 << 26)
+#define LOG_INVALID_MEM    (1 << 27)
 
 /* Lock/unlock output. */
 

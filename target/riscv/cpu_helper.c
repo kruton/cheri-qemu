@@ -30,7 +30,7 @@
 #include "tcg/tcg-op.h"
 #include "trace.h"
 #include "semihosting/common-semi.h"
-#include "sysemu/cpu-timers.h"
+#include "system/cpu-timers.h"
 #include "disas/disas.h"
 #include "helper_utils.h"
 #ifdef TARGET_CHERI

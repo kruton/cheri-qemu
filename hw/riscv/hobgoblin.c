@@ -49,9 +49,9 @@
 #include "hw/misc/codasip_trng.h"
 #include "hw/pci-host/xilinx-pcie.h"
 #include "chardev/char.h"
-#include "sysemu/device_tree.h"
-#include "sysemu/sysemu.h"
-#include "sysemu/runstate.h"
+#include "system/device_tree.h"
+#include "system/system.h"
+#include "system/runstate.h"
 #include "exec/address-spaces.h"
 #include "net/net.h"
 #include <libfdt.h>

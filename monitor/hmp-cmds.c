@@ -30,7 +30,7 @@
 #include "qemu/cutils.h"
 #include "qemu/log.h"
 #include "qemu/log_instr.h"
-#include "sysemu/sysemu.h"
+#include "system/system.h"
 
 bool hmp_handle_error(Monitor *mon, Error *err)
 {

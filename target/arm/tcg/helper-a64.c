@@ -28,7 +28,6 @@
 #include "qemu/bitops.h"
 #include "internals.h"
 #include "qemu/crc32c.h"
-
 #ifdef TARGET_CHERI
 #include "cheri-lazy-capregs.h"
 
@@ -50,6 +49,8 @@ static inline void set_xreg_addr_cheri(CPUARMState *env, int reg, uint64_t addr)
 #define SET_XREG_ADDR(env, reg, addr) (env->xregs[reg] = (addr))
 
 #endif
+
+#include "exec/cpu-common.h"
 #include "exec/exec-all.h"
 #include "exec/cpu_ldst.h"
 #include "qemu/int128.h"
@@ -61,6 +62,10 @@ static inline void set_xreg_addr_cheri(CPUARMState *env, int reg, uint64_t addr)
 #ifdef TARGET_CHERI
 #include "cheri-helper-utils.h"
 #include "cheri_tagmem.h"
+#endif
+
+#ifdef CONFIG_USER_ONLY
+#include "user/page-protection.h"
 #endif
 
 /* C2.4.7 Multiply and divide */
