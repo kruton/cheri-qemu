@@ -29,6 +29,10 @@ static const Property cmu_properties[] = {
     DEFINE_PROP_UINT64("ram-size", CMUDeviceState, size, 0),
     DEFINE_PROP_LINK("managed-ram", CMUDeviceState, managed,
             TYPE_MEMORY_REGION, MemoryRegion *),
+static void cmu_realize(DeviceState *dev, Error **errp)
+    CMUDeviceState *s = CMU_DEVICE(dev);
+    memory_region_init_io(&s->iomem, OBJECT(dev), &cmu_ops, s, TYPE_CMU_DEVICE,
+    sysbus_init_mmio(SYS_BUS_DEVICE(dev), &s->iomem);
 static void cmu_class_init(ObjectClass *oc, const void *data)
     DeviceClass *dc = DEVICE_CLASS(oc);
     device_class_set_props(dc, cmu_properties);
