@@ -390,6 +390,7 @@ target_ulong CHERI_HELPER_IMPL(cap_check_addr(CPUArchState *env,
                                               uint32_t required_perms))
     GET_HOST_RETPC();
     const cap_register_t *cbp = get_capreg_or_special(env, authreg);
+        cap_check_common_reg(min_perms_for_load(), env, authreg, addr,
     GET_HOST_RETPC();
     const cap_register_t *ddc = cheri_get_ddc(env);
     const target_ulong checked_addr =
