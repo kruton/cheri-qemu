@@ -1,3 +1,4 @@
+#include <math.h>
 #include "hw/qdev-properties.h"
 #ifdef TARGET_CHERI
 #include "cheri_tagmem.h"
@@ -27,6 +28,7 @@
 static const Property cmu_properties[] = {
     DEFINE_PROP_UINT64("ram-base", CMUDeviceState, base, 0),
     DEFINE_PROP_UINT64("ram-size", CMUDeviceState, size, 0),
+    DEFINE_PROP_UINT16("cache-line-size", CMUDeviceState, cache_line_size, 256),
     DEFINE_PROP_LINK("managed-ram", CMUDeviceState, managed,
             TYPE_MEMORY_REGION, MemoryRegion *),
 static void cmu_realize(DeviceState *dev, Error **errp)
