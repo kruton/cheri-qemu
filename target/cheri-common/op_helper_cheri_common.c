@@ -318,6 +318,7 @@ cincoffset_impl(CPUArchState *env, uint32_t cd, uint32_t cb, target_ulong rt,
     cap_register_t result = *cbp;
     if (!RESULT_VALID) {
         result.cr_tag = 0;
+#ifdef TARGET_CHERI_RISCV_STD
 #endif
     update_capreg(env, cd, &result);
     cincoffset_impl(env, cd, cb, rt, GETPC(), OOB_INFO(cincoffset));
@@ -366,6 +367,7 @@ target_ulong CHERI_HELPER_IMPL(cgetflags(CPUArchState *env, uint32_t cb))
     GET_HOST_RETPC_IF_TRAPPING_CHERI_ARCH();
     if (cbp->cr_tag && !cap_is_unsealed(cbp)) {
     cap_register_t result = *cbp;
+#endif
     bool is_subset = false;
     if (cbp->cr_tag == ctp->cr_tag &&
         /* is_cap_sealed(cbp) == is_cap_sealed(ctp) && */
@@ -427,6 +429,8 @@ target_ulong CHERI_HELPER_IMPL(cap_check_addr(CPUArchState *env,
             cpu_ld_cap_word_ra(env, vaddr + CHERI_MEM_OFFSET_METADATA, retpc) ^
     bool tag =
         cheri_tag_get(env, vaddr, cb, physaddr, &prot, retpc, mmu_idx, host);
+        uint8_t lvbits = 0;
+        lvbits = env_archcpu(env)->cfg.lvbits;
         CAP_cc(decompress_raw_ext)(*pesbt, *cursor, tag, lvbits, &ncd);
         tag = cheri_tag_prot_clear_or_trap(env, vaddr, cb, source, prot, retpc,
         if (tag) {
@@ -464,6 +468,10 @@ cap_register_t load_and_decompress_cap_from_memory_raw(
     target_ulong pesbt, cursor;
     bool tag = load_cap_from_memory_raw(env, &pesbt, &cursor, cb, source, vaddr,
                                         retpc, physaddr);
+    uint8_t lvbits = 0;
+#ifdef TARGET_CHERI_RISCV_STD
+    lvbits = env_archcpu(env)->cfg.lvbits;
+#endif
     CAP_cc(decompress_raw_ext)(pesbt, cursor, tag, lvbits, &result);
     return result;
 /*
@@ -486,6 +494,7 @@ cap_register_t load_and_decompress_cap_from_memory_raw(
     env->rvfi_dii_trace.MEM.rvfi_mem_wdata[0] = cursor;
     env->rvfi_dii_trace.MEM.rvfi_mem_wdata[1] = pesbt_for_mem;
         const target_ulong pesbt = pesbt_for_mem ^ CAP_MEM_XOR_MASK;
+        CAP_cc(decompress_raw)(pesbt, cursor, tag, &stored_cap);
                                          cpu_mmu_index(env_cpu(env), false));
     GET_HOST_RETPC();
     target_ulong result = cheri_tag_get_many(env, addr, cb, NULL, GETPC());
