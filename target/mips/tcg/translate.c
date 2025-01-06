@@ -15309,6 +15309,7 @@ static bool decode_opc_legacy(CPUMIPSState *env, DisasContext *ctx)
         break;
     case OPC_MDMX:
         /* MDMX: Not implemented. */
+        return false;
     case OPC_PCREL:
         check_insn(ctx, ISA_MIPS_R6);
         gen_pcrel(ctx, ctx->opcode, ctx->base.pc_next, rs);
