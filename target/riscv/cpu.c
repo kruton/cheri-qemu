@@ -717,6 +717,7 @@ bool riscv_cpu_has_work(CPUState *cs)
                 info_report("injecting instruction %d '0x%08x' at %s",
                             cmd_buf.rvfi_dii_time, cmd_buf.rvfi_dii_insn, buf);
             env->rvfi_dii_trace.PC.rvfi_pc_rdata = GET_SPECIAL_REG_ARCH(env, pc, pcc);
+            env->rvfi_dii_trace.INST.rvfi_ixl = riscv_cpu_mxl(env);
             cs->cflags_next_tb = (curr_cflags(cs) & ~CF_USE_ICOUNT) | 1;
 static void riscv_cpu_reset_hold(Object *obj, ResetType type)
 {
