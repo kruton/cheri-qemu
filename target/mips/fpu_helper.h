@@ -36,7 +36,12 @@ static inline void restore_snan_bit_mode(CPUMIPSState *env)
      * Before that, SNaNs are not silenced; default nans are produced.
      */
     set_snan_bit_is_one(!nan2008, &env->active_fpu.fp_status);
-    set_default_nan_mode(!nan2008, &env->active_fpu.fp_status);
+    /*
+     * FIXME: setting this breaks the cheritest MIPS FPU tests and there is
+     * no easy cherry-pick to restore the previous behaviour. For now just
+     * comment out this call and revisit once we have merged up to 9.2.
+     *
+     */
     /*
      * For MIPS systems that conform to IEEE754-1985, the (inf,zero,nan)
      * case sets InvalidOp and returns the default NaN.
