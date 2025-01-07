@@ -649,6 +649,8 @@ extern const char * const cheri_gp_regnames[];
 #define log_changed_special_reg(env, name, newval, index, type)                \
     do {                                                                       \
 #define log_changed_special_reg(env, name, newval) ((void)0)
+/*
+ */
     SCR_TO_PROGRAM_COUNTER(env, &((env)->cheri_name))
     ((target_ulong)cap_get_cursor(&((env)->cheri_name)))
 void update_special_register(CPURISCVState *env, cap_register_t *scr,
