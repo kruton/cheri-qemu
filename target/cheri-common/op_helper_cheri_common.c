@@ -227,6 +227,7 @@ void CHERI_HELPER_IMPL(cbuildcap(CPUArchState *env, uint32_t cd, uint32_t cb,
             /* Valid subset but not canonical -> return the untagged input. */
             result.cr_tag = 0;
         }
+    }
     update_capreg(env, cd, &result);
     GET_HOST_RETPC_IF_TRAPPING_CHERI_ARCH();
     DEFINE_RESULT_VALID;
@@ -251,6 +252,7 @@ void CHERI_HELPER_IMPL(cbuildcap(CPUArchState *env, uint32_t cd, uint32_t cb,
 static void cseal_common(CPUArchState *env, uint32_t cd, uint32_t cs,
                          uintptr_t _host_return_address)
     DEFINE_RESULT_VALID;
+    const cap_register_t *csp = get_readonly_capreg(env, cs);
     /*
      */
     if (!ctp->cr_tag) {
@@ -267,6 +269,7 @@ static void cseal_common(CPUArchState *env, uint32_t cd, uint32_t cs,
     } else if (!conditional && !cap_is_unsealed(csp)) {
         raise_cheri_exception_or_invalidate(env, CapEx_SealViolation, cs);
         raise_cheri_exception_or_invalidate(env, CapEx_SealViolation, ct);
+    } else if (!cap_has_perms(ctp, CAP_PERM_SEAL)) {
         raise_cheri_exception_or_invalidate(env, CapEx_PermitSealViolation, ct);
     } else if (!conditional && !cap_cursor_in_bounds(ctp)) {
     } else if (!is_representable_cap_with_addr(csp, cap_get_cursor(csp))) {
@@ -563,6 +566,7 @@ cap_register_t load_and_decompress_cap_from_memory_raw(
         tcg_debug_assert(pesbt_for_mem == 0 && "Integer values should have NULL PESBT");
 #endif
 #if defined(TARGET_CHERI_RISCV_STD)
+    RISCVCPU *cpu = env_archcpu(env);
     /*
      */
         tcg_debug_assert(pesbt_for_mem == 0 && "Wrong value for cnull?");
