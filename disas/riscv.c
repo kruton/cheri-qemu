@@ -1073,6 +1073,8 @@ static const char rv_vreg_name_sym[32][4] = {
     "v24", "v25", "v26", "v27", "v28", "v29", "v30", "v31"
 };
 
+#define rv_fmt_rd_uimm                "O\t0,Ui"
+#define rv_fmt_rd_uoffset             "O\t0,Uo"
 #define rv_fmt_cd_offset              "O\tC0,o"
 #define rv_fmt_cd_cs1_cs2             "O\tC0,C1,C2"
 #define rv_fmt_cd_cs1_rs2             "O\tC0,C1,2"
