@@ -300,6 +300,7 @@ static void cseal_common(CPUArchState *env, uint32_t cd, uint32_t cs,
     }
     cap_register_t result = *csp;
     target_ulong new_perms = cap_get_all_perms(&result);
+    if (cap_has_perms(csp, CAP_PERM_GLOBAL) &&
     } else {
     }
     cap_set_perms(env, &result, new_perms);
@@ -307,6 +308,7 @@ static void cseal_common(CPUArchState *env, uint32_t cd, uint32_t cs,
         CAP_cc(update_otype)(&result, CAP_OTYPE_UNSEALED);
     }
     update_capreg(env, cd, &result);
+}
 #endif
 static inline QEMU_ALWAYS_INLINE void
 cincoffset_impl(CPUArchState *env, uint32_t cd, uint32_t cb, target_ulong rt,
@@ -326,8 +328,11 @@ cincoffset_impl(CPUArchState *env, uint32_t cd, uint32_t cb, target_ulong rt,
     cap_register_t result = *cbp;
     if (!RESULT_VALID) {
         result.cr_tag = 0;
+    target_ulong new_perms = cap_get_all_perms(cbp) & rt;
+    cap_legalize_perms(env, &result, &new_perms);
 #ifdef TARGET_CHERI_RISCV_STD
 #endif
+    cap_set_perms(env, &result, new_perms);
     update_capreg(env, cd, &result);
     cincoffset_impl(env, cd, cb, rt, GETPC(), OOB_INFO(cincoffset));
 void CHERI_HELPER_IMPL(candaddr(CPUArchState *env, uint32_t cd, uint32_t cb,
@@ -350,6 +355,8 @@ void CHERI_HELPER_IMPL(candaddr(CPUArchState *env, uint32_t cd, uint32_t cb,
                          uint32_t cb, target_ulong length,
                          uintptr_t _host_return_address)
     cap_register_t result = *cbp;
+    /*
+     */
     bool exact;
     if (!CHERI_TAG_CLEAR_ON_INVALID(env)) {
          * The setbounds call will invalidate any results with larger bounds
@@ -413,8 +420,14 @@ target_ulong CHERI_HELPER_IMPL(cap_check_addr(CPUArchState *env,
     if (tag && (prot & PAGE_LC_CLEAR)) {
     if (tag && !cap_has_perms(cbp, CAP_PERM_LOAD_CAP)) {
     if ((tag && (prot & PAGE_LC_TRAP)) || (prot & PAGE_LC_TRAP_ANY))
+ * Update the permissions of a capability that has just been loaded from
+ * memory. pesbt points to the metadata of the loaded capability, source is
+ * the capability that authorized the load.
  *
+ * Permission updates may be enforced by load mutable or capability levels.
  *
+ * source must be fully decompressed. This is a reasonable assumption since
+ * it's always pointing to a register.
 static void update_loaded_cap_perms(CPUArchState *env, target_ulong *pesbt,
                                     const cap_register_t *source)
 #if defined(TARGET_AARCH64) || defined(TARGET_CHERI_RISCV_STD)
@@ -424,19 +437,39 @@ static void update_loaded_cap_perms(CPUArchState *env, target_ulong *pesbt,
      * any other capability.
     cap_register_t tmp = *source;
     tmp.cr_pesbt = *pesbt;
+    /* Note: original_perms also contains the level */
+    const target_ulong original_perms = cap_get_all_perms(&tmp);
+    target_ulong perms = original_perms;
     if (!cap_has_perms(source, CAP_PERM_MUTABLE_LOAD)) {
          * The spec says "Capabilities that are sealed or untagged do not have
          * their permissions changed."
          * The tag has already been checked by the caller.
+        if (cap_is_unsealed(&tmp)) {
             qemu_maybe_log_instr_extra(env, "Squashing mutable load perms\n");
 #if defined(TARGET_AARCH64)
             perms &= ~(CAP_PERM_MUTABLE_LOAD | CAP_PERM_STORE_LOCAL |
                        CAP_PERM_STORE_CAP | CAP_PERM_STORE);
 #elif defined(TARGET_CHERI_RISCV_STD)
             perms &= ~(CAP_PERM_MUTABLE_LOAD | CAP_PERM_STORE);
+#endif
 #if defined(TARGET_CHERI_RISCV_STD_093)
+     * Any unsealed capability with its tag set to 1 that is loaded from memory
+     * has its EL-permission cleared and its Capability Level (CL) restricted to
+     * the authorizing capability’s Capability Level (CL) if the authorizing
+     * capability does not grant EL-permission. If sealed, then only CL is
+     * modified, EL-permission is unchanged. This permission is similar to the
+     * existing LM-permission, but instead of applying to the W-permission on
+     * the loaded capability it restricts the CL field.
+    if (source->cr_lvbits > 0 &&
+        !cap_has_perms(source, CAP_PERM_ELEVATE_LEVEL)) {
+        cheri_debug_assert(source->cr_lvbits == 1 && "Only 0 and 1 supported");
+        qemu_maybe_log_instr_extra(env, "Squashing elevate level perms\n");
         if (!cap_has_perms(source, CAP_PERM_GLOBAL)) {
+            /* Note: CL is always modified, even for sealed capabilities. */
+            perms &= ~CAP_PERM_GLOBAL;
         if (cap_is_unsealed(&tmp)) {
+            perms &= ~CAP_PERM_ELEVATE_LEVEL;
+    if (perms != original_perms) {
         /* Strip any other permissions that can no longer be encoded. */
         cap_legalize_perms(env, &tmp, &perms);
         cap_set_perms(env, &tmp, perms);
@@ -444,6 +477,7 @@ static void update_loaded_cap_perms(CPUArchState *env, target_ulong *pesbt,
     hwaddr *physaddr, bool *raw_tag, int mmu_idx, bool all_raw)
      * If all_raw is set, we return tag, pesbt and cursor exactly as they are
      * stored in memory.
+     *
      * source/cb point to the authorizing capability. Generally, the caller
      * must have checked permissions for the memory read. We use the
      * authorizing capability's permission to fix up the mem capability (e.g.
