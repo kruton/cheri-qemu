@@ -1153,6 +1153,19 @@ static int get_physical_address_pmp(CPURISCVState *env, int *prot, hwaddr addr,
     return TRANSLATE_SUCCESS;
 }
 
+static void pte_print(target_ulong pte, int level)
+{
+    qemu_log_mask(
+        CPU_LOG_MMU, "PTE - " TARGET_FMT_lx " %s%s%s%s%s%s%s%s%s%s %d\n", pte,
+#if defined(TARGET_CHERI) && !defined(TARGET_RISCV32)
+        pte & PTE_CRG ? "CRG" : "", pte & PTE_CW ? "CW" : "",
+#else
+        "", "",
+#endif
+        pte & PTE_R ? "R" : "", pte & PTE_W ? "W" : "", pte & PTE_X ? "X" : "",
+        pte & PTE_A ? "A" : "", pte & PTE_U ? "U" : "", pte & PTE_D ? "D" : "",
+        pte & PTE_A ? "A" : "", pte & PTE_V ? "V" : "", level);
+}
 /* Returns 'true' if a svukte address check is needed */
 static bool do_svukte_check(CPURISCVState *env, bool first_stage,
                              int mode, bool virt)
@@ -1422,6 +1435,7 @@ static int get_physical_address(CPURISCVState *env, hwaddr *physical,
             pte = address_space_ldq(cs->as, pte_addr, attrs, &res);
         }
 
+        pte_print(pte, i);
         if (res != MEMTX_OK) {
             qemu_log_mask(
                 CPU_LOG_MMU,
