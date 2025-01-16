@@ -1788,6 +1788,7 @@ static const uint64_t vs_delegable_ints =
     (VS_MODE_INTERRUPTS | LOCAL_INTERRUPTS) & ~MIP_LCOFIP;
 static const uint64_t all_ints = M_MODE_INTERRUPTS | S_MODE_INTERRUPTS |
                                      HS_MODE_INTERRUPTS | LOCAL_INTERRUPTS;
+#if !defined(TARGET_RISCV32) && !defined(TARGET_CHERI_RISCV_STD_093)
         (1ULL << (RISCV_EXCP_STORE_AMO_CAP_PAGE_FAULT)) | \
         (1ULL << (RISCV_EXCP_CHERI)))
 #define DELEGABLE_EXCPS ((1ULL << (RISCV_EXCP_INST_ADDR_MIS)) | \
