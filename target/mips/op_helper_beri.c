@@ -36,6 +36,9 @@
 #include "exec/helper-proto.h"
 #include "cpu.h"
 #include "internal.h"
+#ifndef CONFIG_USER_ONLY
+#include "hw/boards.h"
+#endif
 
 uint64_t helper_mfc0_rtc64(CPUMIPSState *env)
 {
@@ -77,8 +80,14 @@ target_ulong helper_mfc0_coreid(CPUMIPSState *env)
         do_raise_exception(env, EXCP_RI, GETPC());
     }
     CPUState *cs = env_cpu(env);
+    unsigned int nr_cores = 1;
+#ifndef CONFIG_USER_ONLY
+    if (current_machine) {
+        nr_cores = machine_topo_get_cores_per_socket(current_machine);
+    }
+#endif
 
-    return (uint32_t)(((cs->nr_cores - 1) << 16) |
+    return (uint32_t)(((nr_cores - 1) << 16) |
         (cs->cpu_index & 0xffff));
 }
 

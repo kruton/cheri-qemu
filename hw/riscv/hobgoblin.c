@@ -879,14 +879,13 @@ static char *custom_riscv_isa_string(RISCVCPU *cpu, bool is_32_bit)
     bool has_d = riscv_has_ext(&cpu->env, RVD);
     bool has_c = riscv_has_ext(&cpu->env, RVC);
     bool has_h = riscv_has_ext(&cpu->env, RVH);
-    bool has_j = riscv_has_ext(&cpu->env, RVJ);
     bool has_v = riscv_has_ext(&cpu->env, RVV);
 
     ext_map_t base_exts[] = {
         { &has_i, "i" }, { &has_m, "m" },
         { &has_a, "a" }, { &has_f, "f" },
         { &has_d, "d" }, { &has_c, "c" },
-        { &has_h, "h" }, { &has_j, "j" },
+        { &has_h, "h" },
         { &has_v, "v" }
     };
 
