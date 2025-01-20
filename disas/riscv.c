@@ -865,6 +865,8 @@ typedef enum {
     rv_op_ccopytype,
     rv_op_ccseal,
     rv_op_ctestsubset,
+    /* Special case scbndsi 2 registers, 1 immediate, 1 flag */
+    rv_op_scbndsi,
     rv_op_fcvt_s_bf16 = 792,
     rv_op_vfncvtbf16_f_f_w = 793,
     rv_op_vfwcvtbf16_f_f_v = 794,
@@ -2210,6 +2212,8 @@ const rv_opcode_data rvi_opcode_data[] = {
     [rv_op_sceq] = { "sceq", rv_codec_r, rv_fmt_rd_cs1_cs2, NULL, 0, 0, 0 },
     [rv_op_cbld] = { "cbld", rv_codec_r, rv_fmt_cd_cs1_cs2, NULL, 0, 0, 0 },
     [rv_op_scss] = { "scss", rv_codec_r, rv_fmt_rd_cs1_cs2, NULL, 0, 0, 0 },
+    /* 2 registers, 1 flag, 1 immediate */
+    [rv_op_scbndsi] = { "scbdsi", rv_codec_scbndsi, rv_fmt_cd_cs1_imm, NULL, 0, 0, 0 },
     { "fcvt.s.bf16", rv_codec_r_m, rv_fmt_rm_frd_frs1, NULL, 0, 0, 0 },
     { "vfncvtbf16.f.f.w", rv_codec_v_r, rv_fmt_vd_vs2_vm, NULL, 0, 0, 0 },
     { "vfwcvtbf16.f.f.v", rv_codec_v_r, rv_fmt_vd_vs2_vm, NULL, 0, 0, 0 },
@@ -3113,8 +3117,13 @@ static rv_opcode decode_cheri_inst(rv_inst inst) {
             case 4: op = rv_op_xori; break;
             case 5:
                 switch ((inst >> 27) & 0b11111) {
-                case 0b00000: op = rv_op_srli; break;
+                case 0b00000:
                     switch ((inst >> 26) & 0b1) {
+                    case 0:
+                        op = rv_op_srli;
+                        break;
+                    case 1:
+                        op = rv_op_scbndsi;
                         break;
                     }
                 case 0b00001:
@@ -4680,10 +4689,15 @@ static uint32_t operand_rnum(rv_inst inst)
 }
 
 static uint32_t operand_vm(rv_inst inst)
+static uint32_t operand_scaled(rv_inst inst)
 {
     return (inst << 38) >> 63;
 }
 
+static uint32_t operand_uimm20(rv_inst inst)
+{
+    return (inst << 39) >> 59;
+}
 static uint32_t operand_uimm_c_lb(rv_inst inst)
 {
     return (((inst << 58) >> 63) << 1) |
@@ -5039,6 +5053,7 @@ static void decode_inst_operands(rv_decode *dec, rv_isa isa)
         dec->rs1 = operand_rs1(inst);
         dec->rnum = operand_rnum(inst);
         break;
+    case rv_codec_scbndsi:
     case rv_codec_v_r:
         dec->rd = operand_rd(inst);
         dec->rs1 = operand_rs1(inst);
