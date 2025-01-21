@@ -33,6 +33,7 @@
 #pragma once
 #include "tcg/tcg.h"
 #include "tcg/tcg-op.h"
+#include "tcg/tcg-has.h"
 #include "cheri-translate-utils-base.h"
 #include "cheri-lazy-capregs-types.h"
 #include "tcg-target.h"
