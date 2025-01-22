@@ -191,10 +191,9 @@ static void do_cbo_zero(CPURISCVState *env, target_ulong address, uintptr_t ra)
     int mmu_idx = riscv_env_mmu_index(env, false);
     void *mem;
 
-    check_zicbo_envcfg(env, MENVCFG_CBZE, ra);
 
-    /* Mask off low-bits to align-down to the cache-block. */
-    address &= ~(cbozlen - 1);
+    /* Caller must pass an address that is aligned-down to the cache-block. */
+    g_assert(QEMU_IS_ALIGNED(address, cbozlen));
 
     /*
      * cbo.zero requires MMU_DATA_STORE access. Do a probe_write()
@@ -224,6 +223,12 @@ static void do_cbo_zero(CPURISCVState *env, target_ulong address, uintptr_t ra)
 
 void helper_cbo_zero(CPURISCVState *env, target_ulong address)
 {
+    RISCVCPU *cpu = env_archcpu(env);
+    uint16_t cbozlen = cpu->cfg.cboz_blocksize;
+    uintptr_t ra = GETPC();
+    check_zicbo_envcfg(env, MENVCFG_CBZE, ra);
+    /* Mask off low-bits to align-down to the cache-block. */
+    address &= ~(cbozlen - 1);
     do_cbo_zero(env, address, ra);
 }
 /*
