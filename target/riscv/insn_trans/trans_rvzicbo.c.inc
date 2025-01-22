@@ -31,9 +31,12 @@
 static bool trans_cbo_clean(DisasContext *ctx, arg_cbo_clean *a)
 {
     REQUIRE_ZICBOM(ctx);
+#ifndef TARGET_CHERI
     TCGv src = get_address(ctx, a->rs1, 0);
 
     gen_helper_cbo_clean_flush(tcg_env, src);
+#else
+#endif
     return true;
 }
 
@@ -61,5 +64,6 @@ static bool trans_cbo_zero(DisasContext *ctx, arg_cbo_zero *a)
     TCGv src = get_address(ctx, a->rs1, 0);
 
     gen_helper_cbo_zero(tcg_env, src);
+    gen_helper_cbo_zero_cap(tcg_env, tcg_constant_i32(a->rs1));
     return true;
 }
