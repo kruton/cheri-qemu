@@ -233,7 +233,6 @@ struct CPUArchState {
     target_ulong vtype;
     bool vill;
 
-    target_ulong pc;
 #ifdef TARGET_CHERI
     cap_register_t PCC; // TODO: implement this properly
 #endif
@@ -396,6 +395,7 @@ struct CPUArchState {
     uint64_t sscratchh;
 
     /* Virtual CSRs */
+    target_ulong vsepc;
     /*
      * For RV32 this is 32-bit vsstatus and 32-bit vsstatush.
      * For RV64 this is a 64-bit vsstatus.
