@@ -648,7 +648,15 @@ extern const char * const cheri_gp_regnames[];
 #ifdef CONFIG_TCG_LOG_INSTR
 #define log_changed_special_reg(env, name, newval, index, type)                \
     do {                                                                       \
+    } while (0)
 #define log_changed_special_reg(env, name, newval) ((void)0)
+#define CHK_BLK_POW2(prop) \
+do { \
+    if ((cpu->cfg.prop == 0) || \
+            (cpu->cfg.prop & (cpu->cfg.prop - 1))) { \
+        error_setg(errp, "%s must be a power of 2.", tostring(prop)); \
+        return; \
+    } \
 /*
  */
     SCR_TO_PROGRAM_COUNTER(env, &((env)->cheri_name))
