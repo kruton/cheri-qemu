@@ -92,6 +92,7 @@ static inline bool trans_modesw_int(DisasContext *ctx, arg_modesw_int *a)
     return do_trans_modesw(ctx, /*to_capmode=*/false);
 }
 // Reuses gen_lr_impl, defined in trans_rva.c.inc
+    }
 /*
  * Instructions from the RISC-V CHERI standard.
 TRANSLATE_INT_CAP_HELPER(gctag, cgettag)
@@ -110,6 +111,8 @@ TRANSLATE_CAP_CAP_INT_HELPER(scbndsr, csetbounds)
 TRANSLATE_CAP_CAP_INT_HELPER(schi, csethigh)
 TRANSLATE_INT_CAP_CAP_HELPER(sceq, cseqx)
 static bool trans_scbndsi(DisasContext *ctx, arg_scbndsi *a)
+    if (a->scale == 1 && a->imm <= 1) {
+        return false; /* Reserved redundant encodings */
     tcg_debug_assert(a->imm >= 0);
     target_ulong imm = a->scale ? a->imm << 4 : a->imm;
     return gen_cheri_int_int(ctx, a, &gen_helper_cram);
