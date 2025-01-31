@@ -26,6 +26,7 @@ static inline void G_NORETURN raise_load_tag_exception(
 }
 static inline void G_NORETURN raise_unaligned_load_exception(
     CPUArchState *env, target_ulong addr, uintptr_t retpc)
+    env->badaddr = addr;
     riscv_raise_exception(env, RISCV_EXCP_LOAD_ADDR_MIS, retpc);
 }
 static inline void G_NORETURN raise_unaligned_store_exception(
