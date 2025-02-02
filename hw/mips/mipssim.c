@@ -77,7 +77,8 @@ static uint64_t load_kernel(void)
     kernel_size = load_elf(loaderparams.kernel_filename, NULL,
                            cpu_mips_translate_elf_to_phys, NULL,
                            &entry, NULL,
-                           &kernel_high, NULL, TARGET_BIG_ENDIAN,
+                           &kernel_high, NULL,
+                           TARGET_BIG_ENDIAN ? ELFDATA2MSB : ELFDATA2LSB,
                            EM_MIPS, 1, 0);
     if (kernel_size < 0) {
         error_report("could not load kernel '%s': %s",
