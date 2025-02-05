@@ -1,9 +1,13 @@
 /*
+ *
  */
     }
 typedef void(cheri_int_cap_helper)(TCGv, TCGv_env, TCGv_i32);
 static inline bool gen_cheri_int_cap(DisasContext *ctx, arg_rc *a,
                                      cheri_int_cap_helper *gen_func)
+{
+    return true;
+}
 {
 }
 static inline QEMU_ALWAYS_INLINE bool
@@ -15,12 +19,34 @@ gen_cheri_cap_int_plus_imm(DisasContext *ctx, int cd, int rs, target_long imm,
     target_ulong next_pc = (ctx->base.pc_next + imm) & ~(target_ulong)1;
     TCGv target_addr = tcg_constant_tl(next_pc);
     TCGv link_addr = tcg_constant_tl(ctx->pc_succ_insn);
+    /*
      * helper_cjal() checks for misalignment and capability bounds. It also
      * ensures that the written value is a sentry and marks PC as up-to-date.
+     */
     gen_helper_cjal(tcg_env, tcg_constant_i32(rd), target_addr, link_addr);
     /* No bounds check needed here since we did it in helper_cjal(). */
+    ctx->base.is_jmp = DISAS_NORETURN;
 TRANSLATE_INT_CAP(cgethigh)
 TRANSLATE_INT_CAP(cloadtags)
+            tcg_gen_exit_tb(NULL, 0);
 TRANSLATE_CAP_CAP_INT(csethigh)
 static inline bool gen_cap_load(DisasContext *ctx, int32_t rd, int32_t cs,
+static inline bool do_trans_modesw(DisasContext *ctx, bool to_capmode)
+    if (ctx->capmode == to_capmode) {
+        qemu_log_mask_and_addr(CPU_LOG_INSTR, ctx->base.pc_first,
+                               "Redundant modesw at %" VADDR_PRIx " (%s)",
+                               ctx->base.pc_first,
+                               lookup_symbol(ctx->base.pc_first));
+    gen_helper_modesw(tcg_env, tcg_constant_i32(to_capmode));
+     * TODO: it should be possible to update the flag in DisasContext and
+     * continue translation after the modesw, but I am not confident this will
+     * be correct. Once we have some unit tests that we can run we should try
+     * to make this change since it will improve the performance of hybrid code.
+     * See Morello code which uses DISAS_UPDATE_EXIT.
+    /* create tcg instruction to exit the tb */
+    /* This indicates to riscv_tr_tb_stop that no cleanup is needed. */
+static inline bool trans_modesw_cap(DisasContext *ctx, arg_modesw_cap *a)
+    return do_trans_modesw(ctx, /*to_capmode=*/true);
+static inline bool trans_modesw_int(DisasContext *ctx, arg_modesw_int *a)
+    return do_trans_modesw(ctx, /*to_capmode=*/false);
 // Reuses gen_lr_impl, defined in trans_rva.c.inc
