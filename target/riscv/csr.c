@@ -2022,6 +2022,10 @@ static RISCVException write_mstatus(CPURISCVState *env, int csrno,
 
     /* flush tlb on mstatus fields that affect VM */
     if ((val ^ mstatus) & MSTATUS_MXR) {
+#if defined(TARGET_CHERI_RISCV_STD_093) && defined(TARGET_RISCV64)
+         | MSTATUS64_UCRG
+#endif
+         )) {
         tlb_flush(env_cpu(env));
     }
     mask = MSTATUS_SIE | MSTATUS_SPIE | MSTATUS_MIE | MSTATUS_MPIE |
