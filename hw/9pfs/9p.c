@@ -1776,6 +1776,21 @@ static bool same_stat_id(const struct stat *a, const struct stat *b)
     return a->st_dev == b->st_dev && a->st_ino == b->st_ino;
 }
 
+/*
+ * Returns a (newly allocated) comma-separated string presentation of the
+ * passed array for logging (tracing) purpose for trace event "v9fs_walk".
+ *
+ * It is caller's responsibility to free the returned string.
+ */
+static char *trace_v9fs_walk_wnames(V9fsString *wnames, size_t nwnames)
+{
+    g_autofree char **arr = g_malloc0_n(nwnames + 1, sizeof(char *));
+    for (size_t i = 0; i < nwnames; ++i) {
+        arr[i] = wnames[i].data;
+    }
+    return g_strjoinv(", ", arr);
+}
+
 static void coroutine_fn v9fs_walk(void *opaque)
 {
     int name_idx, nwalked;
@@ -1789,6 +1804,7 @@ static void coroutine_fn v9fs_walk(void *opaque)
     size_t offset = 7;
     int32_t fid, newfid;
     P9ARRAY_REF(V9fsString) wnames = NULL;
+    g_autofree char *trace_wnames = NULL;
     V9fsFidState *fidp;
     V9fsFidState *newfidp = NULL;
     V9fsPDU *pdu = opaque;
@@ -1802,11 +1818,9 @@ static void coroutine_fn v9fs_walk(void *opaque)
     }
     offset += err;
 
-    trace_v9fs_walk(pdu->tag, pdu->id, fid, newfid, nwnames);
-
     if (nwnames > P9_MAXWELEM) {
         err = -EINVAL;
-        goto out_nofid;
+        goto out_nofid_nownames;
     }
     if (nwnames) {
         P9ARRAY_NEW(V9fsString, wnames, nwnames);
@@ -1816,15 +1830,23 @@ static void coroutine_fn v9fs_walk(void *opaque)
         for (i = 0; i < nwnames; i++) {
             err = pdu_unmarshal(pdu, offset, "s", &wnames[i]);
             if (err < 0) {
-                goto out_nofid;
+                goto out_nofid_nownames;
             }
             if (name_is_illegal(wnames[i].data)) {
                 err = -ENOENT;
-                goto out_nofid;
+                goto out_nofid_nownames;
             }
             offset += err;
         }
+        if (trace_event_get_state_backends(TRACE_V9FS_WALK)) {
+            trace_wnames = trace_v9fs_walk_wnames(wnames, nwnames);
+            trace_v9fs_walk(pdu->tag, pdu->id, fid, newfid, nwnames,
+                            trace_wnames);
+        }
+    } else {
+        trace_v9fs_walk(pdu->tag, pdu->id, fid, newfid, nwnames, "");
     }
+
     fidp = get_fid(pdu, fid);
     if (fidp == NULL) {
         err = -ENOENT;
@@ -1959,7 +1981,11 @@ out:
     }
     v9fs_path_free(&dpath);
     v9fs_path_free(&path);
+    goto out_pdu_complete;
+out_nofid_nownames:
+    trace_v9fs_walk(pdu->tag, pdu->id, fid, newfid, nwnames, "<?>");
 out_nofid:
+out_pdu_complete:
     pdu_complete(pdu, err);
 }
 
@@ -1984,6 +2010,7 @@ static void coroutine_fn v9fs_open(void *opaque)
     V9fsFidState *fidp;
     V9fsPDU *pdu = opaque;
     V9fsState *s = pdu->s;
+    g_autofree char *trace_oflags = NULL;
 
     if (s->proto_version == V9FS_PROTO_2000L) {
         err = pdu_unmarshal(pdu, offset, "dd", &fid, &mode);
@@ -1995,7 +2022,13 @@ static void coroutine_fn v9fs_open(void *opaque)
     if (err < 0) {
         goto out_nofid;
     }
-    trace_v9fs_open(pdu->tag, pdu->id, fid, mode);
+    if (trace_event_get_state_backends(TRACE_V9FS_OPEN)) {
+        trace_oflags = qemu_open_flags_tostr(
+            (s->proto_version == V9FS_PROTO_2000L) ?
+                dotl_to_open_flags(mode) : omode_to_uflags(mode)
+        );
+        trace_v9fs_open(pdu->tag, pdu->id, fid, mode, trace_oflags);
+    }
 
     fidp = get_fid(pdu, fid);
     if (fidp == NULL) {
