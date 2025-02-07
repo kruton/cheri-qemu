@@ -97,7 +97,6 @@ struct SCRInfo {
     [CheriSCR_MEPCC] = {.r = true, .w = true, .access = M_ASR, .name = "MEPCC"},
 
     [CheriSCR_BSScratchC] = {.r = true, .w = true, .access = H_ASR,
-                             .name= "BSTCC"},
 };
 
 {
