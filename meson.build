@@ -277,30 +277,41 @@ else
   host_arch = cpu
 endif
 
-if cpu in ['x86', 'x86_64']
+if cpu == 'x86'
+  kvm_targets = ['i386-softmmu']
+elif cpu == 'x86_64'
   kvm_targets = ['i386-softmmu', 'x86_64-softmmu']
 elif cpu == 'aarch64'
   kvm_targets = ['aarch64-softmmu']
 elif cpu == 's390x'
   kvm_targets = ['s390x-softmmu']
-elif cpu in ['ppc', 'ppc64']
+elif cpu == 'ppc'
+  kvm_targets = ['ppc-softmmu']
+elif cpu == 'ppc64'
   kvm_targets = ['ppc-softmmu', 'ppc64-softmmu']
-elif cpu in ['mips', 'mips64']
+elif cpu == 'mips'
+  kvm_targets = ['mips-softmmu', 'mipsel-softmmu']
+elif cpu == 'mips64'
   kvm_targets = ['mips-softmmu', 'mipsel-softmmu', 'mips64-softmmu', 'mips64el-softmmu']
-elif cpu in ['riscv32']
+elif cpu == 'riscv32'
   kvm_targets = ['riscv32-softmmu']
-elif cpu in ['riscv64']
+elif cpu == 'riscv64'
   kvm_targets = ['riscv64-softmmu']
-elif cpu in ['loongarch64']
+elif cpu == 'loongarch64'
   kvm_targets = ['loongarch64-softmmu']
 else
   kvm_targets = []
 endif
 accelerator_targets = { 'CONFIG_KVM': kvm_targets }
 
-if cpu in ['x86', 'x86_64']
+if cpu == 'x86'
+  xen_targets = ['i386-softmmu']
+elif cpu == 'x86_64'
   xen_targets = ['i386-softmmu', 'x86_64-softmmu']
-elif cpu in ['arm', 'aarch64']
+elif cpu == 'arm'
+  # i386 emulator provides xenpv machine type for multiple architectures
+  xen_targets = ['i386-softmmu']
+elif cpu == 'aarch64'
   # i386 emulator provides xenpv machine type for multiple architectures
   xen_targets = ['i386-softmmu', 'x86_64-softmmu', 'aarch64-softmmu']
 else
@@ -308,24 +319,16 @@ else
 endif
 accelerator_targets += { 'CONFIG_XEN': xen_targets }
 
-if cpu in ['aarch64']
+if cpu == 'aarch64'
   accelerator_targets += {
     'CONFIG_HVF': ['aarch64-softmmu']
   }
-endif
-
-if cpu in ['x86', 'x86_64']
+elif cpu == 'x86_64'
   accelerator_targets += {
     'CONFIG_HVF': ['x86_64-softmmu'],
     'CONFIG_NVMM': ['i386-softmmu', 'x86_64-softmmu'],
     'CONFIG_WHPX': ['i386-softmmu', 'x86_64-softmmu'],
   }
-endif
-
-modular_tcg = []
-# Darwin does not support references to thread-local variables in modules
-if host_os != 'darwin'
-  modular_tcg = ['i386-softmmu', 'x86_64-softmmu']
 endif
 
 
@@ -3189,6 +3192,9 @@ if host_os == 'windows'
   endif
 endif
 
+# Detect host pointer size for the target configuration loop.
+host_long_bits = cc.sizeof('void *') * 8
+
 ########################
 # Target configuration #
 ########################
@@ -3281,26 +3287,6 @@ foreach target : target_dirs
     }
   endif
 
-  target_kconfig = []
-  foreach sym: accelerators
-    if sym == 'CONFIG_TCG' or target in accelerator_targets.get(sym, [])
-      config_target += { sym: 'y' }
-      config_all_accel += { sym: 'y' }
-      if target in modular_tcg
-        config_target += { 'CONFIG_TCG_MODULAR': 'y' }
-      else
-        config_target += { 'CONFIG_TCG_BUILTIN': 'y' }
-      endif
-      target_kconfig += [ sym + '=y' ]
-    endif
-  endforeach
-  if target_kconfig.length() == 0
-    if default_targets
-      continue
-    endif
-    error('No accelerator available for target @0@'.format(target))
-  endif
-
   config_target += keyval.load('configs/targets' / target + '.mak')
   # Meson keyval does not support including other files, so do it manually (only 1 file right now)
   if 'INCLUDE_WORKAROUND' in config_target
@@ -3313,14 +3299,31 @@ foreach target : target_dirs
     message(k + '=' + v)
   endforeach
 
-  config_target += { 'TARGET_' + config_target['TARGET_ARCH'].to_upper(): 'y' }
+  target_kconfig = []
+  foreach sym: accelerators
+    # Disallow 64-bit on 32-bit emulation and virtualization
+    if host_long_bits < config_target['TARGET_LONG_BITS'].to_int()
+      continue
+    endif
+    if sym == 'CONFIG_TCG' or target in accelerator_targets.get(sym, [])
+      config_target += { sym: 'y' }
+      config_all_accel += { sym: 'y' }
+      target_kconfig += [ sym + '=y' ]
+    endif
+  endforeach
+  if target_kconfig.length() == 0
+    if default_targets
+      continue
+    endif
+    error('No accelerator available for target @0@'.format(target))
+  endif
+
   if 'CONFIG_TCG_LOG_INSTR' in config_host
     config_target += {'CONFIG_TCG_LOG_INSTR': 'y'}
   endif
   if 'CONFIG_RVFI_DII' in config_host
     config_target += {'CONFIG_RVFI_DII': 'y'}
   endif
-
   if 'TARGET_NEED_FDT' in config_target and not fdt.found()
     if default_targets
       warning('Disabling ' + target + ' due to missing libfdt')
@@ -3333,6 +3336,7 @@ foreach target : target_dirs
   actual_target_dirs += target
 
   # Add default keys
+  config_target += { 'TARGET_' + config_target['TARGET_ARCH'].to_upper(): 'y' }
   if 'TARGET_BASE_ARCH' not in config_target
     config_target += {'TARGET_BASE_ARCH': config_target['TARGET_ARCH']}
   endif
@@ -3673,7 +3677,6 @@ util_ss = ss.source_set()
 
 # accel modules
 qtest_module_ss = ss.source_set()
-tcg_module_ss = ss.source_set()
 
 modules = {}
 target_modules = {}
@@ -3835,11 +3838,7 @@ subdir('tests/qtest/libqos')
 subdir('tests/qtest/fuzz')
 
 # accel modules
-tcg_real_module_ss = ss.source_set()
-tcg_real_module_ss.add_all(when: 'CONFIG_TCG_MODULAR', if_true: tcg_module_ss)
-specific_ss.add_all(when: 'CONFIG_TCG_BUILTIN', if_true: tcg_module_ss)
-target_modules += { 'accel' : { 'qtest': qtest_module_ss,
-                                'tcg': tcg_real_module_ss }}
+target_modules += { 'accel' : { 'qtest': qtest_module_ss }}
 
 ##############################################
 # Internal static_libraries and dependencies #
@@ -4906,14 +4905,12 @@ if host_arch == 'unknown'
     message('configure has succeeded and you can continue to build, but')
     message('QEMU will use a slow interpreter to emulate the target CPU.')
   endif
-elif host_arch == 'mips'
+elif host_long_bits < 64
   message()
   warning('DEPRECATED HOST CPU')
   message()
-  message('Support for CPU host architecture ' + cpu + ' is going to be')
-  message('dropped as soon as the QEMU project stops supporting Debian 12')
-  message('("Bookworm"). Going forward, the QEMU project will not guarantee')
-  message('that QEMU will compile or work on this host CPU.')
+  message('Support for 32-bit CPU host architecture ' + cpu + ' is going')
+  message('to be dropped in a future QEMU release.')
 endif
 
 if not supported_oses.contains(host_os)
