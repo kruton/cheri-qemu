@@ -3101,7 +3101,7 @@ static MemTxResult flatview_readcap_continue(FlatView *fv, hwaddr addr,
     ram_addr_t ram_offset;
 
     for (;;) {
-        if (!memory_access_is_direct(mr, false)) {
+        if (!memory_access_is_direct(mr, false, attrs)) {
             /* I/O case */
             result = MEMTX_ERROR;
             break;
