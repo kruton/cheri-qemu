@@ -332,7 +332,7 @@ static CPAccessResult access_el3_aa32ns(CPUARMState *env,
 {
     if (!is_a64(env) && arm_current_el(env) == 3 &&
         arm_is_secure_below_el3(env)) {
-        return CP_ACCESS_TRAP_UNCATEGORIZED;
+        return CP_ACCESS_UNDEFINED;
     }
     return CP_ACCESS_OK;
 }
@@ -357,7 +357,7 @@ static CPAccessResult access_trap_aa32s_el1(CPUARMState *env,
         return CP_ACCESS_TRAP_EL3;
     }
     /* This will be EL1 NS and EL2 NS, which just UNDEF */
-    return CP_ACCESS_TRAP_UNCATEGORIZED;
+    return CP_ACCESS_UNDEFINED;
 }
 
 /*
@@ -932,7 +932,7 @@ static CPAccessResult pmreg_access(CPUARMState *env, const ARMCPRegInfo *ri,
     uint64_t mdcr_el2 = arm_mdcr_el2_eff(env);
 
     if (el == 0 && !(env->cp15.c9_pmuserenr & 1)) {
-        return CP_ACCESS_TRAP;
+        return CP_ACCESS_TRAP_EL1;
     }
     if (el < 2 && (mdcr_el2 & MDCR_TPM)) {
         return CP_ACCESS_TRAP_EL2;
@@ -2210,7 +2210,7 @@ static CPAccessResult teehbr_access(CPUARMState *env, const ARMCPRegInfo *ri,
                                     bool isread)
 {
     if (arm_current_el(env) == 0 && (env->teecr & 1)) {
-        return CP_ACCESS_TRAP;
+        return CP_ACCESS_TRAP_EL1;
     }
     return teecr_access(env, ri, isread);
 }
@@ -2304,14 +2304,14 @@ static CPAccessResult gt_cntfrq_access(CPUARMState *env, const ARMCPRegInfo *ri,
             cntkctl = env->cp15.c14_cntkctl;
         }
         if (!extract32(cntkctl, 0, 2)) {
-            return CP_ACCESS_TRAP;
+            return CP_ACCESS_TRAP_EL1;
         }
         break;
     case 1:
         if (!isread && ri->state == ARM_CP_STATE_AA32 &&
             arm_is_secure_below_el3(env)) {
             /* Accesses from 32-bit Secure EL1 UNDEF (*not* trap to EL3!) */
-            return CP_ACCESS_TRAP_UNCATEGORIZED;
+            return CP_ACCESS_UNDEFINED;
         }
         break;
     case 2:
@@ -2320,7 +2320,7 @@ static CPAccessResult gt_cntfrq_access(CPUARMState *env, const ARMCPRegInfo *ri,
     }
 
     if (!isread && el < arm_highest_el(env)) {
-        return CP_ACCESS_TRAP_UNCATEGORIZED;
+        return CP_ACCESS_UNDEFINED;
     }
 
     return CP_ACCESS_OK;
@@ -2337,7 +2337,7 @@ static CPAccessResult gt_counter_access(CPUARMState *env, int timeridx,
     if (!(env->CCTLR_el[cur_el] & CCTLR_PERMVCT) && !cheri_is_system(env)) {
         switch (exception_target_el_capability(env)) {
         case 1:
-            return CP_ACCESS_TRAP;
+            return CP_ACCESS_TRAP_EL1;
         case 2:
             return CP_ACCESS_TRAP_EL2;
         case 3:
@@ -2358,7 +2358,7 @@ static CPAccessResult gt_counter_access(CPUARMState *env, int timeridx,
 
         /* CNT[PV]CT: not visible from PL0 if EL0[PV]CTEN is zero */
         if (!extract32(env->cp15.c14_cntkctl, timeridx, 1)) {
-            return CP_ACCESS_TRAP;
+            return CP_ACCESS_TRAP_EL1;
         }
         /* fall through */
     case 1:
@@ -2399,7 +2399,7 @@ static CPAccessResult gt_timer_access(CPUARMState *env, int timeridx,
          * EL0 if EL0[PV]TEN is zero.
          */
         if (!extract32(env->cp15.c14_cntkctl, 9 - timeridx, 1)) {
-            return CP_ACCESS_TRAP;
+            return CP_ACCESS_TRAP_EL1;
         }
         /* fall through */
 
@@ -2465,7 +2465,7 @@ static CPAccessResult gt_stimer_access(CPUARMState *env,
     switch (arm_current_el(env)) {
     case 1:
         if (!arm_is_secure(env)) {
-            return CP_ACCESS_TRAP;
+            return CP_ACCESS_UNDEFINED;
         }
         if (!(env->cp15.scr_el3 & SCR_ST)) {
             return CP_ACCESS_TRAP_EL3;
@@ -2473,7 +2473,7 @@ static CPAccessResult gt_stimer_access(CPUARMState *env,
         return CP_ACCESS_OK;
     case 0:
     case 2:
-        return CP_ACCESS_TRAP;
+        return CP_ACCESS_UNDEFINED;
     case 3:
         return CP_ACCESS_OK;
     default:
@@ -3384,7 +3384,7 @@ static CPAccessResult ats_access(CPUARMState *env, const ARMCPRegInfo *ri,
                 }
                 return CP_ACCESS_TRAP_EL3;
             }
-            return CP_ACCESS_TRAP_UNCATEGORIZED;
+            return CP_ACCESS_UNDEFINED;
         }
     }
     return CP_ACCESS_OK;
@@ -3681,7 +3681,7 @@ static CPAccessResult at_e012_access(CPUARMState *env, const ARMCPRegInfo *ri,
      * scr_write() ensures that the NSE bit is not set otherwise.
      */
     if ((env->cp15.scr_el3 & (SCR_NSE | SCR_NS)) == SCR_NSE) {
-        return CP_ACCESS_TRAP;
+        return CP_ACCESS_UNDEFINED;
     }
     return CP_ACCESS_OK;
 }
@@ -3691,7 +3691,7 @@ static CPAccessResult at_s1e2_access(CPUARMState *env, const ARMCPRegInfo *ri,
 {
     if (arm_current_el(env) == 3 &&
         !(env->cp15.scr_el3 & (SCR_NS | SCR_EEL2))) {
-        return CP_ACCESS_TRAP;
+        return CP_ACCESS_UNDEFINED;
     }
     return at_e012_access(env, ri, isread);
 }
@@ -4626,7 +4626,7 @@ static CPAccessResult aa64_daif_access(CPUARMState *env, const ARMCPRegInfo *ri,
                                        bool isread)
 {
     if (arm_current_el(env) == 0 && !(arm_sctlr(env, 0) & SCTLR_UMA)) {
-        return CP_ACCESS_TRAP;
+        return CP_ACCESS_TRAP_EL1;
     }
     return CP_ACCESS_OK;
 }
@@ -4716,9 +4716,9 @@ static CPAccessResult aa64_cacheop_poc_access(CPUARMState *env,
     /* Cache invalidate/clean to Point of Coherency or Persistence...  */
     switch (arm_current_el(env)) {
     case 0:
-        /* ... EL0 must UNDEF unless SCTLR_EL1.UCI is set.  */
+        /* ... EL0 must trap to EL1 unless SCTLR_EL1.UCI is set.  */
         if (!(arm_sctlr(env, 0) & SCTLR_UCI)) {
-            return CP_ACCESS_TRAP;
+            return CP_ACCESS_TRAP_EL1;
         }
         /* fall through */
     case 1:
@@ -4736,9 +4736,9 @@ static CPAccessResult do_cacheop_pou_access(CPUARMState *env, uint64_t hcrflags)
     /* Cache invalidate/clean to Point of Unification... */
     switch (arm_current_el(env)) {
     case 0:
-        /* ... EL0 must UNDEF unless SCTLR_EL1.UCI is set.  */
+        /* ... EL0 must trap to EL1 unless SCTLR_EL1.UCI is set.  */
         if (!(arm_sctlr(env, 0) & SCTLR_UCI)) {
-            return CP_ACCESS_TRAP;
+            return CP_ACCESS_TRAP_EL1;
         }
         /* fall through */
     case 1:
@@ -4778,7 +4778,7 @@ static CPAccessResult aa64_zva_access(CPUARMState *env, const ARMCPRegInfo *ri,
                 }
             } else {
                 if (!(env->cp15.sctlr_el[1] & SCTLR_DZE)) {
-                    return CP_ACCESS_TRAP;
+                    return CP_ACCESS_TRAP_EL1;
                 }
                 if (hcr & HCR_TDZ) {
                     return CP_ACCESS_TRAP_EL2;
@@ -4811,7 +4811,7 @@ static CPAccessResult sp_el0_access(CPUARMState *env, const ARMCPRegInfo *ri,
          * Access to SP_EL0 is undefined if it's being used as
          * the stack pointer.
          */
-        return CP_ACCESS_TRAP_UNCATEGORIZED;
+        return CP_ACCESS_UNDEFINED;
     }
     return CP_ACCESS_OK;
 }
@@ -5824,7 +5824,7 @@ static CPAccessResult sel2_access(CPUARMState *env, const ARMCPRegInfo *ri,
     if (arm_current_el(env) == 3 || arm_is_secure_below_el3(env)) {
         return CP_ACCESS_OK;
     }
-    return CP_ACCESS_TRAP_UNCATEGORIZED;
+    return CP_ACCESS_UNDEFINED;
 }
 
 static const ARMCPRegInfo el2_sec_cp_reginfo[] = {
@@ -5860,7 +5860,7 @@ static CPAccessResult nsacr_access(CPUARMState *env, const ARMCPRegInfo *ri,
     if (isread) {
         return CP_ACCESS_OK;
     }
-    return CP_ACCESS_TRAP_UNCATEGORIZED;
+    return CP_ACCESS_UNDEFINED;
 }
 
 /* clang-format off */
@@ -5955,7 +5955,7 @@ static CPAccessResult e2h_access(CPUARMState *env, const ARMCPRegInfo *ri,
         return CP_ACCESS_OK;
     }
     if (!(arm_hcr_el2_eff(env) & HCR_E2H)) {
-        return CP_ACCESS_TRAP_UNCATEGORIZED;
+        return CP_ACCESS_UNDEFINED;
     }
     return CP_ACCESS_OK;
 }
@@ -6094,7 +6094,7 @@ static CPAccessResult el2_e2h_e12_access(CPUARMState *env,
     }
     /* FOO_EL12 aliases only exist when E2H is 1; otherwise they UNDEF */
     if (!(arm_hcr_el2_eff(env) & HCR_E2H)) {
-        return CP_ACCESS_TRAP_UNCATEGORIZED;
+        return CP_ACCESS_UNDEFINED;
     }
     if (ri->orig_accessfn) {
         return ri->orig_accessfn(env, ri->opaque, isread);
@@ -6287,7 +6287,7 @@ static CPAccessResult ctr_el0_access(CPUARMState *env, const ARMCPRegInfo *ri,
                 }
             } else {
                 if (!(env->cp15.sctlr_el[1] & SCTLR_UCT)) {
-                    return CP_ACCESS_TRAP;
+                    return CP_ACCESS_TRAP_EL1;
                 }
                 if (hcr & HCR_TID2) {
                     return CP_ACCESS_TRAP_EL2;
@@ -6317,7 +6317,7 @@ static CPAccessResult access_terr(CPUARMState *env, const ARMCPRegInfo *ri,
     if (el < 2 && (arm_hcr_el2_eff(env) & HCR_TERR)) {
         return CP_ACCESS_TRAP_EL2;
     }
-    if (el < 3 && (env->cp15.scr_el3 & SCR_TERR)) {
+    if (!arm_is_el3_or_mon(env) && (env->cp15.scr_el3 & SCR_TERR)) {
         return CP_ACCESS_TRAP_EL3;
     }
     return CP_ACCESS_OK;
@@ -6586,7 +6586,7 @@ static CPAccessResult access_tpidr2(CPUARMState *env, const ARMCPRegInfo *ri,
     if (el == 0) {
         uint64_t sctlr = arm_sctlr(env, el);
         if (!(sctlr & SCTLR_EnTP2)) {
-            return CP_ACCESS_TRAP;
+            return CP_ACCESS_TRAP_EL1;
         }
     }
     /* TODO: FEAT_FGT */
@@ -6964,8 +6964,8 @@ static CPAccessResult access_lor_other(CPUARMState *env,
                                        const ARMCPRegInfo *ri, bool isread)
 {
     if (arm_is_secure_below_el3(env)) {
-        /* Access denied in secure mode.  */
-        return CP_ACCESS_TRAP;
+        /* UNDEF if SCR_EL3.NS == 0 */
+        return CP_ACCESS_UNDEFINED;
     }
     return access_lor_ns(env, ri, isread);
 }
@@ -7387,7 +7387,7 @@ static CPAccessResult access_scxtnum(CPUARMState *env, const ARMCPRegInfo *ri,
             if (hcr & HCR_TGE) {
                 return CP_ACCESS_TRAP_EL2;
             }
-            return CP_ACCESS_TRAP;
+            return CP_ACCESS_TRAP_EL1;
         }
     } else if (el < 2 && (env->cp15.sctlr_el[2] & SCTLR_TSCXT)) {
         return CP_ACCESS_TRAP_EL2;
@@ -7507,7 +7507,7 @@ static CPAccessResult access_predinv(CPUARMState *env, const ARMCPRegInfo *ri,
     if (el == 0) {
         uint64_t sctlr = arm_sctlr(env, el);
         if (!(sctlr & SCTLR_EnRCTX)) {
-            return CP_ACCESS_TRAP;
+            return CP_ACCESS_TRAP_EL1;
         }
     } else if (el == 1) {
         uint64_t hcr = arm_hcr_el2_eff(env);
@@ -9998,6 +9998,7 @@ void arm_log_exception(CPUState *cs)
             [EXCP_NMI] = "NMI",
             [EXCP_VINMI] = "Virtual IRQ NMI",
             [EXCP_VFNMI] = "Virtual FIQ NMI",
+            [EXCP_MON_TRAP] = "Monitor Trap",
         };
 
         if (idx >= 0 && idx < ARRAY_SIZE(excnames)) {
@@ -10575,6 +10576,16 @@ static void arm_cpu_do_interrupt_aarch32(CPUState *cs)
         addr = 0x08;
         mask = CPSR_A | CPSR_I | CPSR_F;
         offset = 0;
+        break;
+    case EXCP_MON_TRAP:
+        new_mode = ARM_CPU_MODE_MON;
+        addr = 0x04;
+        mask = CPSR_A | CPSR_I | CPSR_F;
+        if (env->thumb) {
+            offset = 2;
+        } else {
+            offset = 4;
+        }
         break;
     default:
         cpu_abort(cs, "Unhandled exception 0x%x\n", cs->exception_index);
