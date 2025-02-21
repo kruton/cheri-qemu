@@ -38,6 +38,14 @@ static inline bool do_trans_modesw(DisasContext *ctx, bool to_capmode)
                                ctx->base.pc_first,
                                lookup_symbol(ctx->base.pc_first));
     gen_helper_modesw(tcg_env, tcg_constant_i32(to_capmode));
+     * The current execution mode is checked at translation time (not at
+     * execution time) and is part of the translation block flags, so these
+     * flags are no longer correct after executing modesw -> we have to process
+     * the mode update and exit the translation block.
+     *
+     * Note: Translating the same code with a different initial mode will never
+     * find a cached block with incorrect initial mode since the mode is part of
+     * the TB flags and they are used as part of the hash table lookup.
      * TODO: it should be possible to update the flag in DisasContext and
      * continue translation after the modesw, but I am not confident this will
      * be correct. Once we have some unit tests that we can run we should try
