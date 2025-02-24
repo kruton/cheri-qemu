@@ -878,6 +878,14 @@ typedef enum {
     rv_op_c_sc_rv32,
     rv_op_c_lcsp_rv32,
     rv_op_c_scsp_rv32,
+    rv_op_cbo_clean,
+    rv_op_cbo_clean_cap,
+    rv_op_cbo_flush,
+    rv_op_cbo_flush_cap,
+    rv_op_cbo_inval,
+    rv_op_cbo_inval_cap,
+    rv_op_cbo_zero,
+    rv_op_cbo_zero_cap,
     rv_op_fcvt_s_bf16 = 792,
     rv_op_vfncvtbf16_f_f_w = 793,
     rv_op_vfwcvtbf16_f_f_v = 794,
@@ -1092,6 +1100,8 @@ static const char rv_vreg_name_sym[32][4] = {
 #define rv_fmt_cd_offs0_rs1           "O\tC0,i(1)"
 #define rv_fmt_rd_cs2_offs0_cs1       "O\t0,C2,i(C1)"
 #define rv_fmt_rd_cs2_offs0_rs1       "O\t0,C2,i(1)"
+#define rv_fmt_cbo_rs1                "O\t1"
+#define rv_fmt_cbo_cs1                "O\tC1"
 /* The FLI.[HSDQ] numeric constants (0.0 for symbolic constants).
  * The constants use the hex floating-point literal representation
  * that is printed when using the printf %a format specifier,
@@ -2267,6 +2277,14 @@ const rv_opcode_data rvi_opcode_data[] = {
     [rv_op_sc_c_int_ptr] = { "sc.c", rv_codec_r, rv_fmt_rd_cs2_offs0_rs1,
     /* 2 registers, 1 flag, 1 immediate */
     [rv_op_scbndsi] = { "scbdsi", rv_codec_scbndsi, rv_fmt_cd_cs1_imm, NULL, 0, 0, 0 },
+    [rv_op_cbo_clean] = { "cbo.clean", rv_codec_cbo_rs1, rv_fmt_cbo_rs1, NULL, 0, 0, 0 },
+    [rv_op_cbo_clean_cap] = { "cbo.clean", rv_codec_cbo_rs1, rv_fmt_cbo_cs1, NULL, 0, 0, 0 },
+    [rv_op_cbo_flush] = { "cbo.flush", rv_codec_cbo_rs1, rv_fmt_cbo_rs1, NULL, 0, 0, 0 },
+    [rv_op_cbo_flush_cap] = { "cbo.flush", rv_codec_cbo_rs1, rv_fmt_cbo_cs1, NULL, 0, 0, 0 },
+    [rv_op_cbo_inval] = { "cbo.inval", rv_codec_cbo_rs1, rv_fmt_cbo_rs1, NULL, 0, 0, 0 },
+    [rv_op_cbo_inval_cap] = { "cbo.inval", rv_codec_cbo_rs1, rv_fmt_cbo_cs1, NULL, 0, 0, 0 },
+    [rv_op_cbo_zero] = { "cbo.zero", rv_codec_cbo_rs1, rv_fmt_cbo_rs1, NULL, 0, 0, 0 },
+    [rv_op_cbo_zero_cap] = { "cbo.zero", rv_codec_cbo_rs1, rv_fmt_cbo_cs1, NULL, 0, 0, 0 },
     { "fcvt.s.bf16", rv_codec_r_m, rv_fmt_rm_frd_frs1, NULL, 0, 0, 0 },
     { "vfncvtbf16.f.f.w", rv_codec_v_r, rv_fmt_vd_vs2_vm, NULL, 0, 0, 0 },
     { "vfwcvtbf16.f.f.v", rv_codec_v_r, rv_fmt_vd_vs2_vm, NULL, 0, 0, 0 },
@@ -3118,6 +3136,18 @@ static rv_opcode decode_cheri_inst(rv_inst inst) {
             case 0: op = rv_op_fence; break;
             case 1: op = rv_op_fence_i; break;
             case 2: op = rv_op_lq; break;
+            case 2:
+                } else if (((inst >> 7) & 0b11111) == 0) {
+                    switch (((inst >> 20) & 0b111111111111)) {
+                    case 0:
+                        op = (flags & RISCV_DIS_FLAG_CAPMODE) ? rv_op_cbo_inval_cap : rv_op_cbo_inval;
+                        break;
+                    case 1:
+                        op = (flags & RISCV_DIS_FLAG_CAPMODE) ? rv_op_cbo_clean_cap : rv_op_cbo_clean;
+                        op = (flags & RISCV_DIS_FLAG_CAPMODE) ? rv_op_cbo_flush_cap : rv_op_cbo_flush;
+                    case 4:
+                        op = (flags & RISCV_DIS_FLAG_CAPMODE) ? rv_op_cbo_zero_cap : rv_op_cbo_zero;
+                    }
             }
             break;
         case 4:
@@ -5127,6 +5157,7 @@ static void decode_inst_operands(rv_decode *dec, rv_isa isa)
         dec->rnum = operand_rnum(inst);
         break;
     case rv_codec_scbndsi:
+    case rv_codec_cbo_rs1:
     case rv_codec_v_r:
         dec->rd = operand_rd(inst);
         dec->rs1 = operand_rs1(inst);
@@ -5439,6 +5470,7 @@ static GString *format_inst(size_t tab, rv_decode *dec)
                 break;
             case '2':
                 g_string_append(buf, rv_creg_name_sym[dec->rs2]);
+                break;
             case 's':
             default:
                 abort();
