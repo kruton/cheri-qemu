@@ -298,6 +298,7 @@ static void cseal_common(CPUArchState *env, uint32_t cd, uint32_t cs,
     }
     cap_register_t result = *csp;
     } else {
+    }
     } else {
         CAP_cc(update_otype)(&result, CAP_OTYPE_UNSEALED);
     update_capreg(env, cd, &result);
@@ -312,6 +313,8 @@ cincoffset_impl(CPUArchState *env, uint32_t cd, uint32_t cb, target_ulong rt,
      */
     GET_HOST_RETPC_IF_TRAPPING_CHERI_ARCH();
     DEFINE_RESULT_VALID;
+    /*
+     */
     if (!cbp->cr_tag) {
         raise_cheri_exception_or_invalidate(env, CapEx_TagViolation, cb);
         raise_cheri_exception_or_invalidate(env, CapEx_SealViolation, cb);
@@ -367,6 +370,7 @@ target_ulong CHERI_HELPER_IMPL(cgetflags(CPUArchState *env, uint32_t cb))
     GET_HOST_RETPC_IF_TRAPPING_CHERI_ARCH();
     if (cbp->cr_tag && !cap_is_unsealed(cbp)) {
     cap_register_t result = *cbp;
+#endif
 #endif
     bool is_subset = false;
     if (cbp->cr_tag == ctp->cr_tag &&
@@ -429,9 +433,19 @@ target_ulong CHERI_HELPER_IMPL(cap_check_addr(CPUArchState *env,
             cpu_ld_cap_word_ra(env, vaddr + CHERI_MEM_OFFSET_METADATA, retpc) ^
     bool tag =
         cheri_tag_get(env, vaddr, cb, physaddr, &prot, retpc, mmu_idx, host);
+#if defined(CONFIG_TCG_LOG_INSTR)
+    /* Log capability memory access as a single access */
+    if (qemu_log_instr_enabled(env)) {
+         * Decompress to log all fields
+         * TODO(am2419): why do we decompress? we and up having to compress
+         * again in logging implementation. Passing pesbt + cursor would
+         * assume a 128-bit format and be less generic?
         uint8_t lvbits = 0;
+#ifdef TARGET_CHERI_RISCV_STD
         lvbits = env_archcpu(env)->cfg.lvbits;
+        cap_register_t ncd;
         CAP_cc(decompress_raw_ext)(*pesbt, *cursor, tag, lvbits, &ncd);
+        qemu_log_instr_ld_cap(env, vaddr, &ncd);
         tag = cheri_tag_prot_clear_or_trap(env, vaddr, cb, source, prot, retpc,
         if (tag) {
     if (tag)
@@ -453,6 +467,7 @@ bool load_raw_cap_from_memory(CPUArchState *env, target_ulong *pesbt,
                                                 vaddr, retpc, NULL, NULL,
                                                 cpu_mmu_index(env_cpu(env), false),
                                                 /* all_raw */ true);
+}
 bool load_cap_from_memory_raw_tag(CPUArchState *env, target_ulong *pesbt,
                                   target_ulong *cursor, uint32_t cb,
                                   const cap_register_t *source,
@@ -483,6 +498,10 @@ cap_register_t load_and_decompress_cap_from_memory_raw(
 #ifdef CONFIG_DEBUG_TCG
     if (get_capreg_state(cheri_get_gpcrs(env), cs) == CREG_INTEGER) {
         tcg_debug_assert(pesbt_for_mem == 0 && "Integer values should have NULL PESBT");
+#endif
+#if defined(TARGET_CHERI_RISCV_STD)
+    /*
+     */
         tcg_debug_assert(pesbt_for_mem == 0 && "Wrong value for cnull?");
         tcg_debug_assert(cursor == 0 && "Wrong value for cnull?");
         tcg_debug_assert(!tag && "Wrong value for cnull?");
@@ -493,8 +512,13 @@ cap_register_t load_and_decompress_cap_from_memory_raw(
 #if defined(TARGET_RISCV) && defined(CONFIG_RVFI_DII)
     env->rvfi_dii_trace.MEM.rvfi_mem_wdata[0] = cursor;
     env->rvfi_dii_trace.MEM.rvfi_mem_wdata[1] = pesbt_for_mem;
+#if defined(CONFIG_TCG_LOG_INSTR)
+    /* Log capability memory access as a single access */
+    if (qemu_log_instr_enabled(env)) {
+         * Decompress to log all fields
         const target_ulong pesbt = pesbt_for_mem ^ CAP_MEM_XOR_MASK;
         CAP_cc(decompress_raw)(pesbt, cursor, tag, &stored_cap);
+        qemu_log_instr_st_cap(env, vaddr, &stored_cap);
                                          cpu_mmu_index(env_cpu(env), false));
     GET_HOST_RETPC();
     target_ulong result = cheri_tag_get_many(env, addr, cb, NULL, GETPC());
