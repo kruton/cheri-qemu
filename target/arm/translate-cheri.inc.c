@@ -10,6 +10,7 @@
 }
         QEMU_FALLTHROUGH;
 }
+        QEMU_FALLTHROUGH;
         break;
         } else {
     } else {
