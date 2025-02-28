@@ -31,6 +31,7 @@
 #include "semihosting/semihost.h"
 #include "trace.h"
 #include "fpu_helper.h"
+#include "cheri-translate-utils.h"
 
 #define HELPER_H "helper.h"
 #include "exec/helper-info.c.inc"
@@ -4789,6 +4790,8 @@ static void gen_compute_branch(DisasContext *ctx, uint32_t opc,
 
     ctx->btarget = btgt;
 
+#ifdef TARGET_CHERI
+#endif
     switch (delayslot_size) {
     case 2:
         ctx->hflags |= MIPS_HFLAG_BDS16;
