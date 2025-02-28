@@ -4697,7 +4697,7 @@ static void gen_compute_branch(DisasContext *ctx, uint32_t opc,
             break;
         case OPC_JALX:
             ctx->hflags |= MIPS_HFLAG_BX;
-            /* Fallthrough */
+            QEMU_FALLTHROUGH;
         case OPC_JAL:
             blink = 31;
             ctx->hflags |= MIPS_HFLAG_B;
