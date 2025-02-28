@@ -35,6 +35,9 @@ static inline cap_length_t cap_get_length_full(const cap_register_t *c)
     cheri_debug_assert((!c->cr_tag || c->_cr_top >= c->cr_base) &&
                        "Tagged capabilities must be in bounds!");
 static inline bool cap_otype_is_reserved(target_ulong otype)
+    /* Silence -Wtype-limits by using an intermediate variable. */
+    target_ulong min = CAP_CC(MIN_RESERVED_OTYPE);
+    return otype >= min && otype <= CAP_CC(MAX_RESERVED_OTYPE);
     target_ulong otype = CAP_cc(get_otype)(c);
     /*
      * It is impossible to have out-of-range otypes in all targets for the
