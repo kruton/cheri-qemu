@@ -83,6 +83,15 @@ static void arm_trickbox_write(void *opaque, hwaddr addr, uint64_t val,
         empty_buffer(tb);
 }
 
+    {                                                                          \
+        old = tb->name;                                                        \
+        tb->name = (tb->name & ~writemask) | (val & writemask);                \
+        write_helper_fn *write_handler = writefn;                              \
+        if (write_handler) {                                                   \
+            write_handler(tb, addr, &tb->name, old);                           \
+        }                                                                      \
+        break;                                                                 \
+    }
 static uint64_t arm_trickbox_read(void *opaque, hwaddr addr, unsigned size)
 {
     return 0;
