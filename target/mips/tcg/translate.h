@@ -134,10 +134,10 @@ enum {
     gen_helper_##name(tcg_env, arg1, arg2, tcg_constant_i32(arg3));\
     } while (0)
 
-void generate_exception(DisasContext *ctx, int excp);
-void generate_exception_err(DisasContext *ctx, int excp, int err);
-void generate_exception_end(DisasContext *ctx, int excp);
 void generate_exception_break(DisasContext *ctx, int code);
+void generate_exception(DisasContext *ctx, MipsExcp excp);
+void generate_exception_err(DisasContext *ctx, MipsExcp excp, int err);
+void generate_exception_end(DisasContext *ctx, MipsExcp excp);
 void gen_reserved_instruction(DisasContext *ctx);
 
 void check_insn(DisasContext *ctx, uint64_t flags);
