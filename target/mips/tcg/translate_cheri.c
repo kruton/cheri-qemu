@@ -481,6 +481,7 @@ static void gen_cp2 (DisasContext *ctx, uint32_t opc, int r16, int r11, int r6)
             check_cop2x(ctx);
             generate_csetbounds(r16, r11, r6);
             opn = "csetbounds";
+            break;
         case OPC_CINCOFFSET_NI: /* 0x11 */
             check_cop2x(ctx);
             generate_cincoffset(r16, r11, r6);
@@ -520,6 +521,7 @@ static void gen_cp2 (DisasContext *ctx, uint32_t opc, int r16, int r11, int r6)
             opn = "cbuildcap";
             generate_ccopytype(r16, r11, r6);
             opn = "ccopytype";
+            opn = "ccseal";
         case OPC_CTESTSUBSET_NI: /* 0x20 */
             generate_ctestsubset(ctx, r16, r11, r6);
             opn = "ctestsubset";
