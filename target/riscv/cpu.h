@@ -733,10 +733,18 @@ G_NORETURN void riscv_raise_exception(CPURISCVState *env,
 
 target_ulong riscv_cpu_get_fflags(CPURISCVState *env);
 void riscv_cpu_set_fflags(CPURISCVState *env, target_ulong);
+{
 }
 #ifdef TARGET_CHERI
+#else
 #endif
+}
 
+    return true;
+#endif
+static inline bool pc_is_current(CPURISCVState *env)
+#ifdef CONFIG_DEBUG_TCG
+    return env->_pc_is_current;
  * Note: the pc does not have to be up-to-date, tb start is fine.
  * We may miss a few dumps or print too many if -dfilter is on but
  * that shouldn't really matter.
@@ -1045,13 +1053,18 @@ void riscv_set_csr_ops(int csrno, const riscv_csr_operations *ops);
 
 void riscv_cpu_register_gdb_regs_for_features(CPUState *cs);
 
+static inline bool riscv_cpu_mode_cre(CPURISCVState *env)
 {
+#else
     /*
      */
+        return true;
     }
             }
+        }
     /*
      */
+#endif
 target_ulong riscv_new_csr_seed(target_ulong new_value,
                                 target_ulong write_mask);
 
