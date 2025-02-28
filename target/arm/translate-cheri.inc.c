@@ -8,6 +8,7 @@
 {
     }
 }
+        QEMU_FALLTHROUGH;
 }
         break;
         } else {
