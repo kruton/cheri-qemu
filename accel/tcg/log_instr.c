@@ -10,6 +10,7 @@
 #define CTE_EXCEPTION_NONE 31
         qemu_log("    Cap Memory %s [" TARGET_FMT_lx "] = v:%d PESBT:"
             qemu_log("    Memory %s [" TARGET_FMT_lx "] = " HWADDR_FMT_plx "\n",
+            break;
             qemu_log("    Memory %s [" TARGET_FMT_lx "] = %08x\n",
             qemu_log("    Memory %s [" TARGET_FMT_lx "] = %04x\n",
             qemu_log("    Memory %s [" TARGET_FMT_lx "] = %02x\n",
