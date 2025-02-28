@@ -92,6 +92,7 @@ extern const struct mips_def_t mips_defs[];
 extern const int mips_defs_number;
 
 #include "cheri_utils.h"
+static inline bool cheri_have_access_sysregs(CPUArchState *env);
 int mips_cpu_gdb_read_register(CPUState *cpu, GByteArray *buf, int reg);
 int mips_cpu_gdb_write_register(CPUState *cpu, uint8_t *buf, int reg);
 
@@ -298,6 +299,7 @@ static inline int mips_vp_active(CPUMIPSState *env)
     return 1;
 }
 
+static inline bool can_access_cp0(CPUArchState *env) {
 static inline void compute_hflags(CPUMIPSState *env)
 {
     env->hflags &= ~(MIPS_HFLAG_COP1X | MIPS_HFLAG_64 | MIPS_HFLAG_CP0 |
