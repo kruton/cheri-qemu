@@ -442,6 +442,6 @@ void hmp_dumpdtb(Monitor *mon, const QDict *qdict)
         return;
     }
 
-    monitor_printf(mon, "dtb dumped to %s", filename);
+    monitor_printf(mon, "DTB dumped to '%s'\n", filename);
 }
 #endif
