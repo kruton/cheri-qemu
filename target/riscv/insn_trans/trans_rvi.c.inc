@@ -212,6 +212,18 @@ static bool gen_branch(DisasContext *ctx, arg_b *a, TCGCond cond)
     } else {
         tcg_gen_brcond_tl(cond, src1, src2, l);
     }
+#ifndef CONFIG_USER_ONLY
+    if (ctx->cfg_ptr->ext_smctr || ctx->cfg_ptr->ext_ssctr) {
+        TCGv type = tcg_constant_tl(CTRDATA_TYPE_NONTAKEN_BRANCH);
+        TCGv dest = tcg_temp_new();
+        TCGv src = tcg_temp_new();
+
+        gen_pc_plus_diff(src, ctx, 0);
+        gen_pc_plus_diff(dest, ctx, ctx->cur_insn_len);
+        gen_helper_ctr_add_entry(tcg_env, src, dest, type);
+    }
+#endif
+
     /* Branch not taken, CHERI PCC bounds check done on next ifetch. */
     gen_goto_tb(ctx, 1, ctx->cur_insn_len, /*bounds_check=*/false);
     ctx->pc_save = orig_pc_save;
@@ -225,6 +237,17 @@ static bool gen_branch(DisasContext *ctx, arg_b *a, TCGCond cond)
         gen_pc_plus_diff(target_pc, ctx, a->imm);
         gen_exception_inst_addr_mis(ctx, target_pc);
     } else {
+#ifndef CONFIG_USER_ONLY
+        if (ctx->cfg_ptr->ext_smctr || ctx->cfg_ptr->ext_ssctr) {
+            TCGv type = tcg_constant_tl(CTRDATA_TYPE_TAKEN_BRANCH);
+            TCGv dest = tcg_temp_new();
+            TCGv src = tcg_temp_new();
+
+            gen_pc_plus_diff(src, ctx, 0);
+            gen_pc_plus_diff(dest, ctx, a->imm);
+            gen_helper_ctr_add_entry(tcg_env, src, dest, type);
+        }
+#endif
         /* Branch taken -> check if PCC bounds allow for this jump. */
         gen_goto_tb(ctx, 0, a->imm, /*bounds_check=*/true);
     }
