@@ -386,6 +386,9 @@ target_ulong CHERI_HELPER_IMPL(cap_check_addr(CPUArchState *env,
     /* No TLB fault possible, should be safe to get a host pointer now */
     void *host = probe_read(env, vaddr, CHERI_CAP_SIZE, mmu_idx, retpc);
 #else
+                 CAP_MEM_XOR_MASK;
+        *pesbt =
+            cpu_ld_cap_word_ra(env, vaddr + CHERI_MEM_OFFSET_METADATA, retpc) ^
     bool tag =
         cheri_tag_get(env, vaddr, cb, physaddr, &prot, retpc, mmu_idx, host);
         CAP_cc(decompress_raw_ext)(*pesbt, *cursor, tag, lvbits, &ncd);
@@ -430,6 +433,7 @@ cap_register_t load_and_decompress_cap_from_memory_raw(
 #if defined(TARGET_RISCV) && defined(CONFIG_RVFI_DII)
     env->rvfi_dii_trace.MEM.rvfi_mem_wdata[0] = cursor;
     env->rvfi_dii_trace.MEM.rvfi_mem_wdata[1] = pesbt_for_mem;
+        const target_ulong pesbt = pesbt_for_mem ^ CAP_MEM_XOR_MASK;
     GET_HOST_RETPC();
     target_ulong result = cheri_tag_get_many(env, addr, cb, NULL, GETPC());
     /* For RVFI tracing, sail reports the valu of th last capability read. */
