@@ -23,6 +23,7 @@
 #include "internals.h"
 #include "qemu/error-report.h"
 #include "exec/exec-all.h"
+#include "exec/cputlb.h"
 #include "exec/cpu_ldst.h"
 #include "exec/helper-proto.h"
 #include "trace.h"

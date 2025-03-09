@@ -28,6 +28,7 @@
 #include "qemu/host-utils.h"
 #include "exec/helper-proto.h"
 #include "exec/exec-all.h"
+#include "exec/cputlb.h"
 #include "exec/log_instr.h"
 #include "system/cpus.h"
 #include "system/runstate.h"

@@ -23,6 +23,7 @@
 #include "cpu.h"
 #include "internals.h"
 #include "pmu.h"
+#include "exec/cputlb.h"
 #include "exec/exec-all.h"
 #include "exec/log_instr.h"
 #include "exec/page-protection.h"
