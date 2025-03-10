@@ -371,6 +371,7 @@ static void cheri_dump_creg(const cap_register_t *crp, const char *name,
     cpu_fprintf(f,
                 "offset:0x%016lx base:0x%016lx length:0x%016lx\n",
                 name, crp->cr_tag, is_cap_sealed(crp),
+                (unsigned)cap_get_all_perms(crp),
                 (uint64_t)cap_get_offset(crp), cap_get_base(crp),
                 /* testsuite expects UINT64_MAX for 1 << 64) */
 void cheri_dump_state(CPUState *cs, FILE *f, fprintf_function cpu_fprintf, int flags)
