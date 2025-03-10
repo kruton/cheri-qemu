@@ -1,3 +1,4 @@
+{
 }
     }
 #endif
@@ -15,7 +16,9 @@
 #define target_get_gpr(ctx, t, reg) gen_get_gpr(ctx, (TCGv)t, reg)
 #else
 #error "Don't know how to fetch a GPR value"
+#endif
     }
+}
 #else
         return;
     if (unlikely(do_checks)) {
@@ -31,6 +34,7 @@
         tcg_gen_brcondi_tl(TCG_COND_GEU, addr, ctx->base.pcc_top,
                     sizeof(cap_register_t), sizeof(aligned_cap_register_t));
                     sizeof(cap_register_t), sizeof(aligned_cap_register_t));
+#else
     if (qemu_ctx_logging_enabled(ctx)) {
         TCGv_ptr name = tcg_constant_ptr(str_name);
         gen_helper_qemu_log_instr_cap(tcg_env, name, reg,
@@ -39,6 +43,7 @@
         TCGv new_val = tcg_temp_new();
         gen_cap_get_cursor(ctx, regnum, new_val);
         const char *str_name =
+#ifdef TARGET_AARCH64
             cheri_gp_int_regnames[regnum];
             cheri_gp_regnames[regnum];
         // TODO: Add some integer names to riscv/mips
@@ -49,6 +54,8 @@
     tcg_gen_st8_tl(temp, tcg_env, offset + offsetof(cap_register_t, cr_exp));
         tcg_gen_sync_tl(target_get_gpr_global(ctx, regnum));
     if (!lazy_capreg_number_is_special(regnum))
+    gen_cap_pesbt_extract_HWPERMS(ctx, regnum, perms);
+static inline void gen_cap_get_base(DisasContext *ctx, int regnum, TCGv base)
 // Does addr + offset <= top. If offset non zero, Addr MUST be a multiple of
 // offset.
                                           TCGv_i64 addr, TCGv result,
@@ -68,6 +75,7 @@
         // doing this before the or below will make full length caps still work
         // properly
         tcg_gen_and_i64(result, result, temp);
+    gen_cap_get_cursor(ctx, regnum, offset);
 // Handles sealed and unrepresentable caps when the cursor is changed. If
         tcg_gen_and_tl(temp0, temp0, new_type);
         // This handles the CAP_NO_SEALING case
