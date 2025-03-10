@@ -12,6 +12,7 @@ static inline cap_offset_t cap_get_offset(const cap_register_t *c)
 {
 }
 {
+    return CAP_cc(get_all_permissions)(c);
 }
 /*
  */
@@ -27,6 +28,8 @@ static inline cap_offset_t cap_get_offset(const cap_register_t *c)
  */
     /*
 #else
+    bool success = CAP_cc(set_permissions)(c, perms);
+    assert(success);
 #ifndef TARGET_AARCH64
 #else
     // TODO: should handle last byte of address space properly
