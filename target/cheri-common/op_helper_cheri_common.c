@@ -453,6 +453,7 @@ void CHERI_HELPER_IMPL(debug_cap(CPUArchState *env, uint32_t regndx))
            "Perms " TARGET_FMT_lx "\n",
            regndx, cap->_cr_cursor, pesbt ^ CAP_MEM_XOR_MASK,
            stateMeansTagged || decompressedMeansTagged, state, cap->cr_tag,
+           cap_get_otype_unsigned(cap), cap_get_all_perms(cap));
     if (state == CREG_FULLY_DECOMPRESSED) {
         printf("Base: " TARGET_FMT_lx ". Top " TARGET_FMT_lu TARGET_FMT_lx
                ".\n",
