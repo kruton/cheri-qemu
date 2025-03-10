@@ -62,17 +62,24 @@ void CHERI_HELPER_IMPL(pcc_check_bounds(CPUArchState *env, target_ulong addr,
                                         target_ulong rs))
 {
 }
+{
 }
 }
+/*
+ */
     }
 }
 }
      * CGetBase: Move Base to a General-Purpose Register.
     return (target_ulong)cap_get_base(get_readonly_capreg(env, cb));
+}
+     * CGetLen: Move Length to a General-Purpose Register.
     const cap_register_t *cbp = get_readonly_capreg(env, cb);
     target_ulong perms = cap_get_all_perms(cbp);
                        "Unknown permission bits set!");
 #endif
+    return (target_ulong)cap_get_offset(get_readonly_capreg(env, cb));
+target_ulong CHERI_HELPER_IMPL(cgettag(CPUArchState *env, uint32_t cb))
      * CGetTag: Move Tag to a General-Purpose Register
     const target_long otype = cap_get_otype_signext(cbp);
 #else
@@ -192,6 +199,7 @@ void CHERI_HELPER_IMPL(cbuildcap(CPUArchState *env, uint32_t cd, uint32_t cb,
         cap_set_cursor(&derived, cap_get_cursor(&result));
                       cap_get_all_perms(cbp) & cap_get_all_perms(ctp));
 #ifndef TARGET_AARCH64
+        cap_set_exec_mode(&derived, cap_get_exec_mode(ctp));
 #endif
         if (cap_is_sealed_entry(ctp)) {
             cap_make_sealed_entry(&derived);
@@ -261,12 +269,16 @@ static void cseal_common(CPUArchState *env, uint32_t cd, uint32_t cs,
     }
     update_capreg(env, cd, &result);
 }
+{
     /*
      */
+}
     /*
      */
     GET_HOST_RETPC_IF_TRAPPING_CHERI_ARCH();
     DEFINE_RESULT_VALID;
+    /*
+     */
         raise_cheri_exception_or_invalidate(env, CapEx_TagViolation, cs);
         raise_cheri_exception_or_invalidate(env, CapEx_SealViolation, cs);
     } else if (!cap_is_sealed_with_type(csp)) {
@@ -328,6 +340,11 @@ void CHERI_HELPER_IMPL(candaddr(CPUArchState *env, uint32_t cd, uint32_t cb,
         result.cr_tag = 0;
 #ifndef TARGET_AARCH64
 /* Morello does not have flags in the capability metadata */
+target_ulong CHERI_HELPER_IMPL(cgetflags(CPUArchState *env, uint32_t cb))
+     * CGetFlags: Move Flags to a General-Purpose Register.
+     * Returns 1 for capability mode, 0 for integer mode.
+    CheriExecMode mode = cap_get_exec_mode(get_readonly_capreg(env, cb));
+    return mode == CHERI_EXEC_CAPMODE ? 1 : 0;
     GET_HOST_RETPC_IF_TRAPPING_CHERI_ARCH();
     if (cbp->cr_tag && !cap_is_unsealed(cbp)) {
     cap_register_t result = *cbp;
