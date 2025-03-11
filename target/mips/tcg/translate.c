@@ -1711,6 +1711,7 @@ static inline void check_dsp_r2(DisasContext *ctx)
     }
 }
 
+#ifndef TARGET_CHERI
 static inline void check_dsp_r3(DisasContext *ctx)
 {
     if (unlikely(!(ctx->hflags & MIPS_HFLAG_DSP_R3))) {
@@ -1891,6 +1892,7 @@ static inline void check_eva(DisasContext *ctx)
         gen_reserved_instruction(ctx);
     }
 }
+#endif // !TARGET_CHERI
 
 
 /*
@@ -4119,6 +4121,7 @@ static void gen_loongson_multimedia(DisasContext *ctx, int rd, int rs, int rt)
     gen_store_fpr64(ctx, t0, rd);
 }
 
+#if !defined(TARGET_CHERI)
 static void gen_loongson_lswc2(DisasContext *ctx, int rt,
                                int rs, int rd)
 {
@@ -4277,6 +4280,7 @@ static void gen_loongson_lswc2(DisasContext *ctx, int rt,
         break;
     }
 }
+#endif /* !defined(TARGET_CHERI) */
 
 /* Loongson EXT LDC2/SDC2 */
 static void gen_loongson_lsdc2(DisasContext *ctx, int rt,
@@ -4814,6 +4818,7 @@ static void gen_compute_branch(DisasContext *ctx, uint32_t opc,
         ctx->hflags |= MIPS_HFLAG_B16;
     }
 #ifdef TARGET_CHERI
+#endif
 }
 
 
@@ -11117,6 +11122,7 @@ void gen_rdhwr(DisasContext *ctx, int rt, int rd, int sel)
         gen_helper_rdhwr_ccres(t0, tcg_env);
         gen_store_gpr(t0, rt);
         break;
+#if !defined(TARGET_CHERI)
     case 4:
         check_insn(ctx, ISA_MIPS_R6);
         if (sel != 0) {
