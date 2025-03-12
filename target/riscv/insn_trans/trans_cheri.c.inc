@@ -33,6 +33,9 @@ static inline bool gen_cheri_cap_cap_imm(int cd, int cs1, target_long imm,
      */
     gen_helper_cjal(tcg_env, tcg_constant_i32(rd), target_addr, link_addr);
     /* No bounds check needed here since we did it in helper_cjal(). */
+    TCGv t0 = tcg_constant_tl(ctx->pc_succ_insn); /* Link addr + resulting pc */
+    gen_helper_cjalr(tcg_env, tcg_constant_i32(cd), tcg_constant_i32(cs1),
+                     tcg_constant_tl(imm), t0);
     ctx->base.is_jmp = DISAS_NORETURN;
 TRANSLATE_INT_CAP(cgethigh)
 TRANSLATE_INT_CAP(cloadtags)
