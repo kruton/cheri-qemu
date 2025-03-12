@@ -5,12 +5,23 @@ gen_nocheri = [
 ]
 # FIXME: would be nice to avoid this duplication but I don't see an easy way to
 # do this since the TARGET_CHERI check is evaulated later.
+# Work around meson generators not being able to depend on multiple files by
+# making a copy of the decodetree() generator that has dependencies
+fake_dep = custom_target('fake-cheri-insn-dep', command: [find_program('cat'), '@INPUT@'],
+                         output: 'fake-output.decode', capture: true,
+decodetree_w_cheri_deps = generator(
+  decodetree_py,
+  output: 'decode-@BASENAME@.c.inc',
+  arguments: ['@INPUT@', '@EXTRA_ARGS@', '-o', '@OUTPUT@'],
+  depends: fake_dep, # Workaround for bad dependency tracking
+)
   decodetree.process('insn16.decode', extra_args: ['--static-decode=decode_insn16', '--insnwidth=16']),
   decodetree.process('insn32.decode', extra_args: '--static-decode=decode_insn32'),
   decodetree_w_cheri_deps.process('insn32.decode', extra_args: [dir / 'insn32-cheri-v9.decode', dir / 'insn32-cheri-v9-32.decode', '--static-decode=decode_insn32']),
   decodetree.process('xthead.decode', extra_args: '--static-decode=decode_xthead'),
   decodetree.process('XVentanaCondOps.decode', extra_args: '--static-decode=decode_XVentanaCodeOps'),
 ]
+  decodetree_w_cheri_deps.process('insn32.decode', extra_args: [dir / 'insn32-cheri-v9.decode', dir / 'insn32-cheri-v9-64.decode', '--static-decode=decode_insn32']),
 cheri_ss = ss.source_set()
 
 riscv_ss = ss.source_set()
