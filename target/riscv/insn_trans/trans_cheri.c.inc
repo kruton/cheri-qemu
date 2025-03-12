@@ -6,15 +6,23 @@ typedef void(cheri_int_cap_helper)(TCGv, TCGv_env, TCGv_i32);
 static inline bool gen_cheri_int_cap(DisasContext *ctx, arg_rc *a,
                                      cheri_int_cap_helper *gen_func)
 {
+    gen_set_gpr(ctx, a->rd, result);
     return true;
 }
+                                     cheri_cap_cap_helper *gen_func)
 {
 }
+    DO_TRANSLATE_HELPER(name, gen_cheri_cap_cap, helper, a)
 static inline QEMU_ALWAYS_INLINE bool
 gen_cheri_cap_int_plus_imm(DisasContext *ctx, int cd, int rs, target_long imm,
                            cheri_cap_int_helper *gen_func)
     tcg_gen_addi_tl(gpr_value, gpr_value, imm);
                                          cheri_cap_cap_int_helper *gen_func)
+static inline bool gen_cheri_cap_loadstore(DisasContext *ctx, int srcdst,
+static inline bool gen_cheri_int_cap_cap(DisasContext *ctx, arg_rcc *a,
+                                         cheri_int_cap_cap_helper *gen_func)
+static inline bool gen_cheri_cap_cap_imm(int cd, int cs1, target_long imm,
+#define TRANSLATE_CAP_CAP_IMM(name)                                            \
     /* Mask the LSB to match the RISC-V spec for JAL. */
     target_ulong next_pc = (ctx->base.pc_next + imm) & ~(target_ulong)1;
     TCGv target_addr = tcg_constant_tl(next_pc);
@@ -28,6 +36,8 @@ gen_cheri_cap_int_plus_imm(DisasContext *ctx, int cd, int rs, target_long imm,
     ctx->base.is_jmp = DISAS_NORETURN;
 TRANSLATE_INT_CAP(cgethigh)
 TRANSLATE_INT_CAP(cloadtags)
+    if (gen_cheri_cap_cap_cap(ctx, a, &gen_helper_cspecialrw)) {
+        if (a->cs1 != 0 && a->cs2 == CheriSCR_DDC) {
             tcg_gen_exit_tb(NULL, 0);
 TRANSLATE_CAP_CAP_INT(csethigh)
 static inline bool gen_cap_load(DisasContext *ctx, int32_t rd, int32_t cs,
@@ -58,3 +68,4 @@ static inline bool trans_modesw_cap(DisasContext *ctx, arg_modesw_cap *a)
 static inline bool trans_modesw_int(DisasContext *ctx, arg_modesw_int *a)
     return do_trans_modesw(ctx, /*to_capmode=*/false);
 // Reuses gen_lr_impl, defined in trans_rva.c.inc
+    return gen_cheri_int_int(ctx, a, &gen_helper_cram);
