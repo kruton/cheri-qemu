@@ -1678,7 +1678,7 @@ static void handle_query_supported(GArray *params, void *user_ctx)
     }
 
 #ifndef CONFIG_USER_ONLY
-    if (cc->memory_readcap_debug) {
+    if (first_cpu->cc->memory_readcap_debug) {
         g_string_append(gdbserver_state.str_buf, ";qXfer:capa:read+");
     }
 #endif
