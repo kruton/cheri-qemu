@@ -472,7 +472,9 @@ target_ulong helper_sret(CPURISCVState *env)
     // If RVC is not supported, we also mask sepc[1] as specified in the RISC-V
     // privileged spec 4.1.7 Supervisor Exception Program Counter (sepc):
     // "This masking occurs also for the implicit read by the SRET instruction."
-    retpc &= ~(target_ulong)(riscv_has_ext(env, RVC) ? 1 : 3);
+    retpc &= ~(target_ulong)(riscv_cpu_allow_16bit_insn(&env_archcpu(env)->cfg,
+                                                        env->priv_ver,
+                                                        env->misa_ext) ? 1 : 3);
 
     if (get_field(env->mstatus, MSTATUS_TSR) && !(env->priv >= PRV_M)) {
         riscv_raise_exception(env, RISCV_EXCP_ILLEGAL_INST, GETPC());
@@ -594,7 +596,9 @@ target_ulong helper_mret(CPURISCVState *env)
     // If RVC is not supported, we also mask sepc[1] as specified in the RISC-V
     // privileged spec 3.1.15 Machine Exception Program Counter (mepc):
     // "This masking occurs also for the implicit read by the MRET instruction."
-    retpc &= ~(target_ulong)(riscv_has_ext(env, RVC) ? 1 : 3);
+    retpc &= ~(target_ulong)(riscv_cpu_allow_16bit_insn(&env_archcpu(env)->cfg,
+                                                        env->priv_ver,
+                                                        env->misa_ext) ? 1 : 3);
 
     uint64_t mstatus = env->mstatus;
     target_ulong prev_priv = get_field(mstatus, MSTATUS_MPP);
@@ -655,7 +659,9 @@ target_ulong helper_mret(CPURISCVState *env)
 target_ulong helper_mnret(CPURISCVState *env)
 {
     target_ulong retpc = env->mnepc;
-    retpc &= ~(target_ulong)(riscv_has_ext(env, RVC) ? 1 : 3);
+    retpc &= ~(target_ulong)(riscv_cpu_allow_16bit_insn(&env_archcpu(env)->cfg,
+                                                        env->priv_ver,
+                                                        env->misa_ext) ? 1 : 3);
     target_ulong prev_priv = get_field(env->mnstatus, MNSTATUS_MNPP);
     target_ulong prev_virt;
 

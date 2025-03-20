@@ -790,7 +790,9 @@ static void gen_jal(DisasContext *ctx, int rd, target_ulong imm)
         gen_check_branch_target(ctx, ctx->base.pc_next + imm);
     }
 #endif
-    if (!has_ext(ctx, RVC) && !ctx->cfg_ptr->ext_zca) {
+    if (!riscv_cpu_allow_16bit_insn(ctx->cfg_ptr,
+                                    ctx->priv_ver,
+                                    ctx->misa_ext)) {
         if ((imm & 0x3) != 0) {
             if (!target_pc) {
                 target_pc = tcg_temp_new();
@@ -855,7 +857,9 @@ static void gen_jalr(DisasContext *ctx, int rd, int rs1, target_ulong imm)
     // representability issues caused by directly modifying PCC.cursor.
     gen_set_pc(ctx, t0);
 
-    if (!has_ext(ctx, RVC) && !ctx->cfg_ptr->ext_zca) {
+    if (!riscv_cpu_allow_16bit_insn(ctx->cfg_ptr,
+                                    ctx->priv_ver,
+                                    ctx->misa_ext)) {
         misaligned = gen_new_label();
         tcg_gen_andi_tl(t0, cpu_pc, 0x2);
         tcg_gen_brcondi_tl(TCG_COND_NE, t0, 0x0, misaligned);
