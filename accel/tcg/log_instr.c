@@ -32,6 +32,7 @@
      * ones after this. Update cpu->tcg_cflags to set the updated flags for
      * all following blocks.
     cpu->tcg_cflags = cpu->cflags_next_tb;
+    bool is_short = false, is_long = false, is_long_long = false;
 #pragma GCC diagnostic pop
         bool is_short = false, is_long = false, is_long_long = false, is_signed = false;
                 QEMU_FALLTHROUGH;
