@@ -85,3 +85,4 @@ static inline void cap_set_cursor(cap_register_t *cap, uint64_t new_addr)
 static inline void cap_increment_offset(cap_register_t *cap, uint64_t offset)
     uint64_t new_addr = cap->_cr_cursor + offset;
     return cap_set_cursor(cap, new_addr);
+    assert(reg.cr_pesbt == CAP_MEM_XOR_MASK);
