@@ -5523,38 +5523,65 @@ static RISCVException stid(CPURISCVState *env, int csrno)
 {
 }
 {
+}
+{
 {
 {
 #endif
 #endif
 #ifdef TARGET_CHERI
 /* handlers for capability csr registers */
+cap_register_t *get_cap_csr(CPUArchState *env, uint32_t index)
+    switch (index) {
+    case CSR_MSCRATCHC:
         return &env->mscratchc;
+    case CSR_MTVECC:
+        return &env->mtvecc;
+    case CSR_STVECC:
         return &env->stvecc;
     case CSR_MEPCC:
+        return &env->mepcc;
+    case CSR_SEPCC:
+        return &env->sepcc;
+    case CSR_SSCRATCHC:
+        return &env->sscratchc;
+    case CSR_DDC:
+        return &env->ddc;
     case CSR_MTIDC:
     case CSR_STIDC:
     case CSR_UTIDC:
+        return &env->vstvecc;
     case CSR_MTDC:
     case CSR_PCC:
+    default:
+        assert(false && "Should have raised an invalid inst trap!");
 /*
+ * Reads a capability length csr register taking into account the current
+ * CHERI execution mode
  */
 static cap_register_t read_capcsr_reg(CPURISCVState *env,
+                                      riscv_csr_cap_ops *csr_cap_info)
+    cap_register_t retval = *get_cap_csr(env, csr_cap_info->reg_num);
     return retval;
         break;
     }
 
 /*
 */
+                                            cap_register_t cap,
     return true;
 #endif
     target_ulong address = cap_get_cursor(&cap);
     return false;
+/*
+*/
+static void write_xtvecc(CPURISCVState *env, riscv_csr_cap_ops *csr_cap_info,
     /* The low two bits encode the mode, but only 0 and 1 are valid. */
     if ((new_tvec & 3) > 1) {
         /* Invalid mode, keep the old one. */
         new_tvec &= ~(target_ulong)3;
         new_tvec |= cap_get_cursor(csr) & 3;
+static void write_xepcc(CPURISCVState *env, riscv_csr_cap_ops *csr_cap_info,
 static cap_register_t read_xepcc(CPURISCVState *env,
     target_ulong val = cap_get_cursor(&retval);
     // RISC-V privileged spec 4.1.7 Supervisor Exception Program Counter
@@ -5569,6 +5596,7 @@ static cap_register_t read_xepcc(CPURISCVState *env,
                         "capability): " PRINT_CAP_FMTSTR,
             retval.cr_tag = false;
         cap_set_cursor(&retval, val);
+    return retval;
     ccsr = set_field(ccsr, XCCSR_ENABLE, cpu->cfg.ext_cheri);
     /* Read-only feature bits. */
     ccsr = set_field(ccsr, XCCSR_TAG_CLEARING, CHERI_TAG_CLEAR_ON_INVALID(env));
@@ -6838,6 +6866,13 @@ riscv_csr_operations csr_ops[CSR_TABLE_SIZE] = {
  * table for now.
  */
 static riscv_csr_cap_ops csr_cap_ops[] = {
+    { "mscratchc", CSR_MSCRATCHC, read_capcsr_reg, write_cap_csr_reg,
+    { "mtvecc", CSR_MTVECC, read_capcsr_reg, write_xtvecc,
+    { "stvecc", CSR_STVECC, read_capcsr_reg, write_xtvecc,
+    { "mepcc", CSR_MEPCC, read_xepcc, write_xepcc,
+    { "sepcc", CSR_SEPCC, read_xepcc, write_xepcc,
+    { "sscratchc", CSR_SSCRATCHC, read_capcsr_reg, write_cap_csr_reg,
+    { "ddc", CSR_DDC, read_capcsr_reg, write_cap_csr_reg,
 #endif
 };
 riscv_csr_cap_ops *get_csr_cap_info(uint32_t csrnum)
