@@ -158,7 +158,7 @@ struct CPUClass {
 
     int (*mmu_index)(CPUState *cpu, bool ifetch);
     int (*memory_rw_debug)(CPUState *cpu, vaddr addr,
-                           uint8_t *buf, int len, bool is_write);
+                           uint8_t *buf, size_t len, bool is_write);
     int (*memory_readcap_debug)(CPUState *cpu, vaddr addr,
                                 uint8_t *buf, int len);
     int cheri_cap_size;
