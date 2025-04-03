@@ -5603,11 +5603,13 @@ This only applies for rv64
 static inline bool is_address_valid_for_cap(CPUArchState *env,
                                             cap_register_t cap,
                                             target_ulong addr)
+{
 #ifdef TARGET_RISCV32
     return true;
 #endif
     if (vm == VM_1_10_MBARE || vm == VM_1_10_SV32) {
         return true;
+    }
     uint8_t checkbit = topbit_for_address_mode(env);
     target_ulong address = cap_get_cursor(&cap);
     target_ulong extend_address = SignExtend64(address, checkbit);
@@ -5624,22 +5626,52 @@ static inline target_ulong get_valid_cap_address(CPUArchState *env,
         return addr;
     target_ulong extend_address = SignExtend64(addr, checkbit);
     return extend_address;
+/*
 Given a capability and address turn the address into a valid address for that
 capability and return true if the address was changed
+*/
 static inline bool validate_cap_address(CPUArchState *env, cap_register_t *cap,
                                         target_ulong *address)
     if (is_address_valid_for_cap(env, *cap, *address)) {
         return false;
     *address = get_valid_cap_address(env, *address);
 /*
+The function takes both the source capability as well as the cursor value.
+For CLEN writes the source capabilities bounds would be taken into account
+when computing the invalid address conversion..
 */
+static void write_cap_csr_reg(CPURISCVState *env,
+                              riscv_csr_cap_ops *csr_cap_info,
+                              cap_register_t src, target_ulong newval,
+                              bool clen)
+    cap_register_t csr = *get_cap_csr(env, csr_cap_info->reg_num);
+    /* CLEN writes only for csrrw calls, all other writes are XLEN */
+    if (clen) {
+            bool changed = validate_cap_address(env, &src, &newval);
+                /* E.g. xtvec always invalidates sealed caps */
+                src = cap_scaddr(newval, src);
+            } else if (changed) {
+                /* Only use scaddr if validate changed the address (e.g. epc) */
+        /* Otherwise just fall through to direct write */
+    } else {
+            /* For XLEN writes we ignore the result as we always use scaddr */
+            (void)validate_cap_address(env, &csr, &newval);
+        src = cap_scaddr(newval, csr);
+    /* Log the value and write it. */
+    *get_cap_csr(env, csr_cap_info->reg_num) = src;
+    cheri_log_instr_changed_capreg(env, csr_cap_info->name, &src,
 static void write_xtvecc(CPURISCVState *env, riscv_csr_cap_ops *csr_cap_info,
+                         cap_register_t src, target_ulong new_tvec, bool clen)
     /* The low two bits encode the mode, but only 0 and 1 are valid. */
     if ((new_tvec & 3) > 1) {
         /* Invalid mode, keep the old one. */
         new_tvec &= ~(target_ulong)3;
         new_tvec |= cap_get_cursor(csr) & 3;
+    write_cap_csr_reg(env, csr_cap_info, src, new_tvec, clen);
 static void write_xepcc(CPURISCVState *env, riscv_csr_cap_ops *csr_cap_info,
+                        cap_register_t src, target_ulong new_xepcc, bool clen)
+    new_xepcc &= (~0x1); // Zero bit zero
+    write_cap_csr_reg(env, csr_cap_info, src, new_xepcc, clen);
 static cap_register_t read_xepcc(CPURISCVState *env,
     target_ulong val = cap_get_cursor(&retval);
     // RISC-V privileged spec 4.1.7 Supervisor Exception Program Counter
@@ -6931,8 +6963,11 @@ static riscv_csr_cap_ops csr_cap_ops[] = {
     { "sepcc", CSR_SEPCC, read_xepcc, write_xepcc,
     { "sscratchc", CSR_SSCRATCHC, read_capcsr_reg, write_cap_csr_reg,
     { "ddc", CSR_DDC, read_capcsr_reg, write_cap_csr_reg,
+    { "vsepcc", CSR_VSEPCC, read_xepcc, write_xepcc,
     { "vsscratchc", CSR_VSSCRATCHC, read_capcsr_reg, write_cap_csr_reg,
+    { "vstvecc", CSR_VSTVECC, read_capcsr_reg, write_xtvecc,
     { "mtdc", CSR_MTDC, read_capcsr_reg, write_cap_csr_reg,
+    { "stdc", CSR_STDC, read_capcsr_reg, write_cap_csr_reg,
 #endif
 };
 riscv_csr_cap_ops *get_csr_cap_info(uint32_t csrnum)
