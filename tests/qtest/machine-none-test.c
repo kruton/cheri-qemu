@@ -53,8 +53,10 @@ static struct arch2cpu cpus_map[] = {
     { "hppa", "hppa" },
     { "riscv64", "rv64" },
     { "riscv64xcheri", "rv64" },
+    { "riscv64cheristd", "rv64" },
     { "riscv32", "rv32" },
     { "riscv32xcheri", "rv32" },
+    { "riscv32cheristd", "rv32" },
     { "rx", "rx62n" },
     { "loongarch64", "la464"},
 };

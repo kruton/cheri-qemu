@@ -166,6 +166,7 @@ void CHERI_HELPER_IMPL(cbuildcap(CPUArchState *env, uint32_t cd, uint32_t cb,
     GET_HOST_RETPC_IF_TRAPPING_CHERI_ARCH();
     DEFINE_RESULT_VALID;
     cap_register_t result = *ctp;
+#ifdef TARGET_CHERI_RISCV_STD
     if (cb == 0) {
         result.cr_tag = false;
         update_capreg(env, cd, &result);
