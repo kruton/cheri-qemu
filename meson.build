@@ -4472,6 +4472,8 @@ foreach target : target_dirs
       emulators += {exe['name']: emulator}
     endif
 
+    # TODO: meson 0.61 supports symlinks natively, use that once updated.
+      exe_name_alias = exe['name'].replace('-mips64', '-')
     traceable += [{
       'exe': exe['name'],
       'probe-prefix': 'qemu.' + target_type + '.' + target_name,
