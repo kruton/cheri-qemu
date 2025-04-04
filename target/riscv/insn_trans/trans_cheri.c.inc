@@ -100,6 +100,10 @@ static inline bool trans_modesw_int(DisasContext *ctx, arg_modesw_int *a)
     return do_trans_modesw(ctx, /*to_capmode=*/false);
 }
 // Reuses gen_lr_impl, defined in trans_rva.c.inc
+#define TRANSLATE_LR_EXPLICIT(name, op)                                        \
+    static bool trans_##name##_ddc(DisasContext *ctx, arg_##name##_ddc *a)     \
+    {                                                                          \
+    }
     }
 /*
  * Instructions from the RISC-V CHERI standard.
@@ -131,6 +135,7 @@ static bool trans_scbndsi(DisasContext *ctx, arg_scbndsi *a)
     }
     tcg_debug_assert(a->imm >= 0);
     target_ulong imm = a->scale ? a->imm << 4 : a->imm;
+#endif
     return gen_cheri_int_int(ctx, a, &gen_helper_cram);
 static bool trans_caddi(DisasContext *ctx, arg_caddi *a)
     return gen_cheri_cap_cap_imm(a->cd, a->cs1, a->imm, &gen_helper_cincoffset);
