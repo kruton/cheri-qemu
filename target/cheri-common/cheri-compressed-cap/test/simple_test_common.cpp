@@ -1,4 +1,5 @@
 }
+    CHECK(_cc_N(reserved_bits_valid)(&decompressed)); // reserved bits
 TEST_CASE("pesbt_is_correct ignores cr_extra", "") {
     TestAPICC::cap_t null_cap = TestAPICC::make_null_derived_cap(0);
     CHECK(_cc_N(pesbt_is_correct)(&null_cap));
