@@ -40,6 +40,7 @@
              'mips64el', 'mipsel', 'or1k', 'ppc',
              'sh4eb', 'sparc', 'sparc64', 'tricore',
              'ppc64', 'riscv32', 'riscv64', 'riscv32xcheri', 'riscv64xcheri',
+             'rx', 's390x', 'sh4', 'sh4eb',
              'x86_64', 'xtensa', 'xtensaeb' ] }
 
 ##
