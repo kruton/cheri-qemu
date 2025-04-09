@@ -2568,6 +2568,10 @@ static void gen_arith_imm(DisasContext *ctx, uint32_t opc,
     }
 }
 
+        TCGv tpc = tcg_constant_tl(ctx->base.pc_next);                         \
+                        "in delay / forbidden slot at PC 0x" TARGET_FMT_lx     \
+                        " may not work as expected\n",                         \
+                        ctx->base.pc_next);                                    \
 /* Logic with immediate operand */
 static void gen_logic_imm(DisasContext *ctx, uint32_t opc,
                           int rt, int rs, int16_t imm)
