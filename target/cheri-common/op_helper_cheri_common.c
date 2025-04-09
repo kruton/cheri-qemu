@@ -103,6 +103,8 @@ target_ulong CHERI_HELPER_IMPL(cgettag(CPUArchState *env, uint32_t cb))
 #ifdef TARGET_RISCV
     /* On RISC-V we mask the LSB of the target to match JALR behaviour. */
         raise_cheri_exception_branch(env, CapEx_TagViolation, target_reg);
+        raise_cheri_exception_branch(env, CapEx_SealViolation, target_reg);
+    } else if (!cap_has_perms(target, CAP_PERM_EXECUTE)) {
         raise_cheri_exception_branch(env, CapEx_PermitExecuteViolation,
 void CHERI_HELPER_IMPL(cjalr(CPUArchState *env, uint32_t cd,
     const target_ulong cursor = cap_get_cursor(cbp);
