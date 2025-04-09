@@ -48,6 +48,9 @@ static inline bool cap_otype_is_reserved(target_ulong otype)
     cheri_debug_assert(otype <= CAP_MAX_REPRESENTABLE_OTYPE);
     return otype;
         return result;
+#if defined(TARGET_AARCH64) || defined(TARGET_CHERI_RISCV_STD)
+     * Morello and the RISC-V standard encodings do not sign extend like the
+     * ISAv9 version of CHERI.
     return result < CAP_CC(MIN_RESERVED_OTYPE)
 static inline bool cap_is_sealed_with_reserved_otype(const cap_register_t *c)
     target_ulong otype = cap_get_otype_unsigned(c);
