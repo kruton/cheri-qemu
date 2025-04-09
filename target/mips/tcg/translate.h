@@ -214,6 +214,9 @@ extern TCGv bcond;
         }                                                                     \
     } while (0)
 
+    TCGv_i64 tmp = tcg_temp_new_i64();
+    tcg_gen_ext_tl_i64(tmp, value);
+    gen_helper_log_value(tcg_env, dbg_msg, tmp);
 /* MSA */
 void msa_translate_init(void);
 
