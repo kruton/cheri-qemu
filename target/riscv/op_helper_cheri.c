@@ -73,13 +73,10 @@ struct SCRInfo {
     [CheriSCR_DDC] = {.r = true, .w = true, .access = U_Always, .name = "DDC"},
 
 
-    [CheriSCR_STCC] = {.r = true, .w = true, .access = S_ASR, .name = "STCC"},
-    [CheriSCR_STDC] = {.r = true, .w = true, .access = S_ASR, .name = "STDC"},
     [CheriSCR_SScratchC] = {.r = true,
                             .w = true,
                             .access = S_ASR,
                             .name = "SScratchC"},
-    [CheriSCR_SEPCC] = {.r = true, .w = true, .access = S_ASR, .name = "SEPCC"},
 
     [CheriSCR_MTCC] = {.r = true, .w = true, .access = M_ASR, .name = "MTCC"},
     [CheriSCR_MTDC] = {.r = true, .w = true, .access = M_ASR, .name = "MTDC"},
@@ -89,7 +86,6 @@ struct SCRInfo {
                             .name = "MScratchC"},
     [CheriSCR_MEPCC] = {.r = true, .w = true, .access = M_ASR, .name = "MEPCC"},
 
-    [CheriSCR_BSScratchC] = {.r = true, .w = true, .access = H_ASR,
 };
 
 {
