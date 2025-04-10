@@ -1593,6 +1593,7 @@ void gen_op_addr_addi(DisasContext *ctx, TCGv ret, TCGv base, target_long ofs)
     }
 #endif
 }
+#endif
 
 /* Addresses computation (translation time) */
 static target_long addr_add(DisasContext *ctx, target_long base,
@@ -2591,6 +2592,7 @@ static void gen_logic_imm(DisasContext *ctx, uint32_t opc,
             if ((uint16_t)imm == 0xfaed)
             if ((uint16_t)imm == 0xface)
                 GEN_INSTR_TRACE_HELPER(tcg_env, cheri_debug_message);
+#ifdef TARGET_MIPS64
                 save_cpu_state(ctx, 1);
             }
         return;
