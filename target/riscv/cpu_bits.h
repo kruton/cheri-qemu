@@ -222,6 +222,8 @@
 
 #ifdef TARGET_CHERI
 /* Supervisor trap setup, scratch and handling */
+#define CSR_STVECC          CSR_STVEC
+#define CSR_SSCRATCHC       CSR_SSCRATCH
 #define CSR_SEPCC           CSR_SEPC
 #endif
 /* Sstc supervisor CSRs */
@@ -303,6 +305,10 @@
 #define CSR_VSIP            0x244
 #define CSR_VSATP           0x280
 
+#define CSR_VSTVECC         CSR_VSTVEC
+#define CSR_VSSCRATCHC      CSR_VSSCRATCH
+#define CSR_VSEPCC          CSR_VSEPC
+#define CSR_STVAL2          0x14b
 /* Sstc virtual CSRs */
 #define CSR_VSTIMECMP       0x24D
 #define CSR_VSTIMECMPH      0x25D
@@ -470,10 +476,13 @@
 /* Debug Mode Registers */
 #define CSR_DCSR            0x7b0
 #define CSR_DPC             0x7b1
-#define CSR_DSCRATCH        0x7b2
 #define CSR_DSCRATCH1       0x7b3
 #ifdef TARGET_CHERI
+#define CSR_DPCC            CSR_DPC
+#define CSR_DSCRATCH0C      CSR_DSCRATCH0
 #define CSR_DDC             0x416
+#define CSR_MTID            0x780
+#define CSR_MTIDC           CSR_MTID
 #endif
 #define CSR_MTID           0x780
 
