@@ -5630,6 +5630,15 @@ static inline RISCVException riscv_csrrw_check(CPURISCVState *env,
         return RISCV_EXCP_ILLEGAL_INST;
     }
 #endif
+    /*
+     * When CHERI is enabled, only certain CSRs can be accessed without the
+     * Access_System_Registers permission in PCC.
+     * TODO: could merge this with predicate callback?
+     */
+#ifdef TARGET_CHERI
+        }
+        return RISCV_EXCP_CHERI;
+#endif
     return RISCV_EXCP_NONE;
 }
 
@@ -5638,10 +5647,18 @@ static RISCVException riscv_csrrw_do64(CPURISCVState *env, int csrno,
                                        target_ulong new_value,
                                        target_ulong write_mask,
                                        uintptr_t ra)
+                                       target_ulong write_mask, uintptr_t retpc)
 {
     RISCVException ret;
     target_ulong old_value = 0;
 
+    /* check privileges and return RISCV_EXCP_ILLEGAL_INST if check fails */
+    ret = riscv_csrrw_check(env, csrno, write_mask != 0);
+    if (ret != RISCV_EXCP_NONE) {
+        if (ret == RISCV_EXCP_CHERI)
+            raise_cheri_exception_impl(env, CapEx_AccessSystemRegsViolation,
+                                       /*regnum=*/0, 0, true, retpc);
+        return ret;
     /* execute combined read/write operation if it exists */
     if (csr_ops[csrno].op) {
         ret = csr_ops[csrno].op(env, csrno, ret_value, new_value, write_mask);
@@ -5688,7 +5705,6 @@ static RISCVException riscv_csrrw_do64(CPURISCVState *env, int csrno,
 }
 
 RISCVException riscv_csrr(CPURISCVState *env, int csrno,
-                           target_ulong *ret_value)
 {
     RISCVException ret = riscv_csrrw_check(env, csrno, false);
     if (ret != RISCV_EXCP_NONE) {
@@ -5701,6 +5717,8 @@ RISCVException riscv_csrr(CPURISCVState *env, int csrno,
 RISCVException riscv_csrrw(CPURISCVState *env, int csrno,
                            target_ulong *ret_value, target_ulong new_value,
                            target_ulong write_mask, uintptr_t ra)
+                           target_ulong new_value, target_ulong write_mask,
+                           uintptr_t retpc)
 {
     RISCVException ret = riscv_csrrw_check(env, csrno, true);
     if (ret != RISCV_EXCP_NONE) {
