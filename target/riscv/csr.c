@@ -5755,6 +5755,7 @@ static cap_register_t read_xepcc(CPURISCVState *env,
             retval.cr_tag = false;
         cap_set_cursor(&retval, val);
     return retval;
+static RISCVException read_ccsr(CPURISCVState *env, int csrno, target_ulong *val)
     ccsr = set_field(ccsr, XCCSR_ENABLE, cpu->cfg.ext_cheri);
     /* Read-only feature bits. */
     ccsr = set_field(ccsr, XCCSR_TAG_CLEARING, CHERI_TAG_CLEAR_ON_INVALID(env));
