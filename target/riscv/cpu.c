@@ -845,6 +845,11 @@ static void riscv_cpu_reset_hold(Object *obj, ResetType type)
     env->mseccfg = 0;
     reset_capregs(env);
     set_max_perms_capability(env, &env->pcc, env->resetvec);
+    set_max_perms_capability(env, &env->ddc, 0);
+    set_max_perms_capability(env, &env->stvecc, 0);
+    set_max_perms_capability(env, &env->sepcc, 0);
+    set_max_perms_capability(env, &env->mtvecc, 0);
+    set_max_perms_capability(env, &env->mepcc, 0);
 #elif defined(TARGET_CHERI_RISCV_STD_093)
     /* Need to initialize this since Type_None has a non-zero value. */
     env->last_cap_type = CapEx093_Type_None;
