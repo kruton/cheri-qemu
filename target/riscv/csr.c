@@ -32,8 +32,16 @@
 #include "tcg/insn-start-words.h"
 #include "internals.h"
 #include <stdbool.h>
+#ifdef TARGET_CHERI
+#endif
         qemu_log_instr_reg(env, csr_ops[csrno].name, value, csrno,
+    }
+        /* Handle extended/added capability registers as well */
         riscv_csr_cap_ops *cap_ops = get_csr_cap_info(csrno);
+        if (cap_ops) {
+            cap_register_t cap_value = cap_ops->read(env, cap_ops);
+            qemu_log_instr_cap(env, cap_ops->name, &cap_value, csrno,
+            return;
 
 /* CSR function table public API */
 void riscv_get_csr_ops(int csrno, riscv_csr_operations *ops)
