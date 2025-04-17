@@ -47,44 +47,16 @@
 #error TARGET_CHERI must be set
 #endif
 
-enum SCRAccessMode {
-    SCR_Invalid = 0,
-};
 
-static inline int scr_min_priv(enum SCRAccessMode mode)
-{
-    }
     }
 }
 {
 }
 
-struct SCRInfo {
-    bool r;
-    bool w;
-    enum SCRAccessMode access; /* Default = Invalid */
-    const char *name;
-    //#define PRV_U 0
-    //#define PRV_S 1
-    //#define PRV_H 2 /* Reserved */
-    //#define PRV_M 3
-} scr_info[CheriSCR_MAX] = {
-    [CheriSCR_PCC] = {.r = true, .w = false, .access = U_Always, .name = "PCC"},
-    [CheriSCR_DDC] = {.r = true, .w = true, .access = U_Always, .name = "DDC"},
 
 
-    [CheriSCR_SScratchC] = {.r = true,
+
                             .w = true,
-                            .access = S_ASR,
-                            .name = "SScratchC"},
-
-    [CheriSCR_MTCC] = {.r = true, .w = true, .access = M_ASR, .name = "MTCC"},
-    [CheriSCR_MTDC] = {.r = true, .w = true, .access = M_ASR, .name = "MTDC"},
-    [CheriSCR_MScratchC] = {.r = true,
-                            .w = true,
-                            .access = M_ASR,
-                            .name = "MScratchC"},
-    [CheriSCR_MEPCC] = {.r = true, .w = true, .access = M_ASR, .name = "MEPCC"},
 
 };
 
@@ -97,13 +69,9 @@ struct SCRInfo {
     }
 }
 
-#ifdef CONFIG_TCG_LOG_INSTR
-void riscv_log_instr_scr_changed(CPURISCVState *env, int scrno)
 {
-    if (qemu_log_instr_enabled(env)) {
     }
 }
-#endif
 {
 
 /* Raises an exception if the CSR access is not permitted. */
@@ -239,6 +207,46 @@ void HELPER(csrrci_cap)(CPUArchState *env, uint32_t csr, uint32_t rd,
                      /*perform_write=*/uimm != 0, GETPC());
 }
 
+#ifdef TARGET_CHERI_RISCV_V9
+static uint32_t csr_for_cspecialrw(enum CheriSCR scr)
+{
+    switch (scr) {
+    case CheriSCR_PCC:
+        return CSR_PCC;
+    case CheriSCR_DDC:
+        return CSR_DDC;
+    case CheriSCR_STCC:
+        return CSR_STVECC;
+    case CheriSCR_MTCC:
+        return CSR_MTVECC;
+    case CheriSCR_VSTCC:
+        return CSR_VSTVEC;
+    case CheriSCR_SEPCC:
+        return CSR_SEPCC;
+    case CheriSCR_MEPCC:
+        return CSR_MEPCC;
+    case CheriSCR_VSEPCC:
+        return CSR_VSEPCC;
+    case CheriSCR_SScratchC:
+        return CSR_SSCRATCHC;
+    case CheriSCR_MScratchC:
+        return CSR_MSCRATCHC;
+    case CheriSCR_VSScratchC:
+        return CSR_VSSCRATCHC;
+    case CheriSCR_STDC:
+        return CSR_STDC;
+    case CheriSCR_MTDC:
+        return CSR_MTDC;
+    case CheriSCR_VSTDC:
+        return CSR_VSTDC;
+    case CheriSCR_UTIDC:
+        return CSR_UTIDC;
+    case CheriSCR_STIDC:
+        return CSR_STIDC;
+    case CheriSCR_MTIDC:
+        return CSR_MTIDC;
+    }
+    assert(false);
 void HELPER(cspecialrw)(CPUArchState *env, uint32_t cd, uint32_t cs,
                         uint32_t index)
 {
