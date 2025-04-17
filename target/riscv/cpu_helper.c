@@ -2590,7 +2590,7 @@ void riscv_cpu_do_interrupt(CPUState *cs)
         env->pc = (env->stvec >> 2 << 2) +
                   ((async && (env->stvec & 3) == 1) ? cause * 4 : 0);
 #ifdef TARGET_CHERI_RISCV_STD_093
-        if (cause == RISCV_EXCP_CHERI) {
+        if (cause == RISCV_EXCP_CHERI || write_tval) {
             env->stval2 = cheri_exc_info;
             riscv_log_instr_csr_changed(env, CSR_STVAL2);
         }
