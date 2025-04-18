@@ -450,6 +450,9 @@ const VMStateDescription vmstate_riscv_cpu = {
     .minimum_version_id = 10,
     .post_load = riscv_cpu_post_load,
     .fields = (const VMStateField[]) {
+#ifdef TARGET_CHERI
+        VMSTATE_ALIGN_CAP_ARRAY(env.gpcapregs.decompressed, RISCVCPU, 32),
+#else
         VMSTATE_UINTTL_ARRAY(env.gpr, RISCVCPU, 32),
         VMSTATE_UINT64_ARRAY(env.fpr, RISCVCPU, 32),
         VMSTATE_UINT8_ARRAY(env.miprio, RISCVCPU, 64),
