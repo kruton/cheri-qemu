@@ -38,6 +38,7 @@
 #include "hw/sysbus.h"
 #include "qemu/module.h"
 #include "qapi/error.h"
+#include "qemu/error-report.h"
 #include "hw/qdev-properties.h"
 #include "qemu/qemu-print.h"
 
