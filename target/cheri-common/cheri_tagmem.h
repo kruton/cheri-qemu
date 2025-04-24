@@ -34,7 +34,8 @@
 #include "qemu/osdep.h"
 #include "cpu.h"
 #include "exec/cpu-common.h"
-#include "exec/memory.h"
+#include "system/memory.h"
+
 
 #if defined(TARGET_CHERI)
 

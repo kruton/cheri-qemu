@@ -51,8 +51,8 @@
 #include "qemu/log.h"
 #include "qemu/memalign.h"
 #include "qemu/memfd.h"
-#include "exec/memory.h"
-#include "exec/ioport.h"
+#include "system/memory.h"
+#include "system/ioport.h"
 #include "system/dma.h"
 #include "system/hostmem.h"
 #include "system/hw_accel.h"
@@ -71,8 +71,7 @@
 #include "qemu/main-loop.h"
 #include "system/replay.h"
 
-#include "exec/memory-internal.h"
-#include "exec/ram_addr.h"
+#include "system/ram_addr.h"
 
 #include "qemu/pmem.h"
 
@@ -92,6 +91,8 @@
 #ifdef CONFIG_LIBDAXCTL
 #include <daxctl/libdaxctl.h>
 #endif
+
+#include "memory-internal.h"
 
 //#define DEBUG_SUBPAGE
 

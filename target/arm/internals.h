@@ -29,6 +29,7 @@
 #include "hw/registerfields.h"
 #include "tcg/tcg-gvec-desc.h"
 #include "cheri-lazy-capregs.h"
+#include "system/memory.h"
 #include "syndrome.h"
 #include "cpu-features.h"
 
@@ -374,6 +375,7 @@ void arm_cpu_synchronize_from_tb(CPUState *cs, const TranslationBlock *tb);
 
 /* Our implementation of TCGCPUOps::cpu_exec_halt */
 bool arm_cpu_exec_halt(CPUState *cs);
+int arm_cpu_mmu_index(CPUState *cs, bool ifetch);
 #endif /* CONFIG_TCG */
 
 typedef enum ARMFPRounding {
@@ -1879,7 +1881,6 @@ static inline uint64_t pmu_counter_mask(CPUARMState *env)
   return (1ULL << 31) | ((1ULL << pmu_num_counters(env)) - 1);
 }
 
-#ifdef TARGET_AARCH64
 GDBFeature *arm_gen_dynamic_svereg_feature(CPUState *cpu, int base_reg);
 int aarch64_gdb_get_sve_reg(CPUState *cs, GByteArray *buf, int reg);
 int aarch64_gdb_set_sve_reg(CPUState *cs, uint8_t *buf, int reg);
@@ -1897,7 +1898,6 @@ void aarch64_max_tcg_initfn(Object *obj);
 void aarch64_add_pauth_properties(Object *obj);
 void aarch64_add_sve_properties(Object *obj);
 void aarch64_add_sme_properties(Object *obj);
-#endif
 #ifdef TARGET_CHERI
 int aarch64_gdb_get_cheri_reg(CPUState *cs, GByteArray *buf, int n);
 int aarch64_gdb_set_cheri_reg(CPUState *cs, uint8_t *mem_buf, int n);

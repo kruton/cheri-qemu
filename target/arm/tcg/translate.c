@@ -27,6 +27,7 @@
 #include "semihosting/semihost.h"
 #include "cpregs.h"
 #include "exec/helper-proto.h"
+#include "exec/target_page.h"
 
 #ifdef TARGET_CHERI
 // This doesnt have to work - only compile. All 64-bit loads and stores are in

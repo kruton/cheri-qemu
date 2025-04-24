@@ -38,26 +38,16 @@
  */
 #define PAGE_PASSTHROUGH 0x0800
 
-#ifdef CONFIG_USER_ONLY
+#define PAGE_LC_CLEAR	0x8000
+#define PAGE_LC_TRAP	0x4000
+#define PAGE_SC_TRAP 0x10000
+#define PAGE_SC_CLEAR 0x20000
+// Like PAGE_LC_TRAP but will also trap loads of untagged values
+#define PAGE_LC_TRAP_ANY 0x40000
+#define PAGE_C_BITS                                                            \
+    (PAGE_LC_CLEAR | PAGE_LC_TRAP | PAGE_SC_TRAP | PAGE_SC_CLEAR |             \
+     PAGE_LC_TRAP_ANY)
 
-void TSA_NO_TSA mmap_lock(void);
-void TSA_NO_TSA mmap_unlock(void);
-bool have_mmap_lock(void);
-
-static inline void mmap_unlock_guard(void *unused)
-{
-    mmap_unlock();
-}
-
-#define WITH_MMAP_LOCK_GUARD() \
-    for (int _mmap_lock_iter __attribute__((cleanup(mmap_unlock_guard))) \
-         = (mmap_lock(), 0); _mmap_lock_iter == 0; _mmap_lock_iter = 1)
-#else
-
-static inline void mmap_lock(void) {}
-static inline void mmap_unlock(void) {}
-#define WITH_MMAP_LOCK_GUARD()
-
-#endif /* !CONFIG_USER_ONLY */
 
 #endif
+

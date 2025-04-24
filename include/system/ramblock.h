@@ -16,11 +16,10 @@
  * The functions declared here will be removed soon.
  */
 
-#ifndef QEMU_EXEC_RAMBLOCK_H
-#define QEMU_EXEC_RAMBLOCK_H
+#ifndef SYSTEM_RAMBLOCK_H
+#define SYSTEM_RAMBLOCK_H
 
-#ifndef CONFIG_USER_ONLY
-#include "cpu-common.h"
+#include "exec/cpu-common.h"
 #include "qemu/rcu.h"
 #include "exec/ramlist.h"
 
@@ -98,4 +97,3 @@ struct RAMBlock {
 };
 #endif
 
-#endif

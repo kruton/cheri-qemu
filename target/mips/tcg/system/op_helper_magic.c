@@ -38,14 +38,23 @@
 #include "exec/exec-all.h"
 #include "exec/log.h"
 #include "exec/log_instr.h"
-#include "exec/cpu_ldst.h"
+#include "accel/tcg/cpu-ldst.h"
+#include "exec/target_page.h"
+#include "exec/tswap.h"
+
+
+
 #ifdef TARGET_CHERI
 #include "cheri_tagmem.h"
 #endif
 
 /* Mostmagic libcall helpers need 64-bit registers, skip them all for MIPS32 */
 #ifdef TARGET_MIPS64
+#ifndef TARGET_PAGE_BITS_MIN
+#define TARGET_PAGE_BITS_MIN TARGET_PAGE_BITS
+#endif
 #define TARGET_PAGE_SIZE_MIN (1 << TARGET_PAGE_BITS_MIN)
+
 static uint8_t ZEROARRAY[TARGET_PAGE_SIZE_MIN];
 
 /* Reduce the length so that addr + len doesn't cross a page boundary.  */

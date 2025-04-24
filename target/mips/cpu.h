@@ -2,9 +2,11 @@
 #define MIPS_CPU_H
 
 #include "cpu-qom.h"
+#include "exec/cpu-common.h"
 #include "exec/cpu-defs.h"
+#include "exec/cpu-interrupt.h"
 #ifndef CONFIG_USER_ONLY
-#include "exec/memory.h"
+#include "system/memory.h"
 #endif
 #include "fpu/softfloat-types.h"
 #include "hw/clock.h"
@@ -14,8 +16,10 @@
 #include "cheri_defs.h"
 #include "cheri-lazy-capregs-types.h"
 #endif
+#include "exec/log_instr.h"
 
 typedef struct CPUMIPSTLBContext CPUMIPSTLBContext;
+
 
 /* MSA Context */
 #define MSA_WRLEN (128)
@@ -102,8 +106,6 @@ struct CPUMIPSFPUContext {
 #define FP_INVALID        16
 #define FP_UNIMPLEMENTED  32
 };
-
-#define TARGET_INSN_START_EXTRA_WORDS 2
 
 typedef struct CPUMIPSMVPContext CPUMIPSMVPContext;
 struct CPUMIPSMVPContext {
@@ -1393,9 +1395,7 @@ static inline int mips_env_mmu_index(CPUMIPSState *env)
     return hflags_mmu_index(env->hflags);
 }
 
-#include "exec/cpu-all.h"
 #include "cpu_cheri.h"
-
 /* Exceptions */
 typedef enum {
     EXCP_NONE = -1,

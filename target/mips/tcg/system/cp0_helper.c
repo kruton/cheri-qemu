@@ -32,6 +32,7 @@
 #include "exec/log_instr.h"
 #include "system/cpus.h"
 #include "system/runstate.h"
+#include "exec/target_page.h"
 
 /*
  * Names of coprocessor 0 registers.

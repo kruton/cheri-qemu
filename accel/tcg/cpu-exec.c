@@ -22,11 +22,14 @@
 #include "qapi/error.h"
 #include "qapi/type-helpers.h"
 #include "hw/core/cpu.h"
+#include "accel/tcg/cpu-ldst.h"
 #include "accel/tcg/cpu-ops.h"
 #include "trace.h"
 #include "disas/disas.h"
 #include "exec/cpu-common.h"
+#include "exec/cpu-interrupt.h"
 #include "exec/page-protection.h"
+#include "exec/mmap-lock.h"
 #include "exec/translation-block.h"
 #include "tcg/tcg.h"
 #include "qemu/atomic.h"
@@ -37,8 +40,8 @@
 #if defined(TARGET_I386) && !defined(CONFIG_USER_ONLY)
 #include "hw/i386/apic.h"
 #endif
-#include "exec/cpu-all.h"
-#include "system/cpu-timers.h"
+#include "cpu.h"
+#include "exec/icount.h"
 #include "exec/replay-core.h"
 #include "system/tcg.h"
 #include "exec/helper-proto-common.h"
@@ -154,8 +157,8 @@ static void init_delay_params(SyncClocks *sc, const CPUState *cpu)
 struct tb_desc {
     vaddr pc;
     uint64_t cs_base;
-    target_ulong pcc_base;
-    target_ulong pcc_top;
+    vaddr pcc_base;
+    vaddr pcc_top;
     CPUArchState *env;
     tb_page_addr_t page_addr0;
     uint32_t cheri_flags;
@@ -181,8 +184,8 @@ static bool tb_lookup_cmp(const void *p, const void *d)
         if (tb_phys_page1 == -1) {
             return true;
         } else {
-            tb_page_addr_t phys_page1;
-            vaddr virt_page1;
+            tb_page_addr_t phys_page2;
+            vaddr virt_page2;
 
             /*
              * We know that the first page matched, and an otherwise valid TB
@@ -193,9 +196,9 @@ static bool tb_lookup_cmp(const void *p, const void *d)
              * is different for the new TB.  Therefore any exception raised
              * here by the faulting lookup is not premature.
              */
-            virt_page1 = TARGET_PAGE_ALIGN(desc->pc);
-            phys_page1 = get_page_addr_code(desc->env, virt_page1);
-            if (tb_phys_page1 == phys_page1) {
+            virt_page2 = (desc->pc & TARGET_PAGE_MASK) + TARGET_PAGE_SIZE;
+            phys_page2 = get_page_addr_code(desc->env, virt_page2);
+            if (tb_phys_page1 == phys_page2) {
                 return true;
             }
         }
@@ -204,8 +207,8 @@ static bool tb_lookup_cmp(const void *p, const void *d)
 }
 
 TranslationBlock *tb_htable_lookup(CPUState *cpu, vaddr pc,
-                                   uint64_t cs_base, target_ulong pcc_base,
-                                   target_ulong pcc_top, uint32_t cheri_flags,
+                                   uint64_t cs_base, vaddr pcc_base,
+                                   vaddr pcc_top, uint32_t cheri_flags,
                                    uint32_t flags, uint32_t cflags)
 {
     tb_page_addr_t phys_pc;
@@ -249,8 +252,8 @@ TranslationBlock *tb_htable_lookup(CPUState *cpu, vaddr pc,
  */
 static inline TranslationBlock *tb_lookup(CPUState *cpu, vaddr pc,
                                           uint64_t cs_base,
-                                          target_ulong pcc_base,
-                                          target_ulong pcc_top,
+                                          vaddr pcc_base,
+                                          vaddr pcc_top,
                                           uint32_t cheri_flags,
                                           uint32_t flags, uint32_t cflags)
 {
@@ -1136,6 +1139,7 @@ bool tcg_exec_realizefn(CPUState *cpu, Error **errp)
         assert(tcg_ops->cpu_exec_interrupt);
 #endif /* !CONFIG_USER_ONLY */
         assert(tcg_ops->translate_code);
+        assert(tcg_ops->mmu_index);
         tcg_ops->initialize();
         qemu_log_printf_create_globals();
         tcg_target_initialized = true;

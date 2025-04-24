@@ -7,6 +7,8 @@
 #define EXEC_HELPER_HEAD_H
 
 #include "fpu/softfloat-types.h"
+#include "exec/memop.h"
+
 
 #define HELPER(name) glue(helper_, name)
 
@@ -51,7 +53,9 @@
 #define dh_ctype(t) dh_ctype_##t
 
 #ifdef COMPILING_PER_TARGET
+#include "exec/target_long.h"
 # ifdef TARGET_LONG_BITS
+
 #  if TARGET_LONG_BITS == 32
 #   define dh_alias_tl i32
 #   define dh_typecode_tl dh_typecode_i32

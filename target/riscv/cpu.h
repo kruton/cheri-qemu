@@ -23,8 +23,12 @@
 #include "hw/core/cpu.h"
 #include "hw/registerfields.h"
 #include "hw/qdev-properties.h"
+#include "exec/cpu-common.h"
 #include "exec/cpu-defs.h"
+#include "exec/memop.h"
+
 #include "qemu/units.h"
+#include "exec/cpu-interrupt.h"
 #include "exec/gdbstub.h"
 #include "qemu/cpu-float.h"
 #include "qom/object.h"
@@ -34,6 +38,7 @@
 #include "cpu_cfg.h"
 #include "qapi/qapi-types-common.h"
 #include "cpu-qom.h"
+
 
 typedef struct CPUArchState CPURISCVState;
 
@@ -45,12 +50,6 @@ typedef struct CPUArchState CPURISCVState;
 # define TYPE_RISCV_CPU_BASE            TYPE_RISCV_CPU_BASE64
 #endif
 
-/*
- * RISC-V-specific extra insn start words:
- * 1: Original instruction opcode
- * 2: more information about instruction
- */
-#define TARGET_INSN_START_EXTRA_WORDS 2
 /*
  * b0: Whether a instruction always raise a store AMO or not.
  */
@@ -948,8 +947,6 @@ target_ulong riscv_cpu_get_fflags(CPURISCVState *env);
 void riscv_cpu_set_fflags(CPURISCVState *env, target_ulong);
 bool csr_needs_asr(uint32_t csrno, bool write);
 
-#include "exec/cpu-all.h"
-
 static inline const RISCVCPUConfig *riscv_cpu_cfg(CPURISCVState *env)
 {
     return &env_archcpu(env)->cfg;
@@ -990,6 +987,7 @@ static inline bool riscv_has_stid(CPURISCVState *env)
 }
 
 #include "cpu_cheri.h"
+#include "exec/log_instr.h"
 
 static inline bool pc_is_current(CPURISCVState *env)
 {
@@ -1013,7 +1011,6 @@ static inline target_ulong cpu_get_recent_pc(CPURISCVState *env)
     return env->pc;
 #endif
 }
-
 FIELD(TB_FLAGS, MEM_IDX, 0, 3)
 FIELD(TB_FLAGS, FS, 3, 2)
 /* Vector flags */

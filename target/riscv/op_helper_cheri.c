@@ -41,6 +41,8 @@
 #include "exec/exec-all.h"
 #include "exec/log.h"
 #include "exec/helper-proto.h"
+#include "system/tcg.h"
+
 #include "cheri-helper-utils.h"
 #include "cheri_tagmem.h"
 #ifndef TARGET_CHERI

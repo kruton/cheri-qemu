@@ -37,7 +37,8 @@
 #include "qemu/osdep.h"
 #include "cpu.h"
 #include "cheri-helper-utils.h"
-#include "exec/cpu-all.h"
+#include "exec/tswap.h"
+
 #include "user/tswap-target.h"
 
 

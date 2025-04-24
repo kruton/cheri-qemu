@@ -24,8 +24,13 @@
 #include "qemu/error-report.h"
 #include "exec/exec-all.h"
 #include "exec/cputlb.h"
-#include "exec/cpu_ldst.h"
+#include "accel/tcg/cpu-ldst.h"
 #include "exec/helper-proto.h"
+#include "exec/tlb-flags.h"
+#include "exec/tswap.h"
+#include "system/tcg.h"
+
+
 #include "trace.h"
 #ifdef TARGET_CHERI
 #include "cheri-helper-utils.h"

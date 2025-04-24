@@ -39,7 +39,8 @@
 #include "qemu/error-report.h"
 #include "qemu/qemu-print.h"
 #include "exec/exec-all.h"
-#include "exec/cpu_ldst.h"
+#include "accel/tcg/cpu-ldst.h"
+
 #include "exec/helper-proto.h"
 
 #ifndef TARGET_CHERI

@@ -52,7 +52,9 @@ static inline void set_xreg_addr_cheri(CPUARMState *env, int reg, uint64_t addr)
 
 #include "exec/cpu-common.h"
 #include "exec/exec-all.h"
-#include "exec/cpu_ldst.h"
+#include "accel/tcg/cpu-ldst.h"
+#include "exec/target_page.h"
+#include "exec/tlb-flags.h"
 #include "qemu/int128.h"
 #include "qemu/atomic128.h"
 #include "fpu/softfloat.h"

@@ -34,8 +34,11 @@
 
 #include "hw/core/cpu.h"
 #include "qemu/log_instr.h"
-#include "cpu.h"
+#include "exec/cpu-defs.h"
 #define LRI_CAP_REG    1
+
+
+
 #define LRI_HOLDS_CAP  2
 #define LRI_CSR_ACCESS 4
 #define LRI_GPR_ACCESS 8
@@ -252,6 +255,8 @@ void qemu_log_instr_reg(CPUArchState *env, const char *reg_name,
                         target_ulong value, uint32_t index, uint32_t type);
 
 #ifdef TARGET_CHERI
+#include "cheri_defs.h"
+
 /*
  * Log changed capability register.
  */

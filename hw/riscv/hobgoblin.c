@@ -52,7 +52,8 @@
 #include "system/device_tree.h"
 #include "system/system.h"
 #include "system/runstate.h"
-#include "exec/address-spaces.h"
+#include "system/address-spaces.h"
+
 #include "net/net.h"
 #include <libfdt.h>
 #ifdef TARGET_CHERI

@@ -20,14 +20,14 @@
 #ifndef EXEC_ALL_H
 #define EXEC_ALL_H
 
-#include "cpu.h"
-#if defined(CONFIG_USER_ONLY)
-#include "exec/cpu_ldst.h"
-#endif
 #include "exec/mmu-access-type.h"
 #include "exec/translation-block.h"
+#ifdef COMPILING_PER_TARGET
+#include "cpu.h"
+#endif
 
 #if defined(CONFIG_TCG)
+
 #include "accel/tcg/getpc.h"
 
 /**
@@ -56,10 +56,8 @@ void *probe_write(CPUArchState *env, vaddr addr, int size, int mmu_idx,
 void *probe_read(CPUArchState *env, vaddr addr, int size, int mmu_idx,
                  uintptr_t retaddr);
 
-#ifdef TARGET_CHERI
 void *probe_cap_write(CPUArchState *env, vaddr addr, int size,
                       int mmu_idx, uintptr_t retaddr);
-#endif
 
 /**
  * probe_access_flags:
@@ -124,7 +122,7 @@ int probe_access_full_mmu(CPUArchState *env, vaddr addr, int size,
 #endif /* CONFIG_TCG */
 
 /* Reduce diff to upstream for CHERI since we add pcc_{base,top},cheri_flags. */
-#if !defined(cpu_get_tb_cpu_state_ext)
+#if defined(COMPILING_PER_TARGET) && !defined(cpu_get_tb_cpu_state_ext)
 static inline void cpu_get_tb_cpu_state_ext(CPUArchState *env, vaddr *pc,
                                           uint64_t *cs_base,
                                           vaddr *pcc_base,
@@ -135,68 +133,20 @@ static inline void cpu_get_tb_cpu_state_ext(CPUArchState *env, vaddr *pc,
     (void)pcc_base;
     (void)pcc_top;
     (void)cheri_flags;
-    target_ulong pc_tgt;
-    target_ulong cs_base_tgt;
+    vaddr pc_tgt;
+    uint64_t cs_base_tgt;
     cpu_get_tb_cpu_state(env, &pc_tgt, &cs_base_tgt, flags);
     *pc = pc_tgt;
     *cs_base = cs_base_tgt;
 }
 #endif
-static inline tb_page_addr_t tb_page_addr0(const TranslationBlock *tb)
-{
-#ifdef CONFIG_USER_ONLY
-    return tb->itree.start;
-#else
-    return tb->page_addr[0];
-#endif
-}
-
-static inline tb_page_addr_t tb_page_addr1(const TranslationBlock *tb)
-{
-#ifdef CONFIG_USER_ONLY
-    tb_page_addr_t next = tb->itree.last & TARGET_PAGE_MASK;
-    return next == (tb->itree.start & TARGET_PAGE_MASK) ? -1 : next;
-#else
-    return tb->page_addr[1];
-#endif
-}
-
-static inline void tb_set_page_addr0(TranslationBlock *tb,
-                                     tb_page_addr_t addr)
-{
-#ifdef CONFIG_USER_ONLY
-    tb->itree.start = addr;
-    /*
-     * To begin, we record an interval of one byte.  When the translation
-     * loop encounters a second page, the interval will be extended to
-     * include the first byte of the second page, which is sufficient to
-     * allow tb_page_addr1() above to work properly.  The final corrected
-     * interval will be set by tb_page_add() from tb->size before the
-     * node is added to the interval tree.
-     */
-    tb->itree.last = addr;
-#else
-    tb->page_addr[0] = addr;
-#endif
-}
-
-static inline void tb_set_page_addr1(TranslationBlock *tb,
-                                     tb_page_addr_t addr)
-{
-#ifdef CONFIG_USER_ONLY
-    /* Extend the interval to the first byte of the second page.  See above. */
-    tb->itree.last = addr;
-#else
-    tb->page_addr[1] = addr;
-#endif
-}
-
 /* TranslationBlock invalidate API */
 void tb_phys_invalidate(TranslationBlock *tb, tb_page_addr_t page_addr);
 TranslationBlock *tb_htable_lookup(CPUState *cpu, vaddr pc,
-                                   uint64_t cs_base, target_ulong pcc_base,
-                                   target_ulong pcc_top, uint32_t cheri_flags,
+                                   uint64_t cs_base, vaddr pcc_base,
+                                   vaddr pcc_top, uint32_t cheri_flags,
                                    uint32_t flags, uint32_t cflags);
+
 void tb_invalidate_phys_range(tb_page_addr_t start, tb_page_addr_t last);
 void tb_set_jmp_target(TranslationBlock *tb, int n, uintptr_t addr);
 
@@ -214,40 +164,6 @@ void tb_set_jmp_target(TranslationBlock *tb, int n, uintptr_t addr);
 struct MemoryRegionSection *iotlb_to_section(CPUState *cpu,
                                              hwaddr index, MemTxAttrs attrs);
 #endif
-
-/**
- * get_page_addr_code_hostp()
- * @env: CPUArchState
- * @addr: guest virtual address of guest code
- *
- * See get_page_addr_code() (full-system version) for documentation on the
- * return value.
- *
- * Sets *@hostp (when @hostp is non-NULL) as follows.
- * If the return value is -1, sets *@hostp to NULL. Otherwise, sets *@hostp
- * to the host address where @addr's content is kept.
- *
- * Note: this function can trigger an exception.
- */
-tb_page_addr_t get_page_addr_code_hostp(CPUArchState *env, vaddr addr,
-                                        void **hostp);
-
-/**
- * get_page_addr_code()
- * @env: CPUArchState
- * @addr: guest virtual address of guest code
- *
- * If we cannot translate and execute from the entire RAM page, or if
- * the region is not backed by RAM, returns -1. Otherwise, returns the
- * ram_addr_t corresponding to the guest code at @addr.
- *
- * Note: this function can trigger an exception.
- */
-static inline tb_page_addr_t get_page_addr_code(CPUArchState *env,
-                                                vaddr addr)
-{
-    return get_page_addr_code_hostp(env, addr, NULL);
-}
 
 #if !defined(CONFIG_USER_ONLY)
 
