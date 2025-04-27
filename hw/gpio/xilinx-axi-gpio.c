@@ -271,7 +271,7 @@ static const VMStateDescription vmstate_gpio = {
     }
 };
 
-static void xlnx_axi_gpio_class_init(ObjectClass *klass, void *data)
+static void xlnx_axi_gpio_class_init(ObjectClass *klass, const void *data)
 {
     DeviceClass *dc = DEVICE_CLASS(klass);
 

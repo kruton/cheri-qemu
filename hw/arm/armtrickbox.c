@@ -281,7 +281,7 @@ static void arm_trickbox_instance_init(Object *obj)
 
 static void arm_trickbox_realize(DeviceState *dev, Error **errp) {}
 
-static void arm_trickbox_class_init(ObjectClass *oc, void *data)
+static void arm_trickbox_class_init(ObjectClass *oc, const void *data)
 {
     DeviceClass *dc = DEVICE_CLASS(oc);
 

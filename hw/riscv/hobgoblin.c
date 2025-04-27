@@ -2013,7 +2013,7 @@ static void hobgoblin_machine_instance_init(Object *obj)
     s->eth_type = ETH_TYPE_AXI_ETHERNET;
 }
 
-static void hobgoblin_machine_class_init(ObjectClass *oc, void *data)
+static void hobgoblin_machine_class_init(ObjectClass *oc, const void *data)
 {
     MachineClass *mc = MACHINE_CLASS(oc);
 
@@ -2050,11 +2050,11 @@ struct HobgoblinInitData {
     int irq_map_version;
 };
 
-static void hobgoblin_concrete_machine_class_init(ObjectClass *oc, void *data)
+static void hobgoblin_concrete_machine_class_init(ObjectClass *oc, const void *data)
 {
     MachineClass *mc = MACHINE_CLASS(oc);
     HobgoblinClass *hc = HOBGOBLIN_MACHINE_CLASS(oc);
-    struct HobgoblinInitData *hid = data;
+    const struct HobgoblinInitData *hid = data;
 
     mc->desc = hid->desc;
     mc->max_cpus = hid->cpus;

@@ -186,7 +186,7 @@ static void cmu_realize(DeviceState *dev, Error **errp)
     s->regs[0] |= ((cl_log2 - 3) << 38);
 }
 
-static void cmu_class_init(ObjectClass *oc, void *data)
+static void cmu_class_init(ObjectClass *oc, const void *data)
 {
     DeviceClass *dc = DEVICE_CLASS(oc);
     CMUClass *c = CMU_DEVICE_CLASS(oc);

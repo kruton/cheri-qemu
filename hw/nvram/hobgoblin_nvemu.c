@@ -127,7 +127,7 @@ static void nvemu_realize(DeviceState *dev, Error **errp)
     sysbus_init_mmio(SYS_BUS_DEVICE(dev), &s->mem);
 }
 
-static void nvemu_class_init(ObjectClass *oc, void *data)
+static void nvemu_class_init(ObjectClass *oc, const void *data)
 {
     DeviceClass *dc = DEVICE_CLASS(oc);
     ResettableClass *rc = RESETTABLE_CLASS(oc);

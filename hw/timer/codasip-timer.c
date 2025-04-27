@@ -252,7 +252,7 @@ static const Property codasip_timer_properties[] = {
                        freq_hz, CODASIP_TIMER_FRQ_HZ),
 };
 
-static void codasip_timer_class_init(ObjectClass *klass, void *data)
+static void codasip_timer_class_init(ObjectClass *klass, const void *data)
 {
     DeviceClass *dc = DEVICE_CLASS(klass);
 

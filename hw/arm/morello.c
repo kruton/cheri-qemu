@@ -245,7 +245,7 @@ static void morello_instance_init(Object *obj)
         obj, "ack", "Set on/off to enable/disable support for the ACK");
 }
 
-static void morello_machine_class_init(ObjectClass *oc, void *data)
+static void morello_machine_class_init(ObjectClass *oc, const void *data)
 {
     MachineClass *mc = MACHINE_CLASS(oc);
 
