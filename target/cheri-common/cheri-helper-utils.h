@@ -41,7 +41,10 @@
 #include "cheri-bounds-stats.h"
 #include "tcg/tcg.h"
 #include "tcg/tcg-op.h"
-#include "exec/exec-all.h"
+#include "exec/cputlb.h"
+#include "exec/translation-block.h"
+#include "exec/page-protection.h"
+#include "exec/tb-flush.h"
 
 static inline target_ulong cpu_get_current_pc(CPUArchState *env,
                                               uintptr_t retpc, bool will_exit)

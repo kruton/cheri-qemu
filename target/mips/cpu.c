@@ -34,7 +34,6 @@
 #include "qemu/module.h"
 #include "system/kvm.h"
 #include "system/qtest.h"
-#include "exec/exec-all.h"
 #include "exec/gdbstub.h"
 #include "hw/qdev-properties.h"
 #include "hw/qdev-clock.h"
@@ -702,12 +701,29 @@ static int mips_cpu_mmu_index(CPUState *cs, bool ifunc)
     return mips_env_mmu_index(cpu_env(cs));
 }
 
+static TCGTBCPUState mips_get_tb_cpu_state(CPUState *cs)
+{
+    CPUMIPSState *env = cpu_env(cs);
+    TCGTBCPUState s = {
+        .pc = PC_ADDR(env),
+        .flags = env->hflags & (MIPS_HFLAG_TMASK | MIPS_HFLAG_BMASK |
+                                MIPS_HFLAG_HWRENA_ULR),
+    };
+#ifdef TARGET_CHERI
+    cheri_cpu_get_tb_cpu_state(env, &env->active_tc.PCC,
+                               &env->active_tc.CHWR.DDC, &s.pcc_base,
+                               &s.pcc_top, &s.cheri_flags);
+#endif
+    return s;
+}
+
 static const TCGCPUOps mips_tcg_ops = {
     .mttcg_supported = TARGET_LONG_BITS == 32,
     .guest_default_memory_order = 0,
 
     .initialize = mips_tcg_init,
     .translate_code = mips_translate_code,
+    .get_tb_cpu_state = mips_get_tb_cpu_state,
     .synchronize_from_tb = mips_cpu_synchronize_from_tb,
     .restore_state_to_opc = mips_restore_state_to_opc,
     .mmu_index = mips_cpu_mmu_index,
@@ -716,6 +732,7 @@ static const TCGCPUOps mips_tcg_ops = {
     .tlb_fill = mips_cpu_tlb_fill,
     .cpu_exec_interrupt = mips_cpu_exec_interrupt,
     .cpu_exec_halt = mips_cpu_has_work,
+    .cpu_exec_reset = cpu_reset,
     .do_interrupt = mips_cpu_do_interrupt,
     .do_transaction_failed = mips_cpu_do_transaction_failed,
     .do_unaligned_access = mips_cpu_do_unaligned_access,

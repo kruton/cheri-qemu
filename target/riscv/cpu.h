@@ -1181,14 +1181,6 @@ static inline uint32_t vext_get_vlmax(uint32_t vlenb, uint32_t vsew,
     return vlen >> (vsew + 3 - lmul);
 }
 
-void riscv_cpu_get_tb_cpu_state(CPURISCVState *env, vaddr *pc,
-                                uint64_t *cs_base, target_ulong *pcc_base,
-                                target_ulong *pcc_top, uint32_t *cheri_flags,
-                                uint32_t *pflags);
-
-// Ugly macro hack to avoid having to modify cpu_get_tb_cpu_state in all targets
-#define cpu_get_tb_cpu_state_ext riscv_cpu_get_tb_cpu_state
-
 #ifdef CONFIG_TCG_LOG_INSTR
 #define RISCV_LOG_INSTR_CPU_U QEMU_LOG_INSTR_CPU_USER
 #define RISCV_LOG_INSTR_CPU_S QEMU_LOG_INSTR_CPU_SUPERVISOR

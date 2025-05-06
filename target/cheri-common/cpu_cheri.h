@@ -140,8 +140,8 @@ static inline bool cheri_cap_perms_valid_for_exec(const cap_register_t *pcc)
 
 static inline void
 cheri_cpu_get_tb_cpu_state(CPUArchState *env, const cap_register_t *pcc,
-                           const cap_register_t *ddc, target_ulong *pcc_base,
-                           target_ulong *pcc_top, uint32_t *cheri_flags)
+                           const cap_register_t *ddc, vaddr *pcc_base,
+                           vaddr *pcc_top, uint32_t *cheri_flags)
 {
     *pcc_base = cap_get_base(pcc);
     *pcc_top = cap_get_top(pcc);

@@ -38,7 +38,10 @@
 #include "qemu/host-utils.h"
 #include "qemu/error-report.h"
 #include "qemu/qemu-print.h"
-#include "exec/exec-all.h"
+#include "exec/cputlb.h"
+#include "exec/translation-block.h"
+#include "exec/page-protection.h"
+#include "exec/tb-flush.h"
 #include "accel/tcg/cpu-ldst.h"
 
 #include "exec/helper-proto.h"

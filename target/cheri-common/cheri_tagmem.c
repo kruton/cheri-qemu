@@ -33,7 +33,11 @@
  */
 #include "cheri_tagmem.h"
 #include "cpu.h"
-#include "exec/exec-all.h"
+#include "exec/cputlb.h"
+#include "exec/translation-block.h"
+#include "exec/page-protection.h"
+#include "exec/tb-flush.h"
+#include "accel/tcg/probe.h"
 #include "exec/cputlb.h"
 #include "exec/log.h"
 #include "system/ramblock.h"

@@ -21,7 +21,10 @@
 
 #define CAP_TAG_GET_MANY_SHFT 2
 
-#include "exec/exec-all.h"
+#include "exec/cputlb.h"
+#include "exec/translation-block.h"
+#include "exec/page-protection.h"
+#include "exec/tb-flush.h"
 #include "internals.h"
 
 typedef enum CheriCapExc {

@@ -25,7 +25,6 @@ tcg_specific_ss.add(files(
   'translator.c',
   '../../tcg/tcg-op-ldst.c',
 ))
-
 tcg_specific_ss.add(when: 'CONFIG_USER_ONLY', if_true: files('user-exec.c'))
 specific_ss.add_all(when: 'CONFIG_TCG', if_true: tcg_specific_ss)
 

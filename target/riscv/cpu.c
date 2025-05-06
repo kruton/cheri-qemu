@@ -25,7 +25,6 @@
 #include "cpu.h"
 #include "cpu_vendorid.h"
 #include "internals.h"
-#include "exec/exec-all.h"
 #include "exec/log_instr.h"
 #include "qapi/error.h"
 #include "qapi/visitor.h"

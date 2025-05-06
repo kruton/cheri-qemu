@@ -40,7 +40,10 @@
 
 #include "cheri-archspecific-early.h"
 #include "cheri_defs.h"
-#include "exec/exec-all.h"
+#include "exec/cputlb.h"
+#include "exec/translation-block.h"
+#include "exec/page-protection.h"
+#include "exec/tb-flush.h"
 #include "internal.h"
 
 static inline const char* cheri_cause_str(CheriCapExcCause cause);

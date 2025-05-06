@@ -1507,25 +1507,6 @@ void cpu_mips_clock_init(MIPSCPU *cpu);
 /* helper.c */
 target_ulong exception_resume_pc(CPUMIPSState *env);
 
-static inline void
-mips_cpu_get_tb_cpu_state(CPUMIPSState *env, vaddr *pc,
-                          uint64_t *cs_base, target_ulong *pcc_base,
-                          target_ulong *pcc_top, uint32_t *cheri_flags,
-                          uint32_t *flags)
-{
-    *pc = PC_ADDR(env); // We want the full virtual address here (no offset)
-    *cs_base = 0;
-    *flags = env->hflags &
-             (MIPS_HFLAG_TMASK | MIPS_HFLAG_BMASK | MIPS_HFLAG_HWRENA_ULR);
-#ifdef TARGET_CHERI
-    cheri_cpu_get_tb_cpu_state(env, &env->active_tc.PCC,
-                               &env->active_tc.CHWR.DDC, pcc_base, pcc_top,
-                               cheri_flags);
-#endif
-}
-// Ugly macro hack to avoid having to modify cpu_get_tb_cpu_state in all targets
-#define cpu_get_tb_cpu_state_ext mips_cpu_get_tb_cpu_state
-
 static inline bool should_use_error_epc(CPUMIPSState *env)
 {
     // If ERL is set, eret and exceptions use ErrorEPC instead of EPC
@@ -1630,7 +1611,6 @@ hwaddr cpu_mips_translate_address_c2(CPUMIPSState *env, target_ulong address,
                                      MMUAccessType rw, int reg, int *prot,
                                      uintptr_t retpc);
 #endif /* TARGET_CHERI */
-
 /**
  * mips_cpu_create_with_clock:
  * @typename: a MIPS CPU type.
