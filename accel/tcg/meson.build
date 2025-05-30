@@ -12,8 +12,8 @@ if get_option('plugins')
   tcg_ss.add(files('plugin-gen.c'))
 endif
 
-libuser_ss.add_all(tcg_ss)
-libsystem_ss.add_all(tcg_ss)
+user_ss.add_all(tcg_ss)
+system_ss.add_all(tcg_ss)
 
 tcg_specific_ss = ss.source_set()
 tcg_specific_ss.add(files(
@@ -32,11 +32,11 @@ specific_ss.add(when: ['CONFIG_SYSTEM_ONLY', 'CONFIG_TCG'], if_true: files(
   'cputlb.c',
 ))
 
-libuser_ss.add(files(
+user_ss.add(files(
   'user-exec-stub.c',
 ))
 
-libsystem_ss.add(files(
+system_ss.add(files(
   'icount-common.c',
   'monitor.c',
   'tcg-accel-ops.c',

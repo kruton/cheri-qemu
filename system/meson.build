@@ -8,7 +8,7 @@ system_ss.add(files(
   'vl.c',
 ), sdl, libpmem, libdaxctl)
 
-libsystem_ss.add(files(
+system_ss.add(files(
   'balloon.c',
   'bootdevice.c',
   'cpus.c',
