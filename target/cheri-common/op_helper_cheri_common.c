@@ -92,6 +92,13 @@ target_ulong CHERI_HELPER_IMPL(cgettag(CPUArchState *env, uint32_t cb))
     cheri_debug_assert(cap_is_unsealed(target) || cap_is_sealed_entry(target));
 #endif
     if (next_pcc.cr_tag && cap_is_sealed_entry(&next_pcc)) {
+        qemu_log_mask_and_addr(CPU_LOG_INSTR | LOG_GUEST_ERROR,
+                       cpu_get_recent_pc(env),
+                       "Requested jump to sentry but got invalid cap."
+                       "\n  Current PCC: " PRINT_CAP_FMTSTR
+                       "\n  Target cap: " PRINT_CAP_FMTSTR  "\n",
+                       PRINT_CAP_ARGS(cheri_get_recent_pcc(env)),
+                       PRINT_CAP_ARGS(target));
         next_pcc.cr_tag = 0;
 #endif
     if (link_reg != NULL_CAPREG_INDEX) {
