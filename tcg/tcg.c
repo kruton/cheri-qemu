@@ -3755,6 +3755,7 @@ reachable_code_pass(TCGContext *s)
             }
             break;
 
+        case INDEX_op_sync:
         case INDEX_op_insn_start:
             /* Never remove -- we need to keep these for unwind.  */
             remove = false;
