@@ -1,4 +1,5 @@
 #define CAP_TAG_GET_MANY_SHFT 2
+extern bool cheri_debugger_on_trap;
     }
     if (hostpc) {
         // AARCH's cpu_restore_state will reset syndrome, so don't use
