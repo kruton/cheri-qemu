@@ -135,6 +135,8 @@ struct arm_boot_info {
     arm_endianness endianness;
 
     symbol_fn_t sym_cb;
+    /* CPU having load the kernel and that should be the first to boot.  */
+    ARMCPU *primary_cpu;
 };
 
 /**
