@@ -134,6 +134,7 @@ config HOBGOBLIN
     select SERIAL
     select SSI_SD
     select HOBGOBLIN_NVEMU
+    select PCI_EXPRESS_XILINX
 config XIANGSHAN_KUNMINGHU
     bool
     default y
