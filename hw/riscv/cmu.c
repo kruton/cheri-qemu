@@ -19,7 +19,9 @@
     CMUClass *c = CMU_DEVICE_GET_CLASS(s);
     ram_addr_t start_addr, end_addr, len;
     */
+                (s->regs[REG_CMU_TISTART(s->reg_map_ver)] & ~((1 << LOG2_CMU_CLEN) - 1)),
     }
+                (s->regs[REG_CMU_TIEND(s->reg_map_ver)] & ~((1 << LOG2_CMU_CLEN) - 1)),
         return;
     /*
      * start_addr is the offset into the ram region. len is the size of the
