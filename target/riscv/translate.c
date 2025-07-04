@@ -1686,16 +1686,38 @@ const RISCVDecoder decoder_table[] = {
 
 const size_t decoder_table_size = ARRAY_SIZE(decoder_table);
 
-static void decode_opc(CPURISCVState *env, DisasContext *ctx, uint16_t opcode)
+static void decode_opc(CPURISCVState *env, DisasContext *ctx)
 {
+    uint32_t opcode;
+    bool pc_is_4byte_align = ((ctx->base.pc_next % 4) == 0);
+
     ctx->virt_inst_excp = false;
-    ctx->cur_insn_len = insn_len(opcode);
+    if (pc_is_4byte_align) {
+        /*
+         * Load 4 bytes at once to make instruction fetch atomically.
+         *
+         * Note: When pc is 4-byte aligned, 4-byte instruction wouldn't be
+         * across pages. We could preload 4 bytes instruction no matter
+         * real one is 2 or 4 bytes. Instruction preload wouldn't trigger
+         * additional page fault.
+         */
+        opcode = translator_ldl(env, &ctx->base, ctx->base.pc_next);
+    } else {
+        /*
+         * For unaligned pc, instruction preload may trigger additional
+         * page fault so we only load 2 bytes here.
+         */
+        opcode = (uint32_t) translator_lduw(env, &ctx->base, ctx->base.pc_next);
+    }
+    ctx->ol = ctx->xl;
+
+    ctx->cur_insn_len = insn_len((uint16_t)opcode);
     /* Check for compressed insn */
     if (ctx->cur_insn_len == 2) {
         gen_riscv_log_instr16(ctx, opcode);
         gen_check_pcc_bounds_next_inst(ctx, 2);
         gen_rvfi_dii_set_field_const_i64(INST, insn, opcode);
-        ctx->opcode = opcode;
+        ctx->opcode = (uint16_t)opcode;
         ctx->pc_succ_insn = ctx->base.pc_next + 2;
         /*
          * The Zca extension is added as way to refer to instructions in the C
@@ -1706,28 +1728,30 @@ static void decode_opc(CPURISCVState *env, DisasContext *ctx, uint16_t opcode)
             return;
         }
     } else {
+        if (!pc_is_4byte_align) {
+            /* Load last 2 bytes of instruction here */
 #ifdef CONFIG_RVFI_DII
-        // We have to avoid memory accesses for injected instructions since
-        // the PC could point somewhere invalid.
-        uint16_t next_16 = env->rvfi_dii_have_injected_insn
-                          ? (env->rvfi_dii_injected_insn >> 16)
-                          : translator_lduw(env, &ctx->base,
-                                            ctx->base.pc_next + 2);
+            // We have to avoid memory accesses for injected instructions since
+            // the PC could point somewhere invalid.
+            uint16_t next_16 = env->rvfi_dii_have_injected_insn
+                              ? (env->rvfi_dii_injected_insn >> 16)
+                              : translator_lduw(env, &ctx->base,
+                                                ctx->base.pc_next + 2);
 #else
-        uint16_t next_16 = translator_lduw(env, &ctx->base,
-                                           ctx->base.pc_next + 2);
+            uint16_t next_16 = translator_lduw(env, &ctx->base,
+                                               ctx->base.pc_next + 2);
 #endif
-        uint32_t opcode32 = opcode;
-        opcode32 = deposit32(opcode32, 16, 16, next_16);
-        gen_riscv_log_instr32(ctx, opcode32);
+            opcode = deposit32(opcode, 16, 16, next_16);
+        }
+        gen_riscv_log_instr32(ctx, opcode);
         gen_check_pcc_bounds_next_inst(ctx, 4);
-        ctx->opcode = opcode32;
+        ctx->opcode = opcode;
         ctx->pc_succ_insn = ctx->base.pc_next + 4;
-        gen_rvfi_dii_set_field_const_i64(INST, insn, opcode32);
+        gen_rvfi_dii_set_field_const_i64(INST, insn, opcode);
 
         for (guint i = 0; i < ctx->decoders->len; ++i) {
             riscv_cpu_decode_fn func = g_ptr_array_index(ctx->decoders, i);
-            if (func(ctx, opcode32)) {
+            if (func(ctx, opcode)) {
                 return;
             }
         }
@@ -1814,18 +1838,10 @@ static void riscv_tr_translate_insn(DisasContextBase *dcbase, CPUState *cpu)
     DisasContext *ctx = container_of(dcbase, DisasContext, base);
     CPURISCVState *env = cpu_env(cpu);
 #ifdef CONFIG_RVFI_DII
-    // We have to avoid memory accesses for injected instructions since
-    // the PC could point somewhere invalid.
-    uint16_t opcode16 = env->rvfi_dii_have_injected_insn
-        ? env->rvfi_dii_injected_insn
-        : translator_lduw(env, &ctx->base, ctx->base.pc_next);
     gen_rvfi_dii_set_field_const_i64(PC, pc_rdata, ctx->base.pc_next);
-#else
-    uint16_t opcode16 = translator_lduw(env, &ctx->base, ctx->base.pc_next);
 #endif
 
-    ctx->ol = ctx->xl;
-    decode_opc(env, ctx, opcode16);
+    decode_opc(env, ctx);
     ctx->base.pc_next += ctx->cur_insn_len;
     gen_rvfi_dii_set_field_const_i64(PC, pc_wdata, ctx->base.pc_next);
 

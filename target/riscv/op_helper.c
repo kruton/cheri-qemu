@@ -470,7 +470,7 @@ target_ulong helper_sret(CPURISCVState *env)
     }
 #endif
 
-    target_ulong retpc = GET_SPECIAL_REG_ADDR(env, sepc, sepcc);
+    target_ulong retpc = GET_SPECIAL_REG_ADDR(env, sepc, sepcc) & get_xepc_mask(env);
     // We have to clear the low bit of the address since that is defined as zero
     // in the privileged spec. The cheri_update_pcc_for_exc_return() check below
     // will de-tag pcc if this would result changing the address for sealed caps.
@@ -594,7 +594,7 @@ static target_ulong ssdbltrp_mxret(CPURISCVState *env, target_ulong mstatus,
 
 target_ulong helper_mret(CPURISCVState *env)
 {
-    target_ulong retpc = GET_SPECIAL_REG_ADDR(env, mepc, mepcc);
+    target_ulong retpc = GET_SPECIAL_REG_ADDR(env, mepc, mepcc) & get_xepc_mask(env);
     // We have to clear the low bit of the address since that is defined as zero
     // in the privileged spec. The cheri_update_pcc_for_exc_return() check below
     // will de-tag pcc if this would result changing the address for sealed caps.
@@ -604,7 +604,6 @@ target_ulong helper_mret(CPURISCVState *env)
     retpc &= ~(target_ulong)(riscv_cpu_allow_16bit_insn(&env_archcpu(env)->cfg,
                                                         env->priv_ver,
                                                         env->misa_ext) ? 1 : 3);
-
     uint64_t mstatus = env->mstatus;
     target_ulong prev_priv = get_field(mstatus, MSTATUS_MPP);
 
