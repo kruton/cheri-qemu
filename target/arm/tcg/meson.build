@@ -46,6 +46,7 @@ arm_ss.add(files(
   'tlb-insns.c',
   'arith_helper.c',
   'vfp_helper.c',
+  'cpregs-at.c',
 ))
 
 arm_ss.add(when: 'TARGET_AARCH64', if_true: files(

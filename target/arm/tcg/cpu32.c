@@ -227,7 +227,7 @@ static void arm1136_r2_initfn(Object *obj)
     SET_IDREG(isar, ID_PFR0, 0x111);
     SET_IDREG(isar, ID_PFR1, 0x1);
     SET_IDREG(isar, ID_DFR0, 0x2);
-    cpu->id_afr0 = 0x3;
+    SET_IDREG(isar, ID_AFR0, 0x3);
     SET_IDREG(isar, ID_MMFR0, 0x01130003);
     SET_IDREG(isar, ID_MMFR1, 0x10030302);
     SET_IDREG(isar, ID_MMFR2, 0x01222110);
@@ -259,7 +259,7 @@ static void arm1136_initfn(Object *obj)
     SET_IDREG(isar, ID_PFR0, 0x111);
     SET_IDREG(isar, ID_PFR1, 0x1);
     SET_IDREG(isar, ID_DFR0, 0x2);
-    cpu->id_afr0 = 0x3;
+    SET_IDREG(isar, ID_AFR0, 0x3);
     SET_IDREG(isar, ID_MMFR0, 0x01130003);
     SET_IDREG(isar, ID_MMFR1, 0x10030302);
     SET_IDREG(isar, ID_MMFR2, 0x01222110);
@@ -292,7 +292,7 @@ static void arm1176_initfn(Object *obj)
     SET_IDREG(isar, ID_PFR0, 0x111);
     SET_IDREG(isar, ID_PFR1, 0x11);
     SET_IDREG(isar, ID_DFR0, 0x33);
-    cpu->id_afr0 = 0;
+    SET_IDREG(isar, ID_AFR0, 0);
     SET_IDREG(isar, ID_MMFR0, 0x01130003);
     SET_IDREG(isar, ID_MMFR1, 0x10030302);
     SET_IDREG(isar, ID_MMFR2, 0x01222100);
@@ -322,7 +322,7 @@ static void arm11mpcore_initfn(Object *obj)
     SET_IDREG(isar, ID_PFR0, 0x111);
     SET_IDREG(isar, ID_PFR1, 0x1);
     SET_IDREG(isar, ID_DFR0, 0);
-    cpu->id_afr0 = 0x2;
+    SET_IDREG(isar, ID_AFR0, 0x2);
     SET_IDREG(isar, ID_MMFR0, 0x01100103);
     SET_IDREG(isar, ID_MMFR1, 0x10020302);
     SET_IDREG(isar, ID_MMFR2, 0x01222000);
@@ -362,7 +362,7 @@ static void cortex_a8_initfn(Object *obj)
     SET_IDREG(isar, ID_PFR0, 0x1031);
     SET_IDREG(isar, ID_PFR1, 0x11);
     SET_IDREG(isar, ID_DFR0, 0x400);
-    cpu->id_afr0 = 0;
+    SET_IDREG(isar, ID_AFR0, 0);
     SET_IDREG(isar, ID_MMFR0, 0x31100003);
     SET_IDREG(isar, ID_MMFR1, 0x20000000);
     SET_IDREG(isar, ID_MMFR2, 0x01202000);
@@ -373,7 +373,7 @@ static void cortex_a8_initfn(Object *obj)
     SET_IDREG(isar, ID_ISAR3, 0x11112131);
     SET_IDREG(isar, ID_ISAR4, 0x00111142);
     cpu->isar.dbgdidr = 0x15141000;
-    cpu->clidr = (1 << 27) | (2 << 24) | 3;
+    SET_IDREG(isar, CLIDR, (1 << 27) | (2 << 24) | 3);
     cpu->ccsidr[0] = 0xe007e01a; /* 16k L1 dcache. */
     cpu->ccsidr[1] = 0x2007e01a; /* 16k L1 icache. */
     cpu->ccsidr[2] = 0xf0000000; /* No L2 icache. */
@@ -438,7 +438,7 @@ static void cortex_a9_initfn(Object *obj)
     SET_IDREG(isar, ID_PFR0, 0x1031);
     SET_IDREG(isar, ID_PFR1, 0x11);
     SET_IDREG(isar, ID_DFR0, 0x000);
-    cpu->id_afr0 = 0;
+    SET_IDREG(isar, ID_AFR0, 0);
     SET_IDREG(isar, ID_MMFR0, 0x00100103);
     SET_IDREG(isar, ID_MMFR1, 0x20000000);
     SET_IDREG(isar, ID_MMFR2, 0x01230000);
@@ -449,7 +449,7 @@ static void cortex_a9_initfn(Object *obj)
     SET_IDREG(isar, ID_ISAR3, 0x11112131);
     SET_IDREG(isar, ID_ISAR4, 0x00111142);
     cpu->isar.dbgdidr = 0x35141000;
-    cpu->clidr = (1 << 27) | (1 << 24) | 3;
+    SET_IDREG(isar, CLIDR, (1 << 27) | (1 << 24) | 3);
     cpu->ccsidr[0] = 0xe00fe019; /* 16k L1 dcache. */
     cpu->ccsidr[1] = 0x200fe019; /* 16k L1 icache. */
     cpu->isar.reset_pmcr_el0 = 0x41093000;
@@ -504,7 +504,7 @@ static void cortex_a7_initfn(Object *obj)
     SET_IDREG(isar, ID_PFR0, 0x00001131);
     SET_IDREG(isar, ID_PFR1, 0x00011011);
     SET_IDREG(isar, ID_DFR0, 0x02010555);
-    cpu->id_afr0 = 0x00000000;
+    SET_IDREG(isar, ID_AFR0, 0x00000000);
     SET_IDREG(isar, ID_MMFR0, 0x10101105);
     SET_IDREG(isar, ID_MMFR1, 0x40000000);
     SET_IDREG(isar, ID_MMFR2, 0x01240000);
@@ -521,7 +521,7 @@ static void cortex_a7_initfn(Object *obj)
     cpu->isar.dbgdidr = 0x3515f005;
     cpu->isar.dbgdevid = 0x01110f13;
     cpu->isar.dbgdevid1 = 0x1;
-    cpu->clidr = 0x0a200023;
+    SET_IDREG(isar, CLIDR, 0x0a200023);
     cpu->ccsidr[0] = 0x701fe00a; /* 32K L1 dcache */
     cpu->ccsidr[1] = 0x201fe00a; /* 32K L1 icache */
     cpu->ccsidr[2] = 0x711fe07a; /* 4096K L2 unified cache */
@@ -556,7 +556,7 @@ static void cortex_a15_initfn(Object *obj)
     SET_IDREG(isar, ID_PFR0, 0x00001131);
     SET_IDREG(isar, ID_PFR1, 0x00011011);
     SET_IDREG(isar, ID_DFR0, 0x02010555);
-    cpu->id_afr0 = 0x00000000;
+    SET_IDREG(isar, ID_AFR0, 0x00000000);
     SET_IDREG(isar, ID_MMFR0, 0x10201105);
     SET_IDREG(isar, ID_MMFR1, 0x20000000);
     SET_IDREG(isar, ID_MMFR2, 0x01240000);
@@ -569,7 +569,7 @@ static void cortex_a15_initfn(Object *obj)
     cpu->isar.dbgdidr = 0x3515f021;
     cpu->isar.dbgdevid = 0x01110f13;
     cpu->isar.dbgdevid1 = 0x0;
-    cpu->clidr = 0x0a200023;
+    SET_IDREG(isar, CLIDR, 0x0a200023);
     cpu->ccsidr[0] = 0x701fe00a; /* 32K L1 dcache */
     cpu->ccsidr[1] = 0x201fe00a; /* 32K L1 icache */
     cpu->ccsidr[2] = 0x711fe07a; /* 4096K L2 unified cache */
@@ -600,7 +600,7 @@ static void cortex_r5_initfn(Object *obj)
     SET_IDREG(isar, ID_PFR0, 0x0131);
     SET_IDREG(isar, ID_PFR1, 0x001);
     SET_IDREG(isar, ID_DFR0, 0x010400);
-    cpu->id_afr0 = 0x0;
+    SET_IDREG(isar, ID_AFR0, 0x0);
     SET_IDREG(isar, ID_MMFR0, 0x0210030);
     SET_IDREG(isar, ID_MMFR1, 0x00000000);
     SET_IDREG(isar, ID_MMFR2, 0x01200000);
@@ -747,7 +747,7 @@ static void cortex_r52_initfn(Object *obj)
     SET_IDREG(isar, ID_PFR0, 0x00000131);
     SET_IDREG(isar, ID_PFR1, 0x10111001);
     SET_IDREG(isar, ID_DFR0, 0x03010006);
-    cpu->id_afr0 = 0x00000000;
+    SET_IDREG(isar, ID_AFR0, 0x00000000);
     SET_IDREG(isar, ID_MMFR0, 0x00211040);
     SET_IDREG(isar, ID_MMFR1, 0x40000000);
     SET_IDREG(isar, ID_MMFR2, 0x01200000);
@@ -760,7 +760,7 @@ static void cortex_r52_initfn(Object *obj)
     SET_IDREG(isar, ID_ISAR4, 0x00010142);
     SET_IDREG(isar, ID_ISAR5, 0x00010001);
     cpu->isar.dbgdidr = 0x77168000;
-    cpu->clidr = (1 << 27) | (1 << 24) | 0x3;
+    SET_IDREG(isar, CLIDR, (1 << 27) | (1 << 24) | 0x3);
     cpu->ccsidr[0] = 0x700fe01a; /* 32KB L1 dcache */
     cpu->ccsidr[1] = 0x201fe00a; /* 32KB L1 icache */
 
@@ -979,7 +979,7 @@ static void arm_max_initfn(Object *obj)
     SET_IDREG(isar, ID_PFR0, 0x00000131);
     SET_IDREG(isar, ID_PFR1, 0x00011011);
     SET_IDREG(isar, ID_DFR0, 0x03010066);
-    cpu->id_afr0 = 0x00000000;
+    SET_IDREG(isar, ID_AFR0, 0x00000000);
     SET_IDREG(isar, ID_MMFR0, 0x10101105);
     SET_IDREG(isar, ID_MMFR1, 0x40000000);
     SET_IDREG(isar, ID_MMFR2, 0x01260000);
@@ -992,7 +992,7 @@ static void arm_max_initfn(Object *obj)
     SET_IDREG(isar, ID_ISAR5, 0x00011121);
     SET_IDREG(isar, ID_ISAR6, 0);
     cpu->isar.reset_pmcr_el0 = 0x41013000;
-    cpu->clidr = 0x0a200023;
+    SET_IDREG(isar, CLIDR, 0x0a200023);
     cpu->ccsidr[0] = 0x701fe00a; /* 32KB L1 dcache */
     cpu->ccsidr[1] = 0x201fe012; /* 48KB L1 icache */
     cpu->ccsidr[2] = 0x70ffe07a; /* 2048KB L2 cache */
