@@ -20,6 +20,7 @@ tcg_specific_ss.add(files(
   'tcg-all.c',
   'cpu-exec.c',
   'tcg-runtime.c',
+  'tcg-stats.c',
   'tb-maint.c',
   'translate-all.c',
   'translator.c',
