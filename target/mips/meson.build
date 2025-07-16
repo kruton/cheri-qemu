@@ -7,6 +7,7 @@ mips_ss.add(files(
   'gdbstub.c',
   'msa.c',
 ))
+mips_ss.add(zlib)
 
 mips_ss.add(files('op_helper_beri.c'))
 mips_ss.add(when: 'TARGET_CHERI', if_true: files('op_helper_cheri.c'))
