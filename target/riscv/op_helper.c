@@ -554,15 +554,16 @@ target_ulong helper_sret(CPURISCVState *env)
 }
 
 static void check_ret_from_m_mode(CPURISCVState *env, target_ulong retpc,
-                                  target_ulong prev_priv)
+                                  target_ulong prev_priv,
+                                  uintptr_t ra)
 {
     if (!(env->priv >= PRV_M)) {
-        riscv_raise_exception(env, RISCV_EXCP_ILLEGAL_INST, GETPC());
+        riscv_raise_exception(env, RISCV_EXCP_ILLEGAL_INST, ra);
     }
 #ifdef TARGET_CHERI
     if (!cheri_have_access_sysregs(env)) {
         raise_cheri_exception_impl(env, CapEx_AccessSystemRegsViolation,
-                                   CHERI_EXC_REGNUM_PCC, 0, true, GETPC());
+                                   CHERI_EXC_REGNUM_PCC, 0, true, ra);
     }
 #endif
 
@@ -570,7 +571,7 @@ static void check_ret_from_m_mode(CPURISCVState *env, target_ulong retpc,
     /* FIXME: upstream diff seems wrong, the ifetch should fail not the mret */
     if (riscv_cpu_cfg(env)->pmp &&
         !pmp_get_num_rules(env) && (prev_priv != PRV_M)) {
-        riscv_raise_exception(env, RISCV_EXCP_INST_ACCESS_FAULT, GETPC());
+        riscv_raise_exception(env, RISCV_EXCP_INST_ACCESS_FAULT, ra);
     }
 #endif
 }
@@ -606,8 +607,9 @@ target_ulong helper_mret(CPURISCVState *env)
                                                         env->misa_ext) ? 1 : 3);
     uint64_t mstatus = env->mstatus;
     target_ulong prev_priv = get_field(mstatus, MSTATUS_MPP);
+    uintptr_t ra = GETPC();
 
-    check_ret_from_m_mode(env, retpc, prev_priv);
+    check_ret_from_m_mode(env, retpc, prev_priv, ra);
 
     target_ulong prev_virt = get_field(env->mstatus, MSTATUS_MPV) &&
                              (prev_priv != PRV_M);
@@ -668,8 +670,9 @@ target_ulong helper_mnret(CPURISCVState *env)
                                                         env->misa_ext) ? 1 : 3);
     target_ulong prev_priv = get_field(env->mnstatus, MNSTATUS_MNPP);
     target_ulong prev_virt;
+    uintptr_t ra = GETPC();
 
-    check_ret_from_m_mode(env, retpc, prev_priv);
+    check_ret_from_m_mode(env, retpc, prev_priv, ra);
 
     prev_virt = get_field(env->mnstatus, MNSTATUS_MNPV) &&
                 (prev_priv != PRV_M);
