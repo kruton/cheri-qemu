@@ -93,6 +93,8 @@ static void arm_trickbox_write(void *opaque, hwaddr addr, uint64_t val,
         }                                                                      \
         break;                                                                 \
     }
+        TRICKBOX_LOG(LOG_ERROR, "Unexpected write at " HWADDR_FMT_plx "\n",
+                     register_addr);
 static uint64_t arm_trickbox_read(void *opaque, hwaddr addr, unsigned size)
 {
     return 0;
