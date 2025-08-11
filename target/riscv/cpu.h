@@ -222,6 +222,7 @@ typedef struct PMUFixedCtrState {
 struct CPUArchState {
     target_ulong gpr[32];
     target_ulong gprh[32]; /* 64 top bits of the 128-bit registers */
+#endif
 
     /* vector coprocessor state. */
     uint64_t vreg[32 * RV_VLEN_MAX / 64] QEMU_ALIGNED(16);
@@ -816,7 +817,6 @@ static inline RISCVMXL riscv_cpu_mxl(CPURISCVState *env)
 
 static inline const RISCVCPUConfig *riscv_cpu_cfg(CPURISCVState *env)
 {
-    return &env_archcpu(env)->cfg;
 }
 
 #if !defined(CONFIG_USER_ONLY)
