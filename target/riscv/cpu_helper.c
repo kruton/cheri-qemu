@@ -632,9 +632,16 @@ void riscv_cpu_swap_hypervisor_regs(CPURISCVState *env)
 
         env->vscause = env->scause;
         env->scause = env->scause_hs;
+        if (!hs_mode_trap) {
+        }
 
         env->vstval = env->stval;
         env->stval = env->stval_hs;
+#ifdef TARGET_CHERI_RISCV_STD_093
+        env->vstval2 = env->stval2;
+        env->stval2 = env->stval2_hs;
+            /* stval2 will be modified again when trapping to HS-mode */
+            riscv_log_instr_csr_changed(env, CSR_STVAL2);
 #endif
 
         env->vsatp = env->satp;
@@ -649,6 +656,7 @@ void riscv_cpu_swap_hypervisor_regs(CPURISCVState *env)
         env->stid = env->stid_hs;
         riscv_log_instr_csr_changed(env, CSR_VSTID);
         riscv_log_instr_csr_changed(env, CSR_STID);
+#endif
     } else {
         /* Current V=0 and we are about to change to V=1 */
         env->mstatus_hs = env->mstatus & mstatus_mask;
@@ -669,6 +677,10 @@ void riscv_cpu_swap_hypervisor_regs(CPURISCVState *env)
 
         env->stval_hs = env->stval;
         env->stval = env->vstval;
+#ifdef TARGET_CHERI_RISCV_STD_093
+        env->stval2_hs = env->stval2;
+        env->stval2 = env->vstval2;
+        riscv_log_instr_csr_changed(env, CSR_STVAL2);
 
         env->satp_hs = env->satp;
         env->satp = env->vsatp;
@@ -2365,6 +2377,9 @@ void riscv_cpu_do_interrupt(CPUState *cs)
     target_ulong htval = 0;
     target_ulong mtval2 = 0;
     target_ulong src;
+#ifdef TARGET_CHERI_RISCV_STD_093
+    target_ulong cheri_exc_info = 0;
+#endif
     int sxlen = 0;
     int mxlen = 16 << riscv_cpu_mxl(env);
     bool nnmi_excep = false;
@@ -2432,8 +2447,19 @@ void riscv_cpu_do_interrupt(CPUState *cs)
         case RISCV_EXCP_VIRT_INSTRUCTION_FAULT:
             tval = env->bins;
             break;
+            qemu_log_instr_or_mask_msg(
                 env, CPU_LOG_INT, "Got CHERI trap %s, caused by register %d\n",
                 cheri_cause_str(env->last_cap_cause), env->last_cap_index);
+#ifdef TARGET_CHERI_RISCV_STD_093
+            tcg_debug_assert(env->last_cap_type <= CapEx093_Type_Last);
+            /* Remap cap causes to the 0.9.3 values. */
+            cheri_exc_info = cheri093_cap_cause(env->last_cap_cause);
+            tcg_debug_assert(cheri_exc_info <= CapEx093_Last);
+            tval = env->badaddr;
+            cheri_exc_info |= env->last_cap_type << 16;
+            env->last_cap_type = CapEx093_Type_None;
+#else
+#endif
         case RISCV_EXCP_BREAKPOINT:
             tval = env->badaddr;
             if (cs->watchpoint_hit) {
@@ -2563,6 +2589,11 @@ void riscv_cpu_do_interrupt(CPUState *cs)
         env->htinst = tinst;
         env->pc = (env->stvec >> 2 << 2) +
                   ((async && (env->stvec & 3) == 1) ? cause * 4 : 0);
+#ifdef TARGET_CHERI_RISCV_STD_093
+        if (cause == RISCV_EXCP_CHERI) {
+            env->stval2 = cheri_exc_info;
+            riscv_log_instr_csr_changed(env, CSR_STVAL2);
+        }
 #endif
         riscv_cpu_set_mode(env, PRV_S, virt);
 
@@ -2641,18 +2672,27 @@ void riscv_cpu_do_interrupt(CPUState *cs)
         env->mtval = tval;
         env->mtinst = tinst;
 
+#ifdef TARGET_CHERI_RISCV_STD_093
         /*
          * For RNMI exception, program counter is set to the RNMI exception
          * trap handler address.
+         * We do not set the mtval2 to guest_phys_fault_add in the
+         * cheri exception case and report cause/type instead.
          */
+        if (cause == RISCV_EXCP_CHERI) {
+            env->mtval2 = cheri_exc_info;
+        }
 #endif
         if (nnmi_excep) {
             env->pc = env->rnmi_excpvec;
         } else {
             env->pc = (env->mtvec >> 2 << 2) +
                       ((async && (env->mtvec & 3) == 1) ? cause * 4 : 0);
+            /*
+             */
 #ifdef TARGET_CHERI
 #else
+#endif
         }
         riscv_cpu_set_mode(env, PRV_M, virt);
         src = env->mepc;
