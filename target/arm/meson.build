@@ -27,6 +27,7 @@ arm_system_ss.add(files(
   'arm-powerctl.c',
   'arm-qmp-cmds.c',
   'cortex-regs.c',
+  'cpu-irq.c',
   'machine.c',
   'ptw.c',
 ), capstone)
@@ -35,6 +36,9 @@ arm_system_ss.add(when: 'CONFIG_KVM', if_true: files('hyp_gdbstub.c', 'kvm.c'), 
 arm_system_ss.add(when: 'CONFIG_HVF', if_true: files('hyp_gdbstub.c'), if_false: files('hvf-stub.c'))
 
 arm_user_ss = ss.source_set()
+arm_user_ss.add(files(
+  'el2-stubs.c',
+))
 
 subdir('hvf')
 
