@@ -311,8 +311,8 @@ static void stream_complete(struct Stream *s)
 static void stream_process_mem2s(struct Stream *s, StreamSink *tx_data_dev,
                                  StreamSink *tx_control_dev)
 {
-    uint32_t txlen;
     uint64_t prev_d;
+    uint32_t orig_txlen, txlen;
     uint64_t addr;
     bool eop;
 
@@ -335,7 +335,7 @@ static void stream_process_mem2s(struct Stream *s, StreamSink *tx_data_dev,
             stream_push(tx_control_dev, s->desc.app, sizeof(s->desc.app), true);
         }
 
-        txlen = s->desc.control & SDESC_CTRL_LEN_MASK;
+        orig_txlen = txlen = s->desc.control & SDESC_CTRL_LEN_MASK;
 
         eop = stream_desc_eof(&s->desc);
         addr = s->desc.buffer_address;
@@ -356,7 +356,7 @@ static void stream_process_mem2s(struct Stream *s, StreamSink *tx_data_dev,
         }
 
         /* Update the descriptor.  */
-        s->desc.status = txlen | SDESC_STATUS_COMPLETE;
+        s->desc.status = orig_txlen | SDESC_STATUS_COMPLETE;
         stream_desc_store(s, stream_ptr_get(s, R_CURDESC));
 
         /* Advance.  */
