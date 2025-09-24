@@ -196,7 +196,8 @@ static TCGTBCPUState riscv_get_tb_cpu_state(CPUState *cs)
 
     TCGTBCPUState s = {
         .pc = env->xl == MXL_RV32 ? PC_ADDR(env) & UINT32_MAX : PC_ADDR(env),
-        .flags = flags
+        .flags = flags,
+        .cs_base = env->misa_ext,
     };
 #ifdef TARGET_CHERI
     cheri_cpu_get_tb_cpu_state(env, &env->pcc, &env->ddc, &s.pcc_base, &s.pcc_top,

@@ -350,7 +350,7 @@ void *cheri_tagmem_for_addr(CPUArchState *env, target_ulong vaddr,
 static inline uintptr_t cheri_tlb_index(CPUState *cpu, uintptr_t mmu_idx,
                                         vaddr addr)
 {
-    uintptr_t size_mask = cpu->neg.tlb.f[mmu_idx].mask >> CPU_TLB_ENTRY_BITS;
+    uintptr_t size_mask = cpu_tlb_fast(cpu, mmu_idx)->mask >> CPU_TLB_ENTRY_BITS;
 
     return (addr >> TARGET_PAGE_BITS) & size_mask;
 }
@@ -358,7 +358,7 @@ static inline uintptr_t cheri_tlb_index(CPUState *cpu, uintptr_t mmu_idx,
 static inline CPUTLBEntry *cheri_tlb_entry(CPUState *cpu, uintptr_t mmu_idx,
                                            vaddr addr)
 {
-    return &cpu->neg.tlb.f[mmu_idx].table[cheri_tlb_index(cpu, mmu_idx, addr)];
+    return &cpu_tlb_fast(cpu, mmu_idx)->table[cheri_tlb_index(cpu, mmu_idx, addr)];
 }
 
 static inline target_ulong cheri_tlb_addr_write(const CPUTLBEntry *entry)
