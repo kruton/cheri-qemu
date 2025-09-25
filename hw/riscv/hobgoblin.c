@@ -877,6 +877,7 @@ static char *custom_riscv_isa_string(RISCVCPU *cpu, bool is_32_bit)
         bool *flag;
         const char *ext;
     } ext_map_t;
+    bool enable = true;
 
     ext_map_t base_exts[] = {
         { &cpu->cfg.ext_i, "i" }, { &cpu->cfg.ext_m, "m" },
