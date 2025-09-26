@@ -51,6 +51,9 @@ riscv_ss = ss.source_set()
 riscv_ss.add(when: 'TARGET_CHERI', if_false: gen_nocheri)
 riscv_ss.add_all(when: 'TARGET_CHERI', if_true: cheri_ss)
 
+riscv_ss.add(when: 'CONFIG_ARM_COMPATIBLE_SEMIHOSTING',
+		     if_true: files('common-semi-target.c'))
+
 riscv_ss.add(files(
   'cpu.c',
   'cpu_helper.c',

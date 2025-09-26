@@ -20,6 +20,9 @@ arm_ss.add(when: 'TARGET_CHERI', if_true: files(
   'cheri_helper.c'
 ))
 
+arm_ss.add(when: 'CONFIG_ARM_COMPATIBLE_SEMIHOSTING',
+           if_true: files('common-semi-target.c'))
+
 arm_system_ss = ss.source_set()
 arm_common_system_ss = ss.source_set()
 arm_system_ss.add(files(
