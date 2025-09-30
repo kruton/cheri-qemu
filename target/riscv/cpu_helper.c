@@ -659,6 +659,8 @@ void riscv_cpu_swap_hypervisor_regs(CPURISCVState *env)
 #endif
     } else {
         /* Current V=0 and we are about to change to V=1 */
+        /*
+         */
         env->mstatus_hs = env->mstatus & mstatus_mask;
         env->mstatus &= ~mstatus_mask;
         env->mstatus |= env->vsstatus;
