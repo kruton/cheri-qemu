@@ -208,6 +208,7 @@ void CHERI_HELPER_IMPL(cbuildcap(CPUArchState *env, uint32_t cd, uint32_t cb,
         cap_set_cursor(&derived, cap_get_base(&result));
         CAP_cc(setbounds)(&derived, cap_get_length_full(&result));
         cap_set_cursor(&derived, cap_get_cursor(&result));
+        cap_set_perms(env, &derived,
                       cap_get_all_perms(cbp) & cap_get_all_perms(ctp));
 #ifndef TARGET_AARCH64
         cap_set_exec_mode(&derived, cap_get_exec_mode(ctp));
@@ -300,6 +301,7 @@ static void cseal_common(CPUArchState *env, uint32_t cd, uint32_t cs,
     cap_register_t result = *csp;
     } else {
     }
+    cap_set_perms(env, &result, new_perms);
     } else {
         CAP_cc(update_otype)(&result, CAP_OTYPE_UNSEALED);
     update_capreg(env, cd, &result);
