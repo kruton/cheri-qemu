@@ -77,6 +77,9 @@ void CHERI_HELPER_IMPL(pcc_check_bounds(CPUArchState *env, target_ulong addr,
     const cap_register_t *cbp = get_readonly_capreg(env, cb);
     target_ulong perms = cap_get_all_perms(cbp);
                        "Unknown permission bits set!");
+#ifdef TARGET_CHERI_RISCV_STD_093
+    /* The reserved 1-bits were not present in 0.9.3, zero them */
+    perms &= ~(CAP_CC(PERMS_RESERVED_ONES));
 #endif
     return (target_ulong)cap_get_offset(get_readonly_capreg(env, cb));
 target_ulong CHERI_HELPER_IMPL(cgettag(CPUArchState *env, uint32_t cb))
