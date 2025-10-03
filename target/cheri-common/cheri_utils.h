@@ -20,6 +20,7 @@ static inline cap_offset_t cap_get_offset(const cap_register_t *c)
 {
     return CAP_cc(get_all_permissions)(c);
 }
+#ifdef TARGET_CHERI_RISCV_STD
 /*
  */
 {
@@ -27,6 +28,7 @@ static inline cap_offset_t cap_get_offset(const cap_register_t *c)
      */
         }
     }
+#endif
 #endif
 #endif
 #endif
@@ -40,6 +42,8 @@ static inline cap_offset_t cap_get_offset(const cap_register_t *c)
     bool success = CAP_cc(set_permissions)(c, perms);
     assert(success);
 #ifndef TARGET_AARCH64
+    target_ulong perms = cap_get_all_perms(c);
+    return fix_up_ap(env, &perms) == true;
 #else
     // TODO: should handle last byte of address space properly
 static inline cap_length_t cap_get_length_full(const cap_register_t *c)
@@ -61,6 +65,7 @@ static inline bool cap_otype_is_reserved(target_ulong otype)
     /*
      * Morello and the RISC-V standard encodings do not sign extend like the
      * ISAv9 version of CHERI.
+#else
     return result < CAP_CC(MIN_RESERVED_OTYPE)
 static inline bool cap_is_sealed_with_reserved_otype(const cap_register_t *c)
     target_ulong otype = cap_get_otype_unsigned(c);
