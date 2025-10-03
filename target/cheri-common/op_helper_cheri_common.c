@@ -82,6 +82,7 @@ void CHERI_HELPER_IMPL(pcc_check_bounds(CPUArchState *env, target_ulong addr,
 target_ulong CHERI_HELPER_IMPL(cgettag(CPUArchState *env, uint32_t cb))
      * CGetTag: Move Tag to a General-Purpose Register
     const target_long otype = cap_get_otype_signext(cbp);
+#if defined(TARGET_MORELLO) || defined(TARGET_CHERI_RISCV_STD)
 #else
 #endif
     cap_register_t result = *cbp;
