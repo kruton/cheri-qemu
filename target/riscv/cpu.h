@@ -748,6 +748,7 @@ static inline int riscv_has_ext(CPURISCVState *env, target_ulong ext)
 extern const char * const riscv_int_regnames[];
 extern const char * const riscv_int_regnamesh[];
 extern const char * const riscv_fpr_regnames[];
+extern const char * const riscv_rvv_regnames[];
 #ifdef TARGET_CHERI
 /* Needed for cheri-common logging */
 extern const char * const cheri_gp_regnames[];
@@ -1279,7 +1280,7 @@ static inline void riscv_csr_write(CPURISCVState *env, int csrno,
 static inline target_ulong riscv_csr_read(CPURISCVState *env, int csrno, uintptr_t retpc)
 {
     target_ulong val = 0;
-    riscv_csrrw(env, csrno, &val, 0, 0, retpc);
+    riscv_csrr(env, csrno, &val, retpc);
     return val;
 }
 
