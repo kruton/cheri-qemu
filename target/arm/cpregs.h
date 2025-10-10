@@ -47,10 +47,18 @@ enum {
     ARM_CP_DC_ZVA                = 0x0005,
     ARM_CP_DC_GVA                = 0x0006,
     ARM_CP_DC_GZVA               = 0x0007,
+    /* Special: gcs instructions */
+    ARM_CP_GCSPUSHM              = 0x0008,
+    ARM_CP_GCSPOPM               = 0x0009,
+    ARM_CP_GCSPUSHX              = 0x000a,
+    ARM_CP_GCSPOPX               = 0x000b,
+    ARM_CP_GCSPOPCX              = 0x000c,
+    ARM_CP_GCSSS1                = 0x000d,
+    ARM_CP_GCSSS2                = 0x000e,
 
 #ifdef TARGET_CHERI
-    ARM_CP_IC_OR_DC_VA           = 0x0008,
-    ARM_CP_IC_OR_DC_VA_STORE     = 0x0009,
+    ARM_CP_IC_OR_DC_VA           = 0x000f,
+    ARM_CP_IC_OR_DC_VA_STORE     = (0x000f | (1 << 25)),
 #else
     ARM_CP_IC_OR_DC_VA           = ARM_CP_NOP,
     ARM_CP_IC_OR_DC_VA_STORE     = ARM_CP_NOP,
@@ -144,13 +152,18 @@ enum {
      * identically to the normal one, other than FGT trapping handling.)
      */
     ARM_CP_ADD_TLBI_NXS          = 1 << 21,
+    /*
+     * Flag: even though this sysreg has opc1 == 4 or 5, it
+     * should not trap to EL2 when HCR_EL2.NV is set.
+     */
+    ARM_CP_NV_NO_TRAP            = 1 << 22,
 
-    ARM_CP_CAP                   = 1 << 22,
-    ARM_CP_CAP_ONLY              = (ARM_CP_CAP | (1 << 23)),
+    ARM_CP_CAP                   = 1 << 23,
+    ARM_CP_CAP_ONLY              = (ARM_CP_CAP | (1 << 24)),
 };
 
 /* Mask of only the flag bits in a type field */
-#define ARM_CP_FLAG_MASK 0xfff0ff
+#define ARM_CP_FLAG_MASK 0x3fff0ff
 
 #ifdef TARGET_CHERI
 #define ARM_CP_CAP_ON_MORELLO ARM_CP_CAP
@@ -400,6 +413,14 @@ typedef enum CPAccessResult {
      * specified target EL.
      */
     CP_ACCESS_UNDEFINED = (2 << 2),
+
+    /*
+     * Access fails with EXLOCK, a GCS exception syndrome.
+     * These traps are always to the current execution EL,
+     * which is the same as the usual target EL because
+     * they cannot occur from EL0.
+     */
+    CP_ACCESS_EXLOCK = (3 << 2),
 } CPAccessResult;
 
 /* Indexes into fgt_read[] */
@@ -828,8 +849,12 @@ typedef enum FGTBit {
     DO_BIT(HFGRTR, VBAR_EL1),
     DO_BIT(HFGRTR, ICC_IGRPENN_EL1),
     DO_BIT(HFGRTR, ERRIDR_EL1),
+    DO_REV_BIT(HFGRTR, NGCS_EL0),
+    DO_REV_BIT(HFGRTR, NGCS_EL1),
     DO_REV_BIT(HFGRTR, NSMPRI_EL1),
     DO_REV_BIT(HFGRTR, NTPIDR2_EL0),
+    DO_REV_BIT(HFGRTR, NPIRE0_EL1),
+    DO_REV_BIT(HFGRTR, NPIR_EL1),
 
     /* Trap bits in HDFGRTR_EL2 / HDFGWTR_EL2, starting from bit 0. */
     DO_BIT(HDFGRTR, DBGBCRN_EL1),
@@ -908,6 +933,8 @@ typedef enum FGTBit {
     DO_BIT(HFGITR, DVPRCTX),
     DO_BIT(HFGITR, CPPRCTX),
     DO_BIT(HFGITR, DCCVAC),
+    DO_REV_BIT(HFGITR, NGCSPUSHM_EL1),
+    DO_REV_BIT(HFGITR, NGCSEPP),
     DO_BIT(HFGITR, ATS1E1A),
 } FGTBit;
 
@@ -1248,12 +1275,17 @@ static inline bool arm_cpreg_traps_in_nv(const ARMCPRegInfo *ri)
      * fragile to future new sysregs, but this seems the least likely
      * to break.
      *
-     * In particular, note that the released sysreg XML defines that
-     * the FEAT_MEC sysregs and instructions do not follow this FEAT_NV
-     * trapping rule, so we will need to add an ARM_CP_* flag to indicate
-     * "register does not trap on NV" to handle those if/when we implement
-     * FEAT_MEC.
+     * In particular, note that the FEAT_MEC sysregs and instructions
+     * are exceptions to this trapping rule, so they are marked as
+     * ARM_CP_NV_NO_TRAP to indicate that they should not be trapped
+     * to EL2. (They are an exception because the FEAT_MEC sysregs UNDEF
+     * unless in Realm, and Realm is not expected to be virtualized.)
      */
+
+    if (ri->type & ARM_CP_NV_NO_TRAP) {
+        return false;
+    }
+
     return ri->opc1 == 4 || ri->opc1 == 5;
 }
 

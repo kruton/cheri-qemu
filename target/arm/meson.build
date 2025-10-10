@@ -2,10 +2,12 @@ arm_ss = ss.source_set()
 arm_common_ss = ss.source_set()
 arm_ss.add(files(
   'cpu.c',
+  'cpregs-gcs.c',
   'cpregs-pmu.c',
   'debug_helper.c',
   'gdbstub.c',
   'helper.c',
+  'mmuidx.c',
   'vfp_fpscr.c',
 ))
 
