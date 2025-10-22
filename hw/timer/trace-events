@@ -55,6 +55,10 @@ codasip_timer_interrupt(uint64_t now_ns) "Interrupt (now_ns: %" PRIu64 ")"
 codasip_timer_read(uint64_t offset, unsigned size) "Read [0x%" PRIx64 "/%u]"
 codasip_timer_write(uint64_t offset, unsigned size, uint64_t val64) "Write [0x%" PRIx64 "/%u] <- %" PRIu64
 
+# i8254.c
+pit_ioport_read(uint8_t addr, uint32_t value) "[0x%" PRIx8 "] -> 0x%" PRIx32
+pit_ioport_write(uint8_t addr, uint32_t value) "[0x%" PRIx8 "] <- 0x%" PRIx32
+
 # imx_gpt.c
 imx_gpt_set_freq(uint32_t clksrc, uint32_t freq) "Setting clksrc %u to %u Hz"
 imx_gpt_read(const char *name, uint64_t value) "%s -> 0x%08" PRIx64
