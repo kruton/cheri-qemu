@@ -110,21 +110,23 @@ static bool trans_ssamoswap_w(DisasContext *ctx, arg_amoswap_w *a)
 
     TCGv dest = dest_gpr(ctx, a->rd);
     TCGv src2 = get_gpr(ctx, a->rs2, EXT_NONE);
+
 #ifdef TARGET_CHERI
     TCGv_cap_checked_ptr src1;
 #else
     TCGv src1;
 #endif
+    MemOp memop = MO_ALIGN | MO_SL;
 
     decode_save_opc(ctx, RISCV_UW2_ALWAYS_STORE_AMO);
+    memop |= mo_endian(ctx);
 #ifdef TARGET_CHERI
-    src1 = get_capmode_dependent_rmw_addr(ctx, a->rs1, 0, MO_ALIGN | MO_TESL);
+    src1 = get_capmode_dependent_rmw_addr(ctx, a->rs1, 0, memop);
 #else
     src1 = get_address(ctx, a->rs1, 0);
 #endif
 
-    tcg_gen_atomic_xchg_tl(dest, src1, src2, SS_MMU_INDEX(ctx),
-                           (MO_ALIGN | MO_TESL));
+    tcg_gen_atomic_xchg_tl(dest, src1, src2, SS_MMU_INDEX(ctx), memop);
     gen_set_gpr(ctx, a->rd, dest);
     return true;
 }
@@ -148,21 +150,23 @@ static bool trans_ssamoswap_d(DisasContext *ctx, arg_amoswap_w *a)
 
     TCGv dest = dest_gpr(ctx, a->rd);
     TCGv src2 = get_gpr(ctx, a->rs2, EXT_NONE);
+
 #ifdef TARGET_CHERI
     TCGv_cap_checked_ptr src1;
 #else
     TCGv src1;
 #endif
+    MemOp memop = MO_ALIGN | MO_SQ;
 
     decode_save_opc(ctx, RISCV_UW2_ALWAYS_STORE_AMO);
+    memop |= mo_endian(ctx);
 #ifdef TARGET_CHERI
-    src1 = get_capmode_dependent_rmw_addr(ctx, a->rs1, 0, MO_ALIGN | MO_TESQ);
+    src1 = get_capmode_dependent_rmw_addr(ctx, a->rs1, 0, memop);
 #else
     src1 = get_address(ctx, a->rs1, 0);
 #endif
 
-    tcg_gen_atomic_xchg_tl(dest, src1, src2, SS_MMU_INDEX(ctx),
-                           (MO_ALIGN | MO_TESQ));
+    tcg_gen_atomic_xchg_tl(dest, src1, src2, SS_MMU_INDEX(ctx), memop);
     gen_set_gpr(ctx, a->rd, dest);
     return true;
 }
