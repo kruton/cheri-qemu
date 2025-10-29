@@ -2,6 +2,12 @@
 #ifdef TARGET_AARCH64
 #else
 #endif
+#define PRINT_CAP_FMTSTR                                                       \
+    "v:%d %s p:%2x ct:" TARGET_FMT_ld " b:" TARGET_FMT_lx " a:" TARGET_FMT_lx  \
+#define PRINT_CAP_ARGS(cr)                                                     \
+    (cr)->cr_tag, PRINT_CAP_MODE(cr), (unsigned)cap_get_all_perms(cr),         \
+        cap_get_otype_signext(cr), cap_get_base(cr), cap_get_cursor(cr),       \
+        cap_get_top(cr), (cr)->cr_bounds_valid
 static inline target_ulong cap_get_cursor(const cap_register_t *c)
 {
 }
