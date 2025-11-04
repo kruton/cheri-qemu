@@ -2268,8 +2268,8 @@ static void ram_block_add(RAMBlock *new_block, Error **errp)
                        "Memory region %s uses guest_memfd, "
                        "which is not supported with CPR.",
                        memory_region_name(new_block->mr));
-            migrate_add_blocker_modes(&new_block->cpr_blocker, errp,
-                                      MIG_MODE_CPR_TRANSFER, -1);
+            migrate_add_blocker_modes(&new_block->cpr_blocker,
+                                      BIT(MIG_MODE_CPR_TRANSFER), errp);
         }
     }
 
@@ -3024,6 +3024,9 @@ static void io_mem_init(void)
 {
     memory_region_init_io(&io_mem_unassigned, NULL, &unassigned_mem_ops, NULL,
                           NULL, UINT64_MAX);
+
+    /* Trivially thread-safe since memory accesses are rejected */
+    memory_region_enable_lockless_io(&io_mem_unassigned);
 }
 
 AddressSpaceDispatch *address_space_dispatch_new(FlatView *fv)
@@ -4611,8 +4614,8 @@ void ram_block_add_cpr_blocker(RAMBlock *rb, Error **errp)
                "Memory region %s is not compatible with CPR. share=on is "
                "required for memory-backend objects, and aux-ram-share=on is "
                "required.", memory_region_name(rb->mr));
-    migrate_add_blocker_modes(&rb->cpr_blocker, errp, MIG_MODE_CPR_TRANSFER,
-                              -1);
+    migrate_add_blocker_modes(&rb->cpr_blocker, BIT(MIG_MODE_CPR_TRANSFER),
+                              errp);
 }
 
 void ram_block_del_cpr_blocker(RAMBlock *rb)
