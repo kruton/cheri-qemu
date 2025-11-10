@@ -273,6 +273,8 @@ static int riscv_gdb_get_cheri_reg(CPUState *cs, GByteArray *buf, int n)
         return gdb_get_capreg(buf, cheri_get_current_pcc(env));
     case CHERI_GDB_NUM_GP_CAPREGS + 1:
         return gdb_get_capreg(buf, cheri_get_ddc(env));
+static int riscv_gdb_cheri_reg_no_write(CPUState *cs, uint8_t *mem_buf,
+                                        int n)
     /* All CHERI registers are read-only currently.  */
     if (n <= CHERI_GDB_NUM_CAPREGS) {
         return CHERI_CAP_SIZE + 1;
@@ -390,7 +392,9 @@ static GDBFeature *riscv_gen_dynamic_scr_feature(CPUState *cs, int base_reg)
     int i;
     for (i = 0; i < ARRAY_SIZE(scrs); i++) {
 #endif
+#if defined(TARGET_CHERI_RISCV_STD)
         return gdb_get_capreg(buf, value);
+#endif
 void riscv_cpu_register_gdb_regs_for_features(CPUState *cs)
 {
     RISCVCPUClass *mcc = RISCV_CPU_GET_CLASS(cs);
@@ -442,6 +446,11 @@ void riscv_cpu_register_gdb_regs_for_features(CPUState *cs)
                                  riscv_gen_dynamic_csr_feature(cs, cs->gdb_num_regs),
                                  0);
 #if defined(TARGET_CHERI_RISCV_V9)
+        gdb_register_coprocessor(
+            cs, riscv_gdb_get_scr, riscv_gdb_cheri_reg_no_write,
             riscv_gen_dynamic_scr_feature(cs, cs->gdb_num_regs), 0);
+#elif defined(TARGET_CHERI_RISCV_STD)
+            cs, riscv_gdb_get_ycsr, riscv_gdb_cheri_reg_no_write,
+            riscv_gen_dynamic_ycsr_feature(cs, cs->gdb_num_regs), 0);
     }
 }
