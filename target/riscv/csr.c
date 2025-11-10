@@ -5709,6 +5709,7 @@ static void write_cap_csr_reg(CPURISCVState *env,
             } else if (changed) {
                 /* Only use scaddr if validate changed the address (e.g. epc) */
             }
+        }
         /* Otherwise just fall through to direct write */
     } else {
             /* For XLEN writes we ignore the result as we always use scaddr */
@@ -5725,6 +5726,9 @@ static void write_xtvecc(CPURISCVState *env, riscv_csr_cap_ops *csr_cap_info,
         /* Invalid mode, keep the old one. */
         new_tvec &= ~(target_ulong)3;
         new_tvec |= cap_get_cursor(csr) & 3;
+    if (!cap_has_perms(auth, CAP_ACCESS_SYS_REGS)) {
+        warn_report_once("Setting %s without ASR permission (likely a bug)",
+                         csr_cap_info->name);
         error_report("Attempting to set vector register with unrepresentable "
                      "range (0x" TARGET_FMT_lx ") on %s: " PRINT_CAP_FMTSTR
                      "\r\n",
