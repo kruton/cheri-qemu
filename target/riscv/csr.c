@@ -34,8 +34,15 @@
 #include <stdbool.h>
 #ifdef TARGET_CHERI
 #endif
+#ifdef CONFIG_TCG_LOG_INSTR
+static void log_changed_csr(CPURISCVState *env, int csrno,
+                            target_ulong value)
+{
+    if (qemu_log_instr_enabled(env)) {
         qemu_log_instr_reg(env, csr_ops[csrno].name, value, csrno,
+                           LRI_CSR_ACCESS);
     }
+}
         /* Handle extended/added capability registers as well */
         riscv_csr_cap_ops *cap_ops = get_csr_cap_info(csrno);
         if (cap_ops) {
@@ -5966,11 +5973,11 @@ static RISCVException riscv_csrrw_do64(CPURISCVState *env, int csrno,
     if (write_mask) {
         new_value = (old_value & ~write_mask) | (new_value & write_mask);
         if (csr_ops[csrno].write) {
-            ret = csr_ops[csrno].write(env, csrno, new_value, ra);
             if (ret != RISCV_EXCP_NONE) {
                 return ret;
             }
             csr_ops[csrno].read(env, csrno, &new_value);
+            log_changed_csr(env, csrno, new_value);
         }
     }
 
@@ -6035,7 +6042,6 @@ static RISCVException riscv_csrrw_do128(CPURISCVState *env, int csrno,
             if (ret != RISCV_EXCP_NONE) {
                 return ret;
             }
-            log_changed_csr(env, csrno, new_value);
         }
     }
 
