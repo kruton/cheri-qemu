@@ -122,6 +122,10 @@ void cpu_set_exception_base(int vp_index, target_ulong address)
     vp->env.exception_base = address;
 }
 
+void print_cheri_mips_version(void)
+{
+    printf("Compiled for MIPS64 (with CHERI)\n");
+}
 static void mips_cpu_set_pc(CPUState *cs, vaddr value)
 {
     mips_env_set_pc(cpu_env(cs), value);
