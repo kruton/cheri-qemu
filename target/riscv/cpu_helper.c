@@ -599,6 +599,8 @@ void riscv_cpu_swap_hypervisor_regs(CPURISCVState *env)
         mstatus_mask |= MSTATUS_FS;
     }
     bool current_virt = env->virt_enabled;
+#if defined(TARGET_CHERI_RISCV_STD)
+#endif
 
     /*
      * If zicfilp extension available and henvcfg.LPE = 1,
@@ -1454,6 +1456,7 @@ static int get_physical_address(CPURISCVState *env, hwaddr *physical,
                 return TRANSLATE_FAIL;
             }
 
+#if !defined(TARGET_CHERI_RISCV_V9)
             if (!pbmte && (pte & PTE_PBMT)) {
                 /* Reserved without Svpbmt. */
                 qemu_log_mask(LOG_GUEST_ERROR, "%s: PBMT bits set in PTE, "
@@ -2095,6 +2098,7 @@ bool riscv_cpu_tlb_fill(CPUState *cs, vaddr address, int size,
                              wp_access, retaddr);
 
         raise_mmu_exception(env, address, access_type, pmp_violation,
+#endif
                             first_stage_error, two_stage_lookup,
                             two_stage_indirect_error);
         cpu_loop_exit_restore(cs, retaddr);
@@ -2426,6 +2430,7 @@ void riscv_cpu_do_interrupt(CPUState *cs)
         case RISCV_EXCP_STORE_PAGE_FAULT:
         case RISCV_EXCP_LOAD_CAP_PAGE_FAULT:
         case RISCV_EXCP_STORE_AMO_CAP_PAGE_FAULT:
+#endif
             if (always_storeamo) {
                 cause = promote_load_fault(cause);
             }
