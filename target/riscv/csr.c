@@ -6472,6 +6472,7 @@ riscv_csr_operations csr_ops[CSR_TABLE_SIZE] = {
     [CSR_MTINST]      = { "mtinst",      hmode,   read_mtinst,   write_mtinst,
                           .min_priv_ver = PRIV_VERSION_1_12_0                },
 
+    [CSR_STVAL2]       = { "stval2", smode, read_stval2, write_stval2,
 #ifdef TARGET_CHERI_RISCV_V9
     // CHERI CSRs: For now we always report enabled and dirty and don't support
     // turning off CHERI.  sccsr contains global capability load generation bits
