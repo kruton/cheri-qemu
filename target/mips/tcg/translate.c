@@ -1485,7 +1485,7 @@ void generate_exception_end(DisasContext *ctx, int excp)
     generate_exception_err(ctx, excp, 0);
 }
 
-void generate_exception_break(DisasContext *ctx, int code)
+void generate_exception_break(DisasContext *ctx, MipsExcp code)
 {
 #ifdef CONFIG_USER_ONLY
     /* Pass the break code along to cpu_loop. */
