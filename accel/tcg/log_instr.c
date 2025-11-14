@@ -22,6 +22,7 @@
         qemu_log("%s", iinfo->txt_buffer->str);
     } else {
     log_assert(iinfo != NULL && "Invalid log buffer");
+    bool next_level_active = 0;
      * This function is called when tcg generates code for a dummy slti
      * instruction that changes the log level (or when qemu is started).
      * The generated code terminates the current TB.
