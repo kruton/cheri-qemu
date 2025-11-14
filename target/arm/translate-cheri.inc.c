@@ -34,6 +34,7 @@ static inline TCGv_i64 read_cpu_reg_maybe_0(DisasContext *ctx, int regnum)
 #endif
     if (rn == 31)
         gen_check_sp_alignment(ctx);
+    TCGv_i64 wb = 0;
         TCGv_i32 tcg_rd2 = NULL;
             tcg_rd2 = tcg_constant_i32(rd2);
             if (rd2 != REG_NONE) {
