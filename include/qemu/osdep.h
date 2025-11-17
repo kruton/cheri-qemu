@@ -134,6 +134,11 @@ QEMU_EXTERN_C int daemon(int, int);
 #include <signal.h>
 
 /*
+ * Avoid conflict with Solaris FSCALE definition from <sys/param.h> header,
+ * but we might as well do this unconditionally.
+ */
+#undef FSCALE
+/*
  * Avoid conflict with linux/arch/powerpc/include/uapi/asm/elf.h, included
  * from <asm/sigcontext.h>, but we might as well do this unconditionally.
  */
