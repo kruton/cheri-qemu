@@ -39,10 +39,19 @@ static inline cap_offset_t cap_get_offset(const cap_register_t *c)
 /**
  */
     /*
+     */
 #else
     bool success = CAP_cc(set_permissions)(c, perms);
     assert(success);
 #ifndef TARGET_AARCH64
+/* Accessors handle mapping Arch specific CAP_CC mode to
+ * CHERI_EXEC_MODE
+    return CAP_cc(get_execution_mode)(c) == CAP_CC(MODE_CAP)
+               ? CHERI_EXEC_CAPMODE
+               : CHERI_EXEC_INTMODE;
+    bool ok = CAP_cc(set_execution_mode)(
+        c, mode == CHERI_EXEC_CAPMODE ? CAP_CC(MODE_CAP) : CAP_CC(MODE_INT));
+    assert(ok && "Setting execution mode on non-X capability?");
     target_ulong perms = cap_get_all_perms(c);
     return fix_up_ap(env, &perms) == true;
 #else
@@ -67,6 +76,7 @@ static inline bool cap_otype_is_reserved(target_ulong otype)
      * Morello and the RISC-V standard encodings do not sign extend like the
      * ISAv9 version of CHERI.
 #else
+    /*
     return result < CAP_CC(MIN_RESERVED_OTYPE)
 static inline bool cap_is_sealed_with_reserved_otype(const cap_register_t *c)
     target_ulong otype = cap_get_otype_unsigned(c);
