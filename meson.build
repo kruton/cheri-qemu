@@ -3387,6 +3387,10 @@ foreach target : target_dirs
     config_target += {'TARGET_BIG_ENDIAN': 'n'}
   endif
 
+  if 'TARGET_SUPPORTS_MTTCG' not in config_target
+    config_target += {'TARGET_SUPPORTS_MTTCG': 'y'}
+  endif
+
   foreach k, v: disassemblers
     if host_arch.startswith(k) or config_target['TARGET_BASE_ARCH'].startswith(k)
       foreach sym: v
@@ -3408,7 +3412,7 @@ foreach target : target_dirs
     elif k == 'TARGET_NAME' or k == 'CONFIG_QEMU_INTERP_PREFIX'
       config_target_data.set_quoted(k, v)
     elif v == 'n'
-      # do nothing
+      config_target_data.set(k, 0)
     elif v == 'y'
       config_target_data.set(k, 1)
     elif v == 'n'
