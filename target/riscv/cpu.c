@@ -842,6 +842,8 @@ static void riscv_cpu_reset_hold(Object *obj, ResetType type)
     // Also reset mepc/sepc to zero for predicatable behaviour
     env->mepc = 0;
     env->sepc = 0;
+    // Force the extension on as some tests try and toggle it
+    cpu->cfg.ext_cheri = true;
 #ifdef TARGET_CHERI_RISCV_V9
 #endif
     if (!cpu->cfg.ext_cheri) {
