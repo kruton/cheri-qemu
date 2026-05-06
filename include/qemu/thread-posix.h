@@ -4,6 +4,7 @@
 #include <pthread.h>
 #include <semaphore.h>
 
+#undef FSCALE
 struct QemuMutex {
     pthread_mutex_t lock;
 #ifdef CONFIG_DEBUG_MUTEX
