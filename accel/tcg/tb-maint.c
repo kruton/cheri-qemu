@@ -58,6 +58,9 @@ static bool tb_cmp(const void *ap, const void *bp)
 
     return ((tb_cflags(a) & CF_PCREL || a->pc == b->pc) &&
             a->cs_base == b->cs_base &&
+            a->pcc_base == b->pcc_base &&
+            a->pcc_top == b->pcc_top &&
+            a->cheri_flags == b->cheri_flags &&
             a->flags == b->flags &&
             (tb_cflags(a) & ~CF_INVALID) == (tb_cflags(b) & ~CF_INVALID) &&
             tb_page_addr0(a) == tb_page_addr0(b) &&
