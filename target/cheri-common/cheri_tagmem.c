@@ -32,6 +32,7 @@
  * SUCH DAMAGE.
  */
 #include "cheri_tagmem.h"
+#include "cpu.h"
 #include "exec/exec-all.h"
 #include "exec/log.h"
 #include "exec/ramblock.h"
@@ -292,6 +293,20 @@ void *cheri_tagmem_for_addr(CPUArchState *env, target_ulong vaddr,
     if (tag_write && !tagblk) {
         cheri_tag_new_tagblk(ram, tag);
         CPUState *cpu = env_cpu(env);
+#if defined(TARGET_ARM) || defined(TARGET_AARCH64)
+        /*
+         * For Morello, only flush Stage 1 MMU indexes to preserve the PTW cache
+         * in Phys/Stage2. This drastically reduces the double-miss penalty.
+         */
+        uint16_t idxmap =
+            ARMMMUIdxBit_E10_0 | ARMMMUIdxBit_E20_0 |
+            ARMMMUIdxBit_E10_1 | ARMMMUIdxBit_E10_1_PAN |
+            ARMMMUIdxBit_E2 |
+            ARMMMUIdxBit_E20_2 | ARMMMUIdxBit_E20_2_PAN |
+            ARMMMUIdxBit_E3;
+        tlb_flush_by_mmuidx_all_cpus_synced(cpu, idxmap);
+        tlb_flush_by_mmuidx(cpu, idxmap);
+#else
         /*
          * A vaddr-based shootdown is insufficient as multiple mappings may
          * exist. Short of an inverted table, a complete shootdown is required.
@@ -302,6 +317,7 @@ void *cheri_tagmem_for_addr(CPUArchState *env, target_ulong vaddr,
          * this instruction and THEN exit.
          */
         tlb_flush(cpu);
+#endif
         tagblk = cheri_tag_block(tag, ram);
         cheri_debug_assert(tagblk);
     }
