@@ -2367,6 +2367,7 @@ static bool get_phys_addr_lpae(CPUARMState *env, S1Translate *ptw,
         goto do_fault;
     }
 
+    hwu &= (attrs >> 59);
     /* S1PIE and S2PIE both have a bit for software dirty page tracking. */
     if (access_type == MMU_DATA_STORE && param.pie) {
         /*
