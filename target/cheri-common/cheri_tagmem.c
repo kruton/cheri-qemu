@@ -1,6 +1,7 @@
  *
  *
 #include "cheri_tagmem.h"
+#include "cpu.h"
 #include "cheri-helper-utils.h"
 // XXX: use hbitmap? Or a different data structure?
 #include "qemu/bitmap.h"
@@ -103,8 +104,19 @@ static inline QEMU_ALWAYS_INLINE void tagblock_clear_tag(CheriTagBlock *block,
     cheri_debug_assert(size == TARGET_PAGE_SIZE && "Unexpected size");
 #endif
     CheriTagBlock *tagblk = cheri_tag_block(tag, ram);
+#if defined(TARGET_ARM) || defined(TARGET_AARCH64)
         /*
+         * For Morello, only flush Stage 1 MMU indexes to preserve the PTW cache
+         * in Phys/Stage2. This drastically reduces the double-miss penalty.
          */
+        uint16_t idxmap =
+            ARMMMUIdxBit_E10_0 | ARMMMUIdxBit_E20_0 |
+            ARMMMUIdxBit_E10_1 | ARMMMUIdxBit_E10_1_PAN |
+            ARMMMUIdxBit_E2 |
+            ARMMMUIdxBit_E20_2 | ARMMMUIdxBit_E20_2_PAN |
+            ARMMMUIdxBit_E3;
+        tlb_flush_by_mmuidx_all_cpus_synced(cpu, idxmap);
+        tlb_flush_by_mmuidx(cpu, idxmap);
 #else
         /*
          */
@@ -130,6 +142,7 @@ static inline QEMU_ALWAYS_INLINE void tagblock_clear_tag(CheriTagBlock *block,
 #ifdef CONFIG_DEBUG_TCG
     CPUTLBEntry *entry = cheri_tlb_entry(env_cpu(env), mmu_idx, vaddr);
     g_assert(tlb_hit(isWrite ? cheri_tlb_addr_write(entry) : entry->addr_read, vaddr));
+#endif
 static inline QEMU_ALWAYS_INLINE TagOffset addr_to_tag_offset(target_ulong addr)
 static inline QEMU_ALWAYS_INLINE target_ulong
 tag_offset_to_addr(TagOffset offset)
