@@ -678,7 +678,7 @@ static void riscv_restore_state_to_opc(CPUState *cs,
     if (unlikely(env->pcc._cr_cursor != data[0])) {
         qemu_log_instr_or_mask_msg(env, CPU_LOG_INT,
             "%s: Updating pc from TB: " TARGET_FMT_lx " -> " TARGET_FMT_lx "\n",
-            __func__, (target_ulong)env->pcc._cr_cursor, data[0]);
+            __func__, (target_ulong)env->pcc._cr_cursor, (target_ulong)data[0]);
     }
 #endif
 
