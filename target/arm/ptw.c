@@ -1572,7 +1572,7 @@ static bool get_phys_addr_lpae(CPUARMState *env, S1Translate *ptw,
     fi->type = ARMFault_CapPagePerm;
 
     uint32_t hwu = aa64_effective_hwu(env, mmu_idx, &param, tcr);
-    hwu &= (attrs >> 17);
+    hwu &= (attrs >> 59);
 
     int lc = extract32(hwu, 2, 2);
     int sc = extract32(hwu, 1, 1);
