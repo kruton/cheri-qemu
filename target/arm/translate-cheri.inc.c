@@ -59,6 +59,7 @@ static inline TCGv_i64 read_cpu_reg_maybe_0(DisasContext *ctx, int regnum)
                 return false;
     disas_capreg_state_set(ctx, cd, CREG_FULLY_DECOMPRESSED);
     TCGv_i64 result = cpu_reg(ctx, a->Rd);
+        disas_capreg_state_set(ctx, 30, CREG_FULLY_DECOMPRESSED);
         switch (a->opc) {
             gen_cap_get_sealed_i32(ctx, a->Cn, sealed);
         uint32_t source = AS_ZERO(a->Cn);
