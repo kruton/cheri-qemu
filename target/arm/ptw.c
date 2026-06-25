@@ -124,7 +124,7 @@ static inline uint64_t regime_cctlr(CPUARMState *env, ARMMMUIdx mmu_idx)
 static inline uint32_t aa64_effective_hwu(CPUARMState *env, ARMMMUIdx mmu_idx,
                                           ARMVAParameters *params, uint64_t tcr)
 {
-    if (!params->hpd && (mmu_idx != ARMMMUIdx_Stage2))
+    if (!params->hpd && !regime_is_stage2(mmu_idx))
         return 0;
 
     uint32_t ndx;
@@ -1625,7 +1625,7 @@ static bool get_phys_addr_lpae(CPUARMState *env, S1Translate *ptw,
     // (faults/clears indicated by prot)
     if (lc == 0) {
         result->f.prot |= PAGE_LC_CLEAR;
-    } else if ((mmu_idx != ARMMMUIdx_Stage2) &&
+    } else if (!regime_is_stage2(mmu_idx) &&
                ((lc & 2) && (tgeny ^ (lc & 1)))) {
         result->f.prot |= PAGE_LC_TRAP;
     }
