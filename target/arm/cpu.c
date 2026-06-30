@@ -1692,7 +1692,7 @@ static void arm_cpu_realizefn(DeviceState *dev, Error **errp)
     bool no_aa32 = false;
 
     /* Use pc-relative instructions in system-mode */
-#ifndef CONFIG_USER_ONLY
+#if !defined(CONFIG_USER_ONLY) && !defined(TARGET_CHERI)
     cs->tcg_cflags |= CF_PCREL;
 #endif
 
