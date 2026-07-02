@@ -3268,7 +3268,7 @@ static bool trans_STLR(DisasContext *s, arg_stlr *a)
     }
     tcg_gen_mb(TCG_MO_ALL | TCG_BAR_STRL);
     memop = check_ordered_align(s, a->rn, 0, true, a->sz);
-    clean_addr = gen_mte_and_cheri_check1(s, cpu_reg_sp(s, a->rn == 31), false, true, a->rn != 31, memop, a->rn, false, true);
+    clean_addr = gen_mte_and_cheri_check1(s, cpu_reg_sp(s, a->rn), false, true, a->rn != 31, memop, a->rn, false, true);
     do_gpr_st(s, cpu_reg(s, a->rt), clean_addr, memop, true, a->rt,
               iss_sf, a->lasr);
     return true;
@@ -3289,7 +3289,7 @@ static bool trans_LDAR(DisasContext *s, arg_stlr *a)
         gen_check_sp_alignment(s);
     }
     memop = check_ordered_align(s, a->rn, 0, false, a->sz);
-    clean_addr = gen_mte_and_cheri_check1(s, cpu_reg_sp(s, a->rn == 31), a->rn, false, a->rn != 31, memop, a->rn, false, true);
+    clean_addr = gen_mte_and_cheri_check1(s, cpu_reg_sp(s, a->rn), a->rn, false, a->rn != 31, memop, a->rn, false, true);
     do_gpr_ld(s, cpu_reg(s, a->rt), clean_addr, memop, false, true,
               a->rt, iss_sf, a->lasr);
     tcg_gen_mb(TCG_MO_ALL | TCG_BAR_LDAQ);
@@ -3794,7 +3794,7 @@ static bool do_atomic_ld(DisasContext *s, arg_atomic *a, AtomicThreeOpFn *fn,
         gen_check_sp_alignment(s);
     }
     mop = check_atomic_align(s, a->rn, mop);
-    clean_addr = gen_mte_and_cheri_check1(s, cpu_reg_sp(s, a->rn == 31), true, false, a->rn != 31, mop, a->rn, false, true);
+    clean_addr = gen_mte_and_cheri_check1(s, cpu_reg_sp(s, a->rn), true, false, a->rn != 31, mop, a->rn, false, true);
     tcg_rs = read_cpu_reg(s, a->rs, true);
     tcg_rt = cpu_reg(s, a->rt);
     if (invert) {
@@ -3850,7 +3850,7 @@ static bool trans_LDAPR(DisasContext *s, arg_LDAPR *a)
         gen_check_sp_alignment(s);
     }
     mop = check_atomic_align(s, a->rn, a->sz);
-    clean_addr = gen_mte_and_cheri_check1(s, cpu_reg_sp(s, a->rn == 31), a->rn, false, a->rn != 31, mop, a->rn, false, true);
+    clean_addr = gen_mte_and_cheri_check1(s, cpu_reg_sp(s, a->rn), a->rn, false, a->rn != 31, mop, a->rn, false, true);
     /*
      * LDAPR* are a special case because they are a simple load, not a
      * fetch-and-do-something op.
@@ -3909,7 +3909,9 @@ static bool trans_LDRA(DisasContext *s, arg_LDRA *a)
 
 static bool trans_LDAPR_i(DisasContext *s, arg_ldapr_stlr_i *a)
 {
-    TCGv_i64 clean_addr, dirty_addr;
+
+    TCGv_i64 dirty_addr;
+    TCGv_cap_checked_ptr clean_addr;
     MemOp mop = a->sz | (a->sign ? MO_SIGN : 0);
     bool iss_sf = ldst_iss_sf(a->sz, a->sign, a->ext);
 
@@ -3921,16 +3923,25 @@ static bool trans_LDAPR_i(DisasContext *s, arg_ldapr_stlr_i *a)
         gen_check_sp_alignment(s);
     }
 
+#ifdef TARGET_CHERI
+    if (IS_C64(s) && a->sz == 3) {
+        return load_store_implementation(s, true, false, AS_ZERO(a->rt), REG_NONE,
+                                         4, 4, a->rn, REG_NONE, a->imm, false, false,
+                                         false, false, false, false, 1, 0,
+                                         OPTION_NONE, 0, false);
+    }
+#endif
+
     mop = check_ordered_align(s, a->rn, a->imm, false, mop);
     dirty_addr = read_cpu_reg_sp(s, a->rn, 1);
     tcg_gen_addi_i64(dirty_addr, dirty_addr, a->imm);
-    clean_addr = clean_data_tbi(s, dirty_addr);
+    clean_addr = gen_mte_and_cheri_check1(s, dirty_addr, true, false, a->rn != 31, mop, a->rn, false, true);
 
     /*
      * Load-AcquirePC semantics; we implement as the slightly more
      * restrictive Load-Acquire.
      */
-    do_gpr_ld(s, cpu_reg(s, a->rt), (TCGv_cap_checked_ptr)clean_addr, mop, a->ext, true,
+    do_gpr_ld(s, cpu_reg(s, a->rt), clean_addr, mop, a->ext, true,
               a->rt, iss_sf, true);
     tcg_gen_mb(TCG_MO_ALL | TCG_BAR_LDAQ);
     return true;
@@ -3938,7 +3949,8 @@ static bool trans_LDAPR_i(DisasContext *s, arg_ldapr_stlr_i *a)
 
 static bool trans_STLR_i(DisasContext *s, arg_ldapr_stlr_i *a)
 {
-    TCGv_i64 clean_addr, dirty_addr;
+    TCGv_i64 dirty_addr;
+    TCGv_cap_checked_ptr clean_addr;
     MemOp mop = a->sz;
     bool iss_sf = ldst_iss_sf(a->sz, a->sign, a->ext);
 
@@ -3952,14 +3964,25 @@ static bool trans_STLR_i(DisasContext *s, arg_ldapr_stlr_i *a)
         gen_check_sp_alignment(s);
     }
 
+#ifdef TARGET_CHERI
+    if (IS_C64(s) && a->sz == 3) {
+        return load_store_implementation(s, false, false, AS_ZERO(a->rt), REG_NONE,
+                                         4, 4, a->rn, REG_NONE, a->imm, false, false,
+                                         false, false, false, false, 1, 0,
+                                         OPTION_NONE, 0, false);
+    }
+#endif
+
     mop = check_ordered_align(s, a->rn, a->imm, true, mop);
     dirty_addr = read_cpu_reg_sp(s, a->rn, 1);
     tcg_gen_addi_i64(dirty_addr, dirty_addr, a->imm);
-    clean_addr = clean_data_tbi(s, dirty_addr);
+    clean_addr = gen_mte_and_cheri_check1(s, dirty_addr, false, true, a->rn != 31, mop, a->rn, false, true);
 
     /* Store-Release semantics */
     tcg_gen_mb(TCG_MO_ALL | TCG_BAR_STRL);
-    do_gpr_st(s, cpu_reg(s, a->rt), (TCGv_cap_checked_ptr)clean_addr, mop, true, a->rt, iss_sf, true);
+
+    do_gpr_st(s, cpu_reg(s, a->rt), clean_addr, mop, true, a->rt,
+              iss_sf, true);
     return true;
 }
 
