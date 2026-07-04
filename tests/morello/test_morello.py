@@ -79,10 +79,6 @@ def find_morello_tests():
 
 @pytest.mark.parametrize("elf_file,should_print_failed", find_morello_tests())
 def test_morello_elf_file(elf_file: Path, should_print_failed: bool, qemu_binary):
-    compressed_elf_file = elf_file.with_name(elf_file.name + ".gz")
-    # If the .elf doesn't exist or is older than the .gz, we extract the .elf.gz
-    if not elf_file.exists() or elf_file.stat()[stat.ST_MTIME] < compressed_elf_file.stat()[stat.ST_MTIME]:
-        subprocess.check_call(["gunzip", "-k", str(compressed_elf_file)])
     command = [str(qemu_binary), *qemu_args, str(elf_file)]
     assert elf_file.exists(), elf_file
     # Timeout will fail the test
