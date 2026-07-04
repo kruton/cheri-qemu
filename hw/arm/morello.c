@@ -40,6 +40,7 @@
 #include "cheri_tagmem.h"
 #include "sysemu/sysemu.h"
 #include "hw/arm/armtrickbox.h"
+#include "hw/arm/machines-qom.h"
 
 /* A basic morello board. There is no need to use this if only a morello CPU
  * is required (use the virt board instead). This board is designed to be a
@@ -230,6 +231,7 @@ static const TypeInfo morello_machine_types[] = { {
     .instance_init = morello_instance_init,
     .instance_size = sizeof(MorelloMachineState),
     .class_size = sizeof(MorelloMachineClass),
+    .interfaces = aarch64_machine_interfaces,
 } };
 
 DEFINE_TYPES(morello_machine_types)
