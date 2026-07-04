@@ -7,7 +7,7 @@ import stat
 import typing
 from pathlib import Path
 
-qemu_args = "-machine morello -nographic -serial none -monitor none -kernel".split()
+qemu_args = "-machine morello -accel tcg,thread=single -nographic -serial none -monitor none -kernel".split()
 
 @pytest.fixture
 def qemu_binary(request) -> Path:
