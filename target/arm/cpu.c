@@ -222,9 +222,18 @@ static void cp_reg_check_reset(gpointer key, gpointer value,  gpointer opaque)
     if (ri->type & (ARM_CP_SPECIAL_MASK | ARM_CP_ALIAS | ARM_CP_NO_RAW)) {
         return;
     }
+    if (!ri->fieldoffset) {
         return;
     }
 
+#ifdef TARGET_CHERI
+     * Check that all capability registers were initialized to a valid capability
+    if (cpreg_field_is_cap(ri)) {
+        cap_register_t creg_old = read_raw_cp_reg_cap(&cpu->env, ri);
+        if (creg_old.cr_extra != CREG_FULLY_DECOMPRESSED) {
+        }
+        return;
+#endif
     oldvalue = read_raw_cp_reg(&cpu->env, ri);
     cp_reg_reset(key, value, opaque);
     newvalue = read_raw_cp_reg(&cpu->env, ri);
