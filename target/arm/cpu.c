@@ -268,28 +268,26 @@ static void cp_reg_check_reset(gpointer key, gpointer value,  gpointer opaque)
     ARMCPU *cpu = opaque;
     uint64_t oldvalue, newvalue;
 
+    if (ri->type & (ARM_CP_SPECIAL_MASK | ARM_CP_ALIAS | ARM_CP_NO_RAW)) {
+        return;
+    }
+    if (!ri->fieldoffset) {
+        return;
+    }
+
 #ifdef TARGET_CHERI
     /*
-     * Check that all capaility register were initialized to a valid capability
+     * Check that all capability registers were initialized to a valid capability
      * rather than just memset() to zero.
      */
     if (cpreg_field_is_cap(ri)) {
-        cap_register_t creg_value = read_raw_cp_reg_cap(&cpu->env, ri);
+        cap_register_t creg_old = read_raw_cp_reg_cap(&cpu->env, ri);
         _Static_assert(CREG_FULLY_DECOMPRESSED != 0, "need nonzero value");
-        if (creg_value.cr_extra != CREG_FULLY_DECOMPRESSED) {
+        if (creg_old.cr_extra != CREG_FULLY_DECOMPRESSED) {
             error_report("Register %s was not initialized to a valid state",
                          ri->name);
             abort();
         }
-    }
-#endif
-
-    if (ri->type & (ARM_CP_SPECIAL_MASK | ARM_CP_ALIAS | ARM_CP_NO_RAW)) {
-        return;
-    }
-#ifdef TARGET_CHERI
-    if (cpreg_field_is_cap(ri)) {
-        cap_register_t creg_old = read_raw_cp_reg_cap(&cpu->env, ri);
         cp_reg_reset(key, value, opaque);
         cap_register_t creg_new = read_raw_cp_reg_cap(&cpu->env, ri);
         assert(CAP_cc(raw_equal)(&creg_old, &creg_new));
