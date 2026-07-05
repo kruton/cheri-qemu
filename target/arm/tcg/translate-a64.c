@@ -4217,6 +4217,7 @@ static void op_addr_ldstpair_post(DisasContext *s, arg_ldstpair *a,
             tcg_gen_addi_i64(dirty_addr, dirty_addr, offset);
         }
         tcg_gen_mov_i64(cpu_reg_sp(s, a->rn), dirty_addr);
+        gpr_reg_modified(s, a->rn, a->rn == 31);
     }
 }
 
@@ -4315,6 +4316,8 @@ static bool trans_LDP(DisasContext *s, arg_ldstpair *a)
             tcg_gen_extr_i128_i64(tcg_rt2, tcg_rt, tmp);
         }
     }
+    gpr_reg_modified(s, a->rt, false);
+    gpr_reg_modified(s, a->rt2, false);
     op_addr_ldstpair_post(s, a, dirty_addr, offset);
     return true;
 }
@@ -4443,6 +4446,7 @@ static void op_addr_ldst_imm_post(DisasContext *s, arg_ldst_imm *a,
             tcg_gen_addi_i64(dirty_addr, dirty_addr, offset);
         }
         tcg_gen_mov_i64(cpu_reg_sp(s, a->rn), dirty_addr);
+        gpr_reg_modified(s, a->rn, a->rn == 31);
     }
 }
 
@@ -4603,6 +4607,12 @@ static bool trans_STR_v(DisasContext *s, arg_ldst *a)
     return true;
 }
 
+static void op_addr_ldst_post(DisasContext *s, arg_ldst *a,
+                              TCGv_i64 dirty_addr)
+{
+    tcg_gen_mov_i64(cpu_reg_sp(s, a->rn), dirty_addr);
+    gpr_reg_modified(s, a->rn, a->rn == 31);
+}
 
 static bool do_atomic_ld(DisasContext *s, arg_atomic *a, AtomicThreeOpFn *fn,
                          int sign, bool invert)
@@ -4644,6 +4654,7 @@ static bool do_atomic_ld(DisasContext *s, arg_atomic *a, AtomicThreeOpFn *fn,
             g_assert_not_reached();
         }
     }
+    gpr_reg_modified(s, a->rt, false);
     return true;
 }
 
@@ -4697,6 +4708,8 @@ static bool do_atomic128_ld(DisasContext *s, arg_atomic128 *a,
     fn(t16, clean_addr, t16, get_mem_index(s), mop);
 
     tcg_gen_extr_i128_i64(cpu_reg(s, rlo), cpu_reg(s, rhi), t16);
+    gpr_reg_modified(s, rlo, false);
+    gpr_reg_modified(s, rhi, false);
     return true;
 }
 
@@ -4774,6 +4787,7 @@ static bool trans_LDRA(DisasContext *s, arg_LDRA *a)
 
     if (a->w) {
         tcg_gen_mov_i64(cpu_reg_sp(s, a->rn), dirty_addr);
+        gpr_reg_modified(s, a->rn, a->rn == 31);
     }
     return true;
 }
