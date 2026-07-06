@@ -95,6 +95,10 @@ option('debug_remap', type: 'boolean', value: false,
        description: 'syscall buffer debugging support')
 option('tcg_interpreter', type: 'boolean', value: false,
        description: 'TCG with bytecode interpreter (slow)')
+option('tcg_log_instr', type: 'boolean', value: true,
+       description: 'TCG instruction logging')
+option('rvfi_dii', type: 'boolean', value: false,
+       description: 'RVFI-DII')
 option('safe_stack', type: 'boolean', value: false,
        description: 'SafeStack Stack Smash Protection (requires clang/llvm and coroutine backend ucontext)')
 option('asan', type: 'boolean', value: false,

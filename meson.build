@@ -2435,6 +2435,11 @@ if have_slirp_smbd
 endif
 
 config_host_data.set('HOST_' + host_arch.to_upper(), 1)
+if get_option('tcg_log_instr')
+  config_host_data.set('CONFIG_TCG_LOG_INSTR', 1)
+endif
+if get_option('rvfi_dii')
+  config_host_data.set('CONFIG_RVFI_DII', 1)
 
 kvm_targets_c = '""'
 if get_option('kvm').allowed() and host_os == 'linux'
@@ -3364,6 +3369,8 @@ foreach target : target_dirs
     error('No accelerator available for target @0@'.format(target))
   endif
 
+  if get_option('tcg_log_instr')
+  if get_option('rvfi_dii')
   if 'TARGET_NEED_FDT' in config_target and not fdt.found()
     if default_targets
       warning('Disabling ' + target + ' due to missing libfdt')
@@ -4832,6 +4839,7 @@ if config_all_accel.has_key('CONFIG_TCG')
   endif
   summary_info += {'TCG plugins':       get_option('plugins')}
   summary_info += {'TCG debug enabled': get_option('debug_tcg')}
+  summary_info += {'TCG instruction logging': get_option('tcg_log_instr')}
   if have_linux_user or have_bsd_user
     summary_info += {'syscall buffer debugging support': get_option('debug_remap')}
   endif
@@ -4960,6 +4968,7 @@ summary_info += {'Multipath support': mpathpersist}
 summary_info += {'Linux AIO support': libaio}
 summary_info += {'Linux io_uring support': linux_io_uring}
 summary_info += {'ATTR/XATTR support': libattr}
+summary_info += {'RVFI-DII':          get_option('rvfi_dii')}
 summary_info += {'RDMA support':      rdma}
 summary_info += {'fdt support':       fdt_opt == 'internal' ? 'internal' : fdt}
 summary_info += {'libcap-ng support': libcap_ng}
