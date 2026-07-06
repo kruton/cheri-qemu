@@ -49,6 +49,9 @@ static inline TCGv_i64 read_cpu_reg_maybe_0(DisasContext *ctx, int regnum)
             if (exclusive || acquire_release)
                 memop = finalize_memop(ctx, memop);  /* enforce alignment */
                 assert(rd2 == REG_NONE);
+            MemOp memop = finalize_memop(ctx, ctx->be_data | size | MO_ALIGN);
+                do_fp_ld(ctx, rd, checked, memop);
+                do_fp_st(ctx, rd, checked, memop);
         gen_reg_modified_cap(ctx, a->Rd);
         gen_lazy_cap_set_int(ctx, a->Rd);
     gen_reg_modified_cap(ctx, a->Cd);
