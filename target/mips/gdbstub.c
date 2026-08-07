@@ -22,6 +22,9 @@
 #include "internal.h"
 #include "gdbstub/helpers.h"
 #include "fpu_helper.h"
+#ifdef TARGET_CHERI
+#include "cheri-helper-utils.h"
+#endif
 
 int mips_cpu_gdb_read_register(CPUState *cs, GByteArray *mem_buf, int n)
 {
@@ -59,7 +62,18 @@ int mips_cpu_gdb_read_register(CPUState *cs, GByteArray *mem_buf, int n)
         return gdb_get_regl(mem_buf, (int32_t)env->CP0_Cause);
     case 37:
         // FIXME: should this be vaddr or offset for CHERI?
+        return gdb_get_regl(mem_buf, PC_ADDR(env) |
                                      !!(env->hflags & MIPS_HFLAG_M16));
+    case 72:
+        return gdb_get_regl(mem_buf, 0); /* fp */
+    case 89:
+        return gdb_get_regl(mem_buf, (int32_t)env->CP0_PRid);
+    default:
+        if (n > 89) {
+            return 0;
+        }
+        /* 16 embedded regs.  */
+        return gdb_get_regl(mem_buf, 0);
     }
 
     return 0;
@@ -117,16 +131,18 @@ int mips_cpu_gdb_write_register(CPUState *cs, uint8_t *mem_buf, int n)
 #endif
         break;
     case 37:
-        env->active_tc.PC = tmp & ~(target_ulong)1;
         // FIXME: should this be vaddr or offset for CHERI
+        mips_update_pc(env, tmp & ~(target_ulong)1, /*can_be_unrepresentable=*/true);
         if (tmp & 1) {
             env->hflags |= MIPS_HFLAG_M16;
         } else {
             env->hflags &= ~(MIPS_HFLAG_M16);
         }
         break;
+    case 72: /* fp, ignored */
+        break;
     default:
-        if (n > 72) {
+        if (n > 89) {
             return 0;
         }
         /* Other registers are readonly.  Ignore writes.  */
@@ -136,64 +152,48 @@ int mips_cpu_gdb_write_register(CPUState *cs, uint8_t *mem_buf, int n)
     return sizeof(target_ulong);
 }
 
-int mips_gdb_get_sys_reg(CPUMIPSState *env, uint8_t *mem_buf, int n)
+int mips_gdb_get_sys_reg(CPUState *cs, GByteArray *buf, int n)
 {
+    MIPSCPU *cpu = MIPS_CPU(cs);
+    CPUMIPSState *env = &cpu->env;
     if (n == 0)
-        return gdb_get_regl(mem_buf, (int32_t)env->CP0_PRid);
+        return gdb_get_regl(buf, (int32_t)env->CP0_PRid);
 
     return 0;
 }
 
-int mips_gdb_set_sys_reg(CPUMIPSState *env, uint8_t *mem_buf, int n)
+int mips_gdb_set_sys_reg(CPUState *cs, uint8_t *mem_buf, int n)
 {
     /* System registers are readonly.  Ignore writes.  */
     if (n == 0)
+        return sizeof(target_ulong);
 
     return 0;
 }
 
 #if defined(TARGET_CHERI)
-static int gdb_get_capreg(uint8_t *mem_buf, cap_register_t *cap)
-{
-#ifdef CHERI_128
-    stq_p(mem_buf, cap->cr_pesbt);
-    stq_p(mem_buf + 8, cap->cr_base + cap->cr_offset);
-    return 16;
-#elif defined(CHERI_MAGIC128)
-    /* XXX: Would need to generate pesbt. */
-    stq_p(mem_buf, 0);
-    stq_p(mem_buf + 8, cap->cr_base + cap->cr_offset);
-    return 16;
-#else
-
-
-    ret = ((uint64_t)cap->cr_otype << 32) |
-        (perms << 1) | (cap->cr_sealed ? 1UL : 0UL);
-	
-    stq_p(mem_buf + 8, cap->cr_base + cap->cr_offset);
-    return 32;
-#endif
-}
+#define CHERI_GDB_NUM_GP_CAPREGS 32
+#define CHERI_GDB_NUM_SPECIAL_CAPREGS 10
+#define CHERI_GDB_NUM_CAPREGS (CHERI_GDB_NUM_GP_CAPREGS + CHERI_GDB_NUM_SPECIAL_CAPREGS)
+#define CHERI_GDB_NUM_INTREGS 2
+#define CHERI_GDB_NUM_REGS (CHERI_GDB_NUM_CAPREGS + CHERI_GDB_NUM_INTREGS)
 _Static_assert(CHERI_GDB_NUM_REGS == 44, "");
 
-int mips_gdb_get_cheri_reg(CPUMIPSState *env, uint8_t *mem_buf, int n)
+int mips_gdb_get_cheri_reg(CPUState *cs, GByteArray *mem_buf, int n)
 {
-	return gdb_get_capreg(mem_buf, &env->active_tc.C[n]);
+    MIPSCPU *cpu = MIPS_CPU(cs);
+    CPUMIPSState *env = &cpu->env;
+    if (n < 0)
+        return 0;
+
+    if (n < CHERI_GDB_NUM_GP_CAPREGS) {
+        return gdb_get_general_purpose_capreg(mem_buf, env, n);
+    }
     switch (n) {
     case 32:
         return gdb_get_capreg(mem_buf, &env->active_tc.CHWR.DDC);
     case 33:
-	return gdb_get_regl(mem_buf, env->CP2_CapCause);
-	uint64_t cap_valid;
-	int i;
-
-	cap_valid = 0;
-	    if (env->active_tc.C[i].cr_tag)
-		cap_valid |= ((uint64_t)1 << i);
-	}
-	if (env->active_tc.PCC.cr_tag)
-	    cap_valid |= ((uint64_t)1 << 32);
-	return gdb_get_regl(mem_buf, cap_valid);
+        return gdb_get_capreg(mem_buf, cheri_get_current_pcc(env));
     case 34:
         return gdb_get_capreg(mem_buf, &env->active_tc.CHWR.UserTlsCap);
     case 35:
@@ -209,11 +209,22 @@ int mips_gdb_get_cheri_reg(CPUMIPSState *env, uint8_t *mem_buf, int n)
     case 40:
         return gdb_get_capreg(mem_buf, &env->active_tc.CHWR.EPCC);
     case 41:
+        return gdb_get_capreg(mem_buf, &env->active_tc.CHWR.ErrorEPCC);
     case CHERI_GDB_NUM_CAPREGS:
+        return gdb_get_regl(mem_buf, env->CP2_CapCause);
     case CHERI_GDB_NUM_CAPREGS + 1: {
+        uint64_t cap_valid;
+        int i;
+
+        cap_valid = 0;
         if (env->active_tc.CHWR.DDC.cr_tag)
             cap_valid |= 1;
         for (i = 1; i < 32; i++) {
+            if (get_capreg_tag(env, i))
+                cap_valid |= ((uint64_t)1 << i);
+        }
+        if (cheri_get_recent_pcc(env)->cr_tag)
+            cap_valid |= ((uint64_t)1 << 32);
         cap_valid |= ((uint64_t)env->active_tc.CHWR.UserTlsCap.cr_tag << 33);
         cap_valid |= ((uint64_t)env->active_tc.CHWR.PrivTlsCap.cr_tag << 34);
         cap_valid |= ((uint64_t)env->active_tc.CHWR.KR1C.cr_tag << 35);
@@ -222,22 +233,23 @@ int mips_gdb_get_cheri_reg(CPUMIPSState *env, uint8_t *mem_buf, int n)
         cap_valid |= ((uint64_t)env->active_tc.CHWR.KDC.cr_tag << 38);
         cap_valid |= ((uint64_t)env->active_tc.CHWR.EPCC.cr_tag << 39);
         cap_valid |= ((uint64_t)env->active_tc.CHWR.ErrorEPCC.cr_tag << 40);
+        return gdb_get_regl(mem_buf, cap_valid);
     }
     }
 
     return 0;
 }
 
-int mips_gdb_set_cheri_reg(CPUMIPSState *env, uint8_t *mem_buf, int n)
+int mips_gdb_set_cheri_reg(CPUState *cs, uint8_t *mem_buf, int n)
 {
     /* All CHERI registers are read-only currently.  */
-    if (n < 33)
-#if defined(CHERI_128) || defined(CHERI_MAGIC128)
-	return 16;
-#else
-        return 32;
-#endif
-	return 8;
+    if (n < CHERI_GDB_NUM_CAPREGS) {
+        return CHERI_CAP_SIZE;
+    }
+
+    /* Save for the status registers */
+    if (n < CHERI_GDB_NUM_CAPREGS + CHERI_GDB_NUM_INTREGS)
+        return 8;
 
     return 0;
 }

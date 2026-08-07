@@ -33,6 +33,7 @@
 #include "exec/icount.h"
 #include "qemu/main-loop.h"
 #include "qemu/guest-random.h"
+#include "qemu/log.h"
 #include "qemu/timer.h"
 #include "exec/cputlb.h"
 #include "exec/hwaddr.h"
@@ -66,6 +67,10 @@ void tcg_cpu_init_cflags(CPUState *cpu, bool parallel)
 
     cflags |= parallel ? CF_PARALLEL : 0;
     cflags |= icount_enabled() ? CF_USE_ICOUNT : 0;
+#ifdef CONFIG_TCG_LOG_INSTR
+    if (cpu->log_state.loglevel_active && qemu_loglevel_mask(CPU_LOG_INSTR))
+        cflags |= CF_LOG_INSTR;
+#endif
     tcg_cflags_set(cpu, cflags);
 }
 

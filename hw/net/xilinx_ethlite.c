@@ -39,12 +39,24 @@
 #include "net/net.h"
 #include "trace.h"
 
+#include "xilinx_ethlite_phy.c"
+
+#define D(x)
+
 #define BUFSZ_MAX      0x07e4
 #define A_MDIO_BASE    0x07e4
 #define A_TX_BASE0     0x07f4
 #define A_TX_BASE1     0x0ff4
 #define A_RX_BASE0     0x17fc
 #define A_RX_BASE1     0x1ffc
+
+enum {
+    MDIO_ADDR = 0,
+    MDIO_WDATA = 1,
+    MDIO_RDATA = 2,
+    MDIO_CTRL = 3,
+    MDIO_MAX
+};
 
 enum {
     TX_LEN =  0,
@@ -97,8 +109,10 @@ struct XlnxXpsEthLite
     unsigned int port_index; /* dual port RAM index */
 
     UnimplementedDeviceState rsvd;
-    UnimplementedDeviceState mdio;
+    MemoryRegion mdio;
+    uint32_t mdio_regs[MDIO_MAX];
     XlnxXpsEthLitePort port[2];
+
     struct MDIOBus mdio_bus;
     struct PHY phy;
     unsigned int c_phyaddr;
@@ -127,10 +141,75 @@ static void *rxbuf_ptr(XlnxXpsEthLite *s, unsigned port_index)
     return memory_region_get_ram_ptr(&s->port[port_index].rxbuf);
 }
 
+static uint64_t mdio_read(void *opaque, hwaddr addr, unsigned int size)
+{
+    XlnxXpsEthLite *s = opaque;
+    uint32_t r = 0;
+
+    switch (addr >> 2) {
     case MDIO_ADDR:
     case MDIO_WDATA:
     case MDIO_RDATA:
     case MDIO_CTRL:
+        r = s->mdio_regs[addr >> 2];
+        break;
+    default:
+        g_assert_not_reached();
+    }
+
+    return r;
+}
+
+static void mdio_write(void *opaque, hwaddr addr, uint64_t value,
+                       unsigned int size)
+{
+    XlnxXpsEthLite *s = opaque;
+
+    switch (addr >> 2) {
+    case MDIO_CTRL:
+        D(qemu_log("%s addr=" HWADDR_FMT_plx " val=%x\n",
+                   __func__, addr, (unsigned)value));
+        if (value & 1) {
+            uint32_t mdio_addr = s->mdio_regs[MDIO_ADDR];
+            unsigned int regaddr = (mdio_addr >> 0) & 0x1f;
+            unsigned int phyaddr = (mdio_addr >> 5) & 0x1f;
+            unsigned int op = (mdio_addr >> 10) & 1;
+            uint16_t phy_reg;
+
+            if (!op) {
+                phy_reg = s->mdio_regs[MDIO_WDATA];
+                mdio_write_req(&s->mdio_bus, phyaddr, regaddr, phy_reg);
+            } else {
+                phy_reg = mdio_read_req(&s->mdio_bus, phyaddr, regaddr);
+                s->mdio_regs[MDIO_RDATA] = phy_reg;
+            }
+        }
+        s->mdio_regs[MDIO_CTRL] = value & (1 << 3);
+        break;
+    case MDIO_ADDR:
+    case MDIO_WDATA:
+    case MDIO_RDATA:
+        s->mdio_regs[addr >> 2] = value;
+        break;
+    default:
+        g_assert_not_reached();
+    }
+}
+
+static const MemoryRegionOps eth_mdio_ops = {
+    .read = mdio_read,
+    .write = mdio_write,
+    .endianness = DEVICE_NATIVE_ENDIAN,
+    .impl = {
+        .min_access_size = 4,
+        .max_access_size = 4,
+    },
+    .valid = {
+        .min_access_size = 4,
+        .max_access_size = 4,
+    },
+};
+
 static uint64_t port_tx_read(void *opaque, hwaddr addr, unsigned int size)
 {
     XlnxXpsEthLite *s = opaque;
@@ -337,13 +416,10 @@ static void xilinx_ethlite_realize(DeviceState *dev, Error **errp)
                            sysbus_mmio_get_region(SYS_BUS_DEVICE(&s->rsvd), 0),
                            -1);
 
-    object_initialize_child(OBJECT(dev), "ethlite.mdio", &s->mdio,
-                            TYPE_UNIMPLEMENTED_DEVICE);
-    qdev_prop_set_string(DEVICE(&s->mdio), "name", "ethlite.mdio");
-    qdev_prop_set_uint64(DEVICE(&s->mdio), "size", 4 * 4);
-    sysbus_realize(SYS_BUS_DEVICE(&s->mdio), &error_fatal);
-    memory_region_add_subregion(&s->container, A_MDIO_BASE,
-                           sysbus_mmio_get_region(SYS_BUS_DEVICE(&s->mdio), 0));
+    memory_region_init_io(&s->mdio, OBJECT(dev),
+                          &eth_mdio_ops, s,
+                          "ethlite.mdio", 4 * MDIO_MAX);
+    memory_region_add_subregion(&s->container, A_MDIO_BASE, &s->mdio);
 
     for (unsigned i = 0; i < 2; i++) {
         memory_region_init_ram(&s->port[i].txbuf, OBJECT(dev),
@@ -375,6 +451,7 @@ static void xilinx_ethlite_realize(DeviceState *dev, Error **errp)
                           object_get_typename(OBJECT(dev)), dev->id,
                           &dev->mem_reentrancy_guard, s);
     qemu_format_nic_info_str(qemu_get_queue(s->nic), s->conf.macaddr.a);
+
     tdk_init(&s->phy);
     mdio_attach(&s->mdio_bus, &s->phy, s->c_phyaddr);
 }

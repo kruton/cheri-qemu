@@ -130,7 +130,9 @@ struct XilinxAXIDMAStreamSink {
 enum {
     XILINX_AXIDMA_FLAG_64BIT_BIT,
 };
+
 #define XILINX_AXIDMA_FLAG_64BIT (1 << XILINX_AXIDMA_FLAG_64BIT_BIT)
+
 struct XilinxAXIDMA {
     SysBusDevice busdev;
     MemoryRegion iomem;
@@ -208,10 +210,15 @@ static inline hwaddr stream_ptr_get(struct Stream *s, int base)
     } else {
         return s->regs[base];
     }
+}
+
 static inline void stream_ptr_set(struct Stream *s, int base, hwaddr addr)
+{
     s->regs[base] = addr;
     if (s->dma->flags & XILINX_AXIDMA_FLAG_64BIT)
         s->regs[base + 1] = addr >> 32;
+}
+
 static MemTxResult stream_desc_load(struct Stream *s, hwaddr addr)
 {
     struct SDesc *d = &s->desc;
@@ -236,6 +243,8 @@ static MemTxResult stream_desc_load(struct Stream *s, hwaddr addr)
 
     /* Convert from LE into host endianness.  */
     if (s->dma->flags & XILINX_AXIDMA_FLAG_64BIT) {
+        d->buffer_address = le64_to_cpu(d->buffer_address);
+        d->nxtdesc = le64_to_cpu(d->nxtdesc);
     } else {
         d->buffer_address = le32_to_cpu(*(uint32_t *)&d->buffer_address);
         d->nxtdesc = le32_to_cpu(*(uint32_t *)&d->nxtdesc);
@@ -321,7 +330,6 @@ static void stream_process_mem2s(struct Stream *s, StreamSink *tx_data_dev,
     }
 
     while (1) {
-        if (MEMTX_OK != stream_desc_load(s, s->regs[R_CURDESC])) {
         if (stream_desc_load(s, stream_ptr_get(s, R_CURDESC)) != MEMTX_OK) {
             break;
         }
@@ -381,7 +389,7 @@ static size_t stream_process_s2mem(struct Stream *s, unsigned char *buf,
     }
 
     while (len) {
-        if (MEMTX_OK != stream_desc_load(s, s->regs[R_CURDESC])) {
+        if (stream_desc_load(s, stream_ptr_get(s, R_CURDESC)) != MEMTX_OK) {
             break;
         }
 
@@ -414,9 +422,9 @@ static size_t stream_process_s2mem(struct Stream *s, unsigned char *buf,
         s->sof = eop;
 
         /* Advance.  */
-        prev_d = s->regs[R_CURDESC];
-        s->regs[R_CURDESC] = s->desc.nxtdesc;
-        if (prev_d == s->regs[R_TAILDESC]) {
+        prev_d = stream_ptr_get(s, R_CURDESC);
+        stream_ptr_set(s, R_CURDESC, s->desc.nxtdesc);
+        if (prev_d == stream_ptr_get(s, R_TAILDESC)) {
             s->regs[R_DMASR] |= DMASR_IDLE;
             break;
         }
@@ -558,14 +566,18 @@ static void axidma_write(void *opaque, hwaddr addr,
             if ((addr == R_TAILDESC_MSB) &&
                 !(s->dma->flags & XILINX_AXIDMA_FLAG_64BIT))
                 break;
+
             s->regs[addr] = value;
             if ((addr == R_TAILDESC) &&
                 (s->dma->flags & XILINX_AXIDMA_FLAG_64BIT))
+                break;
+
             s->regs[R_DMASR] &= ~DMASR_IDLE; /* Not idle.  */
             if (!sid) {
                 stream_process_mem2s(s, d->tx_data_dev, d->tx_control_dev);
             }
             break;
+
         default:
             D(qemu_log("%s: ch=%d addr=" HWADDR_FMT_plx " v=%x\n",
                   __func__, sid, addr * 4, (unsigned)value));

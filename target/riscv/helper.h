@@ -1,5 +1,6 @@
 /* Exceptions */
 DEF_HELPER_2(raise_exception, noreturn, env, i32)
+DEF_HELPER_FLAGS_4(check_alignment, TCG_CALL_NO_WG, void, env, tl, memop, i32)
 
 /* Floating Point - rounding mode */
 DEF_HELPER_FLAGS_2(set_rounding_mode, TCG_CALL_NO_WG, void, env, i32)
@@ -76,7 +77,31 @@ DEF_HELPER_FLAGS_1(fclass_d, TCG_CALL_NO_RWG_SE, tl, i64)
 DEF_HELPER_FLAGS_2(fround_d, TCG_CALL_NO_RWG_SE, i64, env, i64)
 DEF_HELPER_FLAGS_2(froundnx_d, TCG_CALL_NO_RWG_SE, i64, env, i64)
 
+#ifdef TARGET_CHERI
+#include "cheri-helper-common.h"
+#ifdef TARGET_CHERI_RISCV_V9
+DEF_HELPER_4(cspecialrw, void, env, i32, i32, i32)
+#endif
+DEF_HELPER_3(auipcc, void, env, i32, tl)
+DEF_HELPER_4(cjal, void, env, i32, tl, tl)
+DEF_HELPER_4(amoswap_cap, void, env, i32, i32, i32)
+DEF_HELPER_3(lr_c_modedep, void, env, i32, i32)
+DEF_HELPER_3(lr_c_ddc, void, env, i32, i32)
+DEF_HELPER_3(lr_c_cap, void, env, i32, i32)
+DEF_HELPER_3(sc_c_modedep, tl, env, i32, i32)
+DEF_HELPER_3(sc_c_ddc, tl, env, i32, i32)
+DEF_HELPER_3(sc_c_cap, tl, env, i32, i32)
+DEF_HELPER_2(modesw, void, env, int)
 DEF_HELPER_2(gcmode, tl, env, i32)
+DEF_HELPER_4(scmode, void, env, i32, i32, tl)
+DEF_HELPER_3(scss, tl, env, i32, i32)
+#endif
+
+#ifdef CONFIG_TCG_LOG_INSTR
+DEF_HELPER_FLAGS_3(riscv_log_gpr_write, TCG_CALL_NO_RWG, void, env, i32, tl)
+DEF_HELPER_FLAGS_4(riscv_log_instr, TCG_CALL_NO_RWG, void, env, tl, i32, i32)
+#endif
+
 /* Bitmanip */
 DEF_HELPER_FLAGS_2(clmul, TCG_CALL_NO_RWG_SE, tl, tl, tl)
 DEF_HELPER_FLAGS_2(clmulr, TCG_CALL_NO_RWG_SE, tl, tl, tl)
@@ -121,14 +146,28 @@ DEF_HELPER_FLAGS_2(froundnx_h, TCG_CALL_NO_RWG_SE, i64, env, i64)
 DEF_HELPER_2(cbo_clean_flush, void, env, tl)
 DEF_HELPER_2(cbo_inval, void, env, tl)
 DEF_HELPER_2(cbo_zero, void, env, tl)
+#ifdef TARGET_CHERI
+DEF_HELPER_2(cbo_zero_cap, void, env, i32)
+DEF_HELPER_2(cbo_clean_flush_cap, void, env, i32)
+DEF_HELPER_2(cbo_inval_cap, void, env, i32)
+#endif
 
 /* Special functions */
 DEF_HELPER_2(csrr, tl, env, int)
 DEF_HELPER_3(csrw, void, env, int, tl)
 DEF_HELPER_4(csrrw, tl, env, int, tl, tl)
+#ifdef TARGET_CHERI
+DEF_HELPER_4(csrrw_cap, void, env, i32, i32, i32)
+DEF_HELPER_4(csrrs_cap, void, env, i32, i32, i32)
+DEF_HELPER_4(csrrc_cap, void, env, i32, i32, i32)
+DEF_HELPER_4(csrrwi_cap, void, env, i32, i32, i32)
+DEF_HELPER_4(csrrsi_cap, void, env, i32, i32, i32)
+DEF_HELPER_4(csrrci_cap, void, env, i32, i32, i32)
+#else
 DEF_HELPER_2(csrr_i128, tl, env, int)
 DEF_HELPER_4(csrw_i128, void, env, int, tl, tl)
 DEF_HELPER_6(csrrw_i128, tl, env, int, tl, tl, tl, tl)
+#endif
 #ifndef CONFIG_USER_ONLY
 DEF_HELPER_1(sret, tl, env)
 DEF_HELPER_1(mret, tl, env)
@@ -1153,10 +1192,12 @@ DEF_HELPER_5(vsext_vf4_d, void, ptr, ptr, ptr, env, i32)
 DEF_HELPER_5(vsext_vf8_d, void, ptr, ptr, ptr, env, i32)
 
 /* 128-bit integer multiplication and division */
+#ifndef TARGET_CHERI
 DEF_HELPER_5(divu_i128, tl, env, tl, tl, tl, tl)
 DEF_HELPER_5(divs_i128, tl, env, tl, tl, tl, tl)
 DEF_HELPER_5(remu_i128, tl, env, tl, tl, tl, tl)
 DEF_HELPER_5(rems_i128, tl, env, tl, tl, tl, tl)
+#endif
 
 /* Crypto functions */
 DEF_HELPER_FLAGS_3(aes32esmi, TCG_CALL_NO_RWG_SE, tl, tl, tl, tl)

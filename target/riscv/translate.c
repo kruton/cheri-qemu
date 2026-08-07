@@ -39,12 +39,17 @@
 #include "tcg/tcg-cpu.h"
 
 /* global register indices */
-static TCGv cpu_gpr[32], cpu_gprh[32], cpu_pc, cpu_vl, cpu_vstart;
 #ifdef TARGET_CHERI
 #include "cheri-lazy-capregs.h"
 static TCGv _cpu_cursors_do_not_access_directly[32];
+static TCGv cpu_pc;  // Note: this is PCC.cursor
 #else
+static TCGv cpu_gpr[32], cpu_gprh[32], cpu_pc;
 #endif
+#ifdef CONFIG_RVFI_DII
+TCGv_i32 cpu_rvfi_available_fields;
+#endif
+static TCGv cpu_vl, cpu_vstart;
 static TCGv_i64 cpu_fpr[32]; /* assume F and D extensions */
 static TCGv_cap_checked_ptr load_res;
 static TCGv load_val;
@@ -64,6 +69,7 @@ typedef struct DisasContext {
     DisasContextBase base;
     target_ulong cur_insn_len;
     target_ulong pc_save;
+    target_ulong pc_succ_insn;
     target_ulong priv_ver;
     RISCVMXL misa_mxl_max;
     RISCVMXL xl;
@@ -134,6 +140,14 @@ typedef struct DisasContext {
     /* zicfiss extension, if shadow stack was enabled during TB gen */
     bool bcfi_enabled;
 } DisasContext;
+
+static inline void gen_check_branch_target_dynamic(DisasContext *ctx, TCGv addr);
+
+#ifdef CONFIG_DEBUG_TCG
+#define gen_mark_pc_updated() tcg_gen_movi_tl(_pc_is_current, 1)
+#else
+#define gen_mark_pc_updated() ((void)0)
+#endif
 
 static inline bool has_ext(DisasContext *ctx, uint32_t ext)
 {
@@ -260,12 +274,24 @@ static void gen_pc_plus_diff(TCGv target, DisasContext *ctx,
         }
         tcg_gen_movi_tl(target, dest);
     }
+
 }
 
 static void gen_update_pc(DisasContext *ctx, target_long diff)
 {
     gen_pc_plus_diff(cpu_pc, ctx, diff);
+    gen_mark_pc_updated();
     ctx->pc_save = ctx->base.pc_next + diff;
+}
+
+static void gen_set_pc(DisasContext *ctx, TCGv dest)
+{
+    tcg_gen_mov_tl(cpu_pc, dest);
+}
+
+static void gen_set_pc_imm(DisasContext *ctx, target_ulong dest)
+{
+    gen_update_pc(ctx, dest - ctx->base.pc_next);
 }
 
 static void generate_exception(DisasContext *ctx, RISCVException excp)
@@ -292,6 +318,8 @@ static void gen_exception_inst_addr_mis(DisasContext *ctx, TCGv target)
     generate_exception(ctx, RISCV_EXCP_INST_ADDR_MIS);
 }
 
+static void gen_check_branch_target(DisasContext *ctx, target_ulong dest);
+
 static void lookup_and_goto_ptr(DisasContext *ctx)
 {
 #ifndef CONFIG_USER_ONLY
@@ -313,9 +341,28 @@ static void exit_tb(DisasContext *ctx)
 }
 
 static void gen_goto_tb(DisasContext *ctx, unsigned tb_slot_idx,
-                        target_long diff)
+                        target_long diff, bool bounds_check)
 {
     target_ulong dest = ctx->base.pc_next + diff;
+    if (bounds_check) {
+#ifdef TARGET_CHERI
+        if (tb_cflags(ctx->base.tb) & CF_PCREL) {
+            TCGv target_pc = tcg_temp_new();
+            gen_pc_plus_diff(target_pc, ctx, diff);
+            gen_check_branch_target_dynamic(ctx, target_pc);
+        } else {
+            gen_check_branch_target(ctx, dest);
+        }
+#else
+        if (tb_cflags(ctx->base.tb) & CF_PCREL) {
+            TCGv target_pc = tcg_temp_new();
+            gen_pc_plus_diff(target_pc, ctx, diff);
+            gen_check_branch_target_dynamic(ctx, target_pc);
+        } else {
+            gen_check_branch_target(ctx, dest);
+        }
+#endif
+    }
 
      /*
       * Under itrigger, instruction executes one by one like singlestep,
@@ -334,8 +381,8 @@ static void gen_goto_tb(DisasContext *ctx, unsigned tb_slot_idx,
             gen_update_pc(ctx, diff);
             tcg_gen_goto_tb(tb_slot_idx);
         } else {
-            tcg_gen_goto_tb(tb_slot_idx);
             gen_update_pc(ctx, diff);
+            tcg_gen_goto_tb(tb_slot_idx);
         }
         tcg_gen_exit_tb(ctx->base.tb, tb_slot_idx);
     } else {
@@ -355,6 +402,11 @@ static void gen_goto_tb(DisasContext *ctx, unsigned tb_slot_idx,
 static TCGv get_gpr(DisasContext *ctx, int reg_num, DisasExtend ext)
 {
     TCGv t;
+#ifdef TARGET_CHERI
+    TCGv *cpu_gpr_cursors = _cpu_cursors_do_not_access_directly;
+#else
+    TCGv *cpu_gpr_cursors = cpu_gpr;
+#endif
 
     if (reg_num == 0) {
         return ctx->zero;
@@ -367,11 +419,11 @@ static TCGv get_gpr(DisasContext *ctx, int reg_num, DisasExtend ext)
             break;
         case EXT_SIGN:
             t = tcg_temp_new();
-            tcg_gen_ext32s_tl(t, cpu_gpr[reg_num]);
+            tcg_gen_ext32s_tl(t, cpu_gpr_cursors[reg_num]);
             return t;
         case EXT_ZERO:
             t = tcg_temp_new();
-            tcg_gen_ext32u_tl(t, cpu_gpr[reg_num]);
+            tcg_gen_ext32u_tl(t, cpu_gpr_cursors[reg_num]);
             return t;
         default:
             g_assert_not_reached();
@@ -383,9 +435,15 @@ static TCGv get_gpr(DisasContext *ctx, int reg_num, DisasExtend ext)
     default:
         g_assert_not_reached();
     }
-    return cpu_gpr[reg_num];
+    return cpu_gpr_cursors[reg_num];
 }
 
+static void gen_get_gpr(DisasContext *ctx, TCGv t, int reg_num)
+{
+    tcg_gen_mov_tl(t, get_gpr(ctx, reg_num, EXT_NONE));
+}
+
+#ifndef TARGET_CHERI
 static TCGv get_gprh(DisasContext *ctx, int reg_num)
 {
     assert(get_xl(ctx) == MXL_RV128);
@@ -394,15 +452,21 @@ static TCGv get_gprh(DisasContext *ctx, int reg_num)
     }
     return cpu_gprh[reg_num];
 }
+#endif
 
 static TCGv dest_gpr(DisasContext *ctx, int reg_num)
 {
     if (reg_num == 0 || get_olen(ctx) < TARGET_LONG_BITS) {
         return tcg_temp_new();
     }
+#ifdef TARGET_CHERI
+    return _cpu_cursors_do_not_access_directly[reg_num];
+#else
     return cpu_gpr[reg_num];
+#endif
 }
 
+#ifndef TARGET_CHERI
 static TCGv dest_gprh(DisasContext *ctx, int reg_num)
 {
     if (reg_num == 0) {
@@ -410,54 +474,84 @@ static TCGv dest_gprh(DisasContext *ctx, int reg_num)
     }
     return cpu_gprh[reg_num];
 }
+#endif
 
 #include "cheri-translate-utils.h"
+
 static void _gen_set_gpr(DisasContext *ctx, int reg_num, TCGv t,
                         bool clear_pesbt)
 {
     if (reg_num != 0) {
+#ifdef TARGET_CHERI
+        TCGv *dest_gpr = _cpu_cursors_do_not_access_directly;
         if (clear_pesbt) {
+            // Reset the register type to int.
+            gen_lazy_cap_set_int(ctx, reg_num);
+        }
+#else
+        TCGv *dest_gpr = cpu_gpr;
+#endif
         switch (get_ol(ctx)) {
         case MXL_RV32:
-            tcg_gen_ext32s_tl(cpu_gpr[reg_num], t);
+            tcg_gen_ext32s_tl(dest_gpr[reg_num], t);
             break;
         case MXL_RV64:
         case MXL_RV128:
-            tcg_gen_mov_tl(cpu_gpr[reg_num], t);
+            tcg_gen_mov_tl(dest_gpr[reg_num], t);
             break;
         default:
             g_assert_not_reached();
         }
-
+#ifndef TARGET_CHERI
         if (get_xl_max(ctx) == MXL_RV128) {
             tcg_gen_sari_tl(cpu_gprh[reg_num], cpu_gpr[reg_num], 63);
         }
+#endif
         gen_rvfi_dii_set_field_const_i8(INTEGER, rd_addr, reg_num);
         gen_rvfi_dii_set_field_zext_tl(INTEGER, rd_wdata, t);
+#ifdef CONFIG_TCG_LOG_INSTR
+        // Log GPR writes here
+        if (qemu_ctx_logging_enabled(ctx)) {
+            gen_helper_riscv_log_gpr_write(tcg_env, tcg_constant_i32(reg_num),
+                                           t);
+        }
+#endif
     }
 }
 
 static void gen_set_gpri(DisasContext *ctx, int reg_num, target_long imm)
 {
     if (reg_num != 0) {
+#ifdef TARGET_CHERI
+        TCGv *dest_gpr = _cpu_cursors_do_not_access_directly;
+        /* Reset the register type to int. */
+        gen_lazy_cap_set_int(ctx, reg_num);
+#else
+        TCGv *dest_gpr = cpu_gpr;
+#endif
         switch (get_ol(ctx)) {
         case MXL_RV32:
-            tcg_gen_movi_tl(cpu_gpr[reg_num], (int32_t)imm);
+            tcg_gen_movi_tl(dest_gpr[reg_num], (int32_t)imm);
             break;
         case MXL_RV64:
         case MXL_RV128:
-            tcg_gen_movi_tl(cpu_gpr[reg_num], imm);
+            tcg_gen_movi_tl(dest_gpr[reg_num], imm);
             break;
         default:
             g_assert_not_reached();
         }
-
+#ifndef TARGET_CHERI
         if (get_xl_max(ctx) == MXL_RV128) {
             tcg_gen_movi_tl(cpu_gprh[reg_num], -(imm < 0));
         }
+#endif
     }
 }
 
+#define gen_set_gpr(ctx, reg_num_dst, t) _gen_set_gpr(ctx, reg_num_dst, t, true)
+#define gen_set_gpr_const(ctx, reg_num_dst, t) gen_set_gpri(ctx, reg_num_dst, t)
+
+#ifndef TARGET_CHERI
 static void gen_set_gpr128(DisasContext *ctx, int reg_num, TCGv rl, TCGv rh)
 {
     assert(get_ol(ctx) == MXL_RV128);
@@ -466,10 +560,13 @@ static void gen_set_gpr128(DisasContext *ctx, int reg_num, TCGv rl, TCGv rh)
         tcg_gen_mov_tl(cpu_gprh[reg_num], rh);
     }
 }
+#endif
+
 #ifdef CONFIG_TCG_LOG_INSTR
 static inline void gen_riscv_log_instr(DisasContext *ctx, uint32_t opcode,
                                        int width)
 {
+    if (qemu_ctx_logging_enabled(ctx)) {
         TCGv tpc = tcg_constant_tl(ctx->base.pc_next);
         TCGv_i32 topc = tcg_constant_i32(opcode);
         TCGv_i32 twidth = tcg_constant_i32(width);
@@ -477,19 +574,29 @@ static inline void gen_riscv_log_instr(DisasContext *ctx, uint32_t opcode,
         gen_helper_riscv_log_instr(tcg_env, tpc, topc, twidth);
     }
 }
+
 #else /* ! CONFIG_TCG_LOG_INSTR */
 #define gen_riscv_log_instr(ctx, opcode, width) ((void)0)
 #endif /* ! CONFIG_TCG_LOG_INSTR */
+
 #define gen_riscv_log_instr16(ctx, opcode)              \
     gen_riscv_log_instr(ctx, opcode, sizeof(uint16_t))
 #define gen_riscv_log_instr32(ctx, opcode)              \
     gen_riscv_log_instr(ctx, opcode, sizeof(uint32_t))
+
+
+void cheri_tcg_save_pc(DisasContextBase *db)
 {
+    DisasContext *ctx = container_of(db, DisasContext, base);
+    gen_set_pc_imm(ctx, db->pc_next);
+}
 // We have to call gen_set_pc_imm() before setting DISAS_NORETURN (see
 // generate_exception())
 void cheri_tcg_prepare_for_unconditional_exception(DisasContextBase *db)
+{
     cheri_tcg_save_pc(db);
     db->is_jmp = DISAS_NORETURN;
+}
 
 static TCGv_i64 get_fpr_hs(DisasContext *ctx, int reg_num)
 {
@@ -505,13 +612,13 @@ static TCGv_i64 get_fpr_hs(DisasContext *ctx, int reg_num)
 #ifdef TARGET_RISCV32
     {
         TCGv_i64 t = tcg_temp_new_i64();
-        tcg_gen_ext_i32_i64(t, cpu_gpr[reg_num]);
+        tcg_gen_ext_i32_i64(t, get_gpr(ctx, reg_num, EXT_NONE));
         return t;
     }
 #else
     /* fall through */
     case MXL_RV64:
-        return cpu_gpr[reg_num];
+        return get_gpr(ctx, reg_num, EXT_NONE);
 #endif
     default:
         g_assert_not_reached();
@@ -531,12 +638,13 @@ static TCGv_i64 get_fpr_d(DisasContext *ctx, int reg_num)
     case MXL_RV32:
     {
         TCGv_i64 t = tcg_temp_new_i64();
-        tcg_gen_concat_tl_i64(t, cpu_gpr[reg_num], cpu_gpr[reg_num + 1]);
+        tcg_gen_concat_tl_i64(t, get_gpr(ctx, reg_num, EXT_NONE),
+                         get_gpr(ctx, reg_num + 1, EXT_NONE));
         return t;
     }
 #ifdef TARGET_RISCV64
     case MXL_RV64:
-        return cpu_gpr[reg_num];
+        return get_gpr(ctx, reg_num, EXT_NONE);
 #endif
     default:
         g_assert_not_reached();
@@ -558,7 +666,7 @@ static TCGv_i64 dest_fpr(DisasContext *ctx, int reg_num)
         return tcg_temp_new_i64();
 #ifdef TARGET_RISCV64
     case MXL_RV64:
-        return cpu_gpr[reg_num];
+        return dest_gpr(ctx, reg_num);
 #endif
     default:
         g_assert_not_reached();
@@ -576,12 +684,12 @@ static void gen_set_fpr_hs(DisasContext *ctx, int reg_num, TCGv_i64 t)
         switch (get_xl(ctx)) {
         case MXL_RV32:
 #ifdef TARGET_RISCV32
-            tcg_gen_extrl_i64_i32(cpu_gpr[reg_num], t);
+            tcg_gen_extrl_i64_i32(dest_gpr(ctx, reg_num), t);
             break;
 #else
         /* fall through */
         case MXL_RV64:
-            tcg_gen_mov_i64(cpu_gpr[reg_num], t);
+            tcg_gen_mov_i64(dest_gpr(ctx, reg_num), t);
             break;
 #endif
         default:
@@ -601,14 +709,15 @@ static void gen_set_fpr_d(DisasContext *ctx, int reg_num, TCGv_i64 t)
         switch (get_xl(ctx)) {
         case MXL_RV32:
 #ifdef TARGET_RISCV32
-            tcg_gen_extr_i64_i32(cpu_gpr[reg_num], cpu_gpr[reg_num + 1], t);
+
+            tcg_gen_extr_i64_i32(dest_gpr(ctx, reg_num), dest_gpr(ctx, reg_num + 1), t);
             break;
 #else
-            tcg_gen_ext32s_i64(cpu_gpr[reg_num], t);
-            tcg_gen_sari_i64(cpu_gpr[reg_num + 1], t, 32);
+            tcg_gen_ext32s_i64(dest_gpr(ctx, reg_num), t);
+            tcg_gen_sari_i64(dest_gpr(ctx, reg_num + 1), t, 32);
             break;
         case MXL_RV64:
-            tcg_gen_mov_i64(cpu_gpr[reg_num], t);
+            tcg_gen_mov_i64(dest_gpr(ctx, reg_num), t);
             break;
 #endif
         default:
@@ -655,6 +764,27 @@ static void gen_ctr_jal(DisasContext *ctx, int rd, target_ulong imm)
     gen_pc_plus_diff(src, ctx, 0);
     gen_helper_ctr_add_entry(tcg_env, src, dest, type);
 }
+
+static void gen_ctr_jalr(DisasContext *ctx, int rd, int rs1, TCGv dest)
+{
+    TCGv src = tcg_temp_new();
+    TCGv type;
+
+    if ((rd == 1 && rs1 != 5) || (rd == 5 && rs1 != 1)) {
+        type = tcg_constant_tl(CTRDATA_TYPE_INDIRECT_CALL);
+    } else if (rd == 0 && rs1 != 1 && rs1 != 5) {
+        type = tcg_constant_tl(CTRDATA_TYPE_INDIRECT_JUMP);
+    } else if ((rs1 == 1 || rs1 == 5) && (rd != 1 && rd != 5)) {
+        type = tcg_constant_tl(CTRDATA_TYPE_RETURN);
+    } else if ((rs1 == 1 && rd == 5) || (rs1 == 5 && rd == 1)) {
+        type = tcg_constant_tl(CTRDATA_TYPE_CO_ROUTINE_SWAP);
+    } else {
+        type = tcg_constant_tl(CTRDATA_TYPE_OTHER_INDIRECT_JUMP);
+    }
+
+    gen_pc_plus_diff(src, ctx, 0);
+    gen_helper_ctr_add_entry(tcg_env, src, dest, type);
+}
 #endif
 
 static void gen_jal(DisasContext *ctx, int rd, target_ulong imm)
@@ -662,36 +792,48 @@ static void gen_jal(DisasContext *ctx, int rd, target_ulong imm)
     TCGv succ_pc = dest_gpr(ctx, rd);
 
     /* check misaligned: */
+    TCGv target_pc = NULL;
+#ifdef TARGET_CHERI
+    if (tb_cflags(ctx->base.tb) & CF_PCREL) {
+        target_pc = tcg_temp_new();
+        gen_pc_plus_diff(target_pc, ctx, imm);
         gen_check_branch_target_dynamic(ctx, target_pc);
     } else {
+        gen_check_branch_target(ctx, ctx->base.pc_next + imm);
     }
+#endif
     if (!riscv_cpu_allow_16bit_insn(ctx->cfg_ptr,
                                     ctx->priv_ver,
                                     ctx->misa_ext)) {
         if ((imm & 0x3) != 0) {
-            TCGv target_pc = tcg_temp_new();
-            gen_pc_plus_diff(target_pc, ctx, imm);
+            if (!target_pc) {
+                target_pc = tcg_temp_new();
+                gen_pc_plus_diff(target_pc, ctx, imm);
             }
             gen_exception_inst_addr_mis(ctx, target_pc);
             return;
         }
     }
-
 #ifndef CONFIG_USER_ONLY
     if (ctx->cfg_ptr->ext_smctr || ctx->cfg_ptr->ext_ssctr) {
         gen_ctr_jal(ctx, rd, imm);
     }
 #endif
 
-    gen_pc_plus_diff(succ_pc, ctx, ctx->cur_insn_len);
-    gen_set_gpr(ctx, rd, succ_pc);
     /* For CHERI ISAv8 the result is an offset relative to PCC.base */
+    if (pcc_reloc(ctx) != 0) {
         gen_set_gpr_const(ctx, rd, ctx->pc_succ_insn - pcc_reloc(ctx));
+    } else if (tb_cflags(ctx->base.tb) & CF_PCREL) {
+        gen_pc_plus_diff(succ_pc, ctx, ctx->cur_insn_len);
+        gen_set_gpr(ctx, rd, succ_pc);
+    } else {
         gen_set_gpr_const(ctx, rd, ctx->pc_succ_insn);
     }
-    ctx->base.is_jmp = DISAS_NORETURN;
 
-    gen_goto_tb(ctx, 0, imm); /* must use this for safety */
+    gen_goto_tb(ctx, 0, imm, /*bounds_check=*/true); /* must use this for safety */
+    ctx->base.is_jmp = DISAS_NORETURN;
+}
+
 static void gen_jalr(DisasContext *ctx, int rd, int rs1, target_ulong imm)
 {
     /* no chaining with JALR */
@@ -699,24 +841,61 @@ static void gen_jalr(DisasContext *ctx, int rd, int rs1, target_ulong imm)
     // Note: We need to use tcg_temp_new() for t0 since
     // gen_check_branch_target_dynamic() inserts branches.
     TCGv t0 = tcg_temp_new();
+
     gen_get_gpr(ctx, t0, rs1);
     /* For CHERI ISAv8 the destination is an offset relative to PCC.base. */
     tcg_gen_addi_tl(t0, t0, imm + pcc_reloc(ctx));
     tcg_gen_andi_tl(t0, t0, (target_ulong)-2);
     gen_check_branch_target_dynamic(ctx, t0);
+
     /* For CHERI ISAv8 the result is an offset relative to PCC.base */
+    if (pcc_reloc(ctx) != 0) {
         gen_set_gpri(ctx, rd, ctx->pc_succ_insn - pcc_reloc(ctx));
+    } else if (tb_cflags(ctx->base.tb) & CF_PCREL) {
+        TCGv succ_pc = dest_gpr(ctx, rd);
+        gen_pc_plus_diff(succ_pc, ctx, ctx->cur_insn_len);
+        gen_set_gpr(ctx, rd, succ_pc);
+    } else {
         gen_set_gpri(ctx, rd, ctx->pc_succ_insn);
+    }
+
+#ifndef CONFIG_USER_ONLY
+    if (ctx->cfg_ptr->ext_smctr || ctx->cfg_ptr->ext_ssctr) {
+        gen_ctr_jalr(ctx, rd, rs1, t0);
+    }
+#endif
+
     // Note: Only update cpu_pc after a successful bounds check to avoid
     // representability issues caused by directly modifying PCC.cursor.
+    gen_set_pc(ctx, t0);
+
+    if (!riscv_cpu_allow_16bit_insn(ctx->cfg_ptr,
+                                    ctx->priv_ver,
+                                    ctx->misa_ext)) {
         misaligned = gen_new_label();
         tcg_gen_andi_tl(t0, cpu_pc, 0x2);
         tcg_gen_brcondi_tl(TCG_COND_NE, t0, 0x0, misaligned);
+    }
+
+    if (ctx->fcfi_enabled) {
+        /*
+         * return from functions (i.e. rs1 == xRA || rs1 == xT0) are not
+         * tracked. zicfilp introduces sw guarded branch as well. sw guarded
+         * branch are not tracked. rs1 == xT2 is a sw guarded branch.
          */
+        if (rs1 != xRA && rs1 != xT0 && rs1 != xT2) {
+            tcg_gen_st8_tl(tcg_constant_tl(1),
+                           tcg_env, offsetof(CPURISCVState, elp));
+        }
+    }
+
+    /* No chaining with JALR. */
     lookup_and_goto_ptr(ctx);
+
     if (misaligned) {
         gen_set_label(misaligned);
         gen_exception_inst_addr_mis(ctx, cpu_pc);
+    }
     ctx->base.is_jmp = DISAS_NORETURN;
 }
 
@@ -943,9 +1122,13 @@ static bool pred_capmode(DisasContext *ctx)
     return false;
 #endif
 }
+
 static bool pred_rv64_capmode(DisasContext *ctx)
 {
+    REQUIRE_64BIT(ctx);
+    return pred_capmode(ctx);
 }
+
 static bool pred_xcheri(DisasContext *ctx)
 {
 #ifdef TARGET_CHERI_RISCV_V9
@@ -954,17 +1137,38 @@ static bool pred_xcheri(DisasContext *ctx)
     return false;
 #endif
 }
+
 static bool pred_xcheri_rv32(DisasContext *ctx)
 {
     return pred_xcheri(ctx) && get_xl(ctx) == MXL_RV32;
 }
+
 #if defined(TARGET_CHERI)
 static bool pred_hybrid(DisasContext *ctx)
+{
     return ctx->hybrid;
+}
 #endif
+
+static bool pred_cre(DisasContext *ctx)
+{
+#ifdef TARGET_CHERI_RISCV_STD
     return ctx->cre;
 #else
+    return false;
 #endif
+}
+
+static bool pred_zcmp_and_not_capmode(DisasContext *ctx)
+{
+    return ctx->cfg_ptr->ext_zcmp && !pred_capmode(ctx);
+}
+
+static bool pred_zcmt_and_not_capmode(DisasContext *ctx)
+{
+    return ctx->cfg_ptr->ext_zcmt && !pred_capmode(ctx);
+}
+
 /* Include the auto-generated decoder for 32 bit insn */
 #include "decode-insn32.c.inc"
 
@@ -978,6 +1182,8 @@ static bool gen_logic_imm_fn(DisasContext *ctx, arg_i *a,
 
     if (get_xl(ctx) == MXL_RV128) {
 #ifdef TARGET_CHERI
+        return false; /* RV128 not supported */
+#else
         TCGv src1h = get_gprh(ctx, a->rs1);
         TCGv desth = dest_gprh(ctx, a->rd);
 
@@ -1001,12 +1207,16 @@ static bool gen_logic(DisasContext *ctx, arg_r *a,
     func(dest, src1, src2);
 
     if (get_xl(ctx) == MXL_RV128) {
+#ifdef TARGET_CHERI
+        return false; /* RV128 not supported */
+#else
         TCGv src1h = get_gprh(ctx, a->rs1);
         TCGv src2h = get_gprh(ctx, a->rs2);
         TCGv desth = dest_gprh(ctx, a->rd);
 
         func(desth, src1h, src2h);
         gen_set_gpr128(ctx, a->rd, dest, desth);
+#endif
     } else {
         gen_set_gpr(ctx, a->rd, dest);
     }
@@ -1028,12 +1238,15 @@ static bool gen_arith_imm_fn(DisasContext *ctx, arg_i *a, DisasExtend ext,
         if (f128 == NULL) {
             return false;
         }
-
+#ifdef TARGET_CHERI
+        return false; /* RV128 not supported */
+#else
         TCGv src1h = get_gprh(ctx, a->rs1);
         TCGv desth = dest_gprh(ctx, a->rd);
 
         f128(dest, desth, src1, src1h, a->imm);
         gen_set_gpr128(ctx, a->rd, dest, desth);
+#endif
     }
     return true;
 }
@@ -1053,13 +1266,16 @@ static bool gen_arith_imm_tl(DisasContext *ctx, arg_i *a, DisasExtend ext,
         if (f128 == NULL) {
             return false;
         }
-
+#ifdef TARGET_CHERI
+        return false; /* RV128 not supported */
+#else
         TCGv src1h = get_gprh(ctx, a->rs1);
         TCGv src2h = tcg_constant_tl(-(a->imm < 0));
         TCGv desth = dest_gprh(ctx, a->rd);
 
         f128(dest, desth, src1, src1h, src2, src2h);
         gen_set_gpr128(ctx, a->rd, dest, desth);
+#endif
     }
     return true;
 }
@@ -1079,13 +1295,16 @@ static bool gen_arith(DisasContext *ctx, arg_r *a, DisasExtend ext,
         if (f128 == NULL) {
             return false;
         }
-
+#ifdef TARGET_CHERI
+        return false; /* RV128 not supported */
+#else
         TCGv src1h = get_gprh(ctx, a->rs1);
         TCGv src2h = get_gprh(ctx, a->rs2);
         TCGv desth = dest_gprh(ctx, a->rd);
 
         f128(dest, desth, src1, src1h, src2, src2h);
         gen_set_gpr128(ctx, a->rd, dest, desth);
+#endif
     }
     return true;
 }
@@ -1125,6 +1344,9 @@ static bool gen_shift_imm_fn(DisasContext *ctx, arg_shift *a, DisasExtend ext,
         func(dest, src1, a->shamt);
         gen_set_gpr(ctx, a->rd, dest);
     } else {
+#ifdef TARGET_CHERI
+        return false; /* RV128 not supported */
+#else
         TCGv src1h = get_gprh(ctx, a->rs1);
         TCGv desth = dest_gprh(ctx, a->rd);
 
@@ -1133,6 +1355,7 @@ static bool gen_shift_imm_fn(DisasContext *ctx, arg_shift *a, DisasExtend ext,
         }
         f128(dest, desth, src1, src1h, a->shamt);
         gen_set_gpr128(ctx, a->rd, dest, desth);
+#endif
     }
     return true;
 }
@@ -1192,6 +1415,9 @@ static bool gen_shift(DisasContext *ctx, arg_r *a, DisasExtend ext,
         func(dest, src1, ext2);
         gen_set_gpr(ctx, a->rd, dest);
     } else {
+#ifdef TARGET_CHERI
+        return false; /* RV128 not supported */
+#else
         TCGv src1h = get_gprh(ctx, a->rs1);
         TCGv desth = dest_gprh(ctx, a->rd);
 
@@ -1200,6 +1426,7 @@ static bool gen_shift(DisasContext *ctx, arg_r *a, DisasExtend ext,
         }
         f128(dest, desth, src1, src1h, ext2);
         gen_set_gpr128(ctx, a->rd, dest, desth);
+#endif
     }
     return true;
 }
@@ -1248,12 +1475,27 @@ static bool gen_unary_per_ol(DisasContext *ctx, arg_r2 *a, DisasExtend ext,
     return gen_unary(ctx, a, ext, f_tl);
 }
 
+#ifdef TARGET_CHERI
+static inline TCGv_cap_checked_ptr
+get_capmode_dependent_rmw_addr(DisasContext *ctx, int reg_num,
+                               target_long regoffs, MemOp mop);
+#endif
+
 static bool gen_amo(DisasContext *ctx, arg_atomic *a,
+#ifdef TARGET_CHERI
+                    void(*func)(TCGv, TCGv_cap_checked_ptr, TCGv, TCGArg, MemOp),
+#else
                     void(*func)(TCGv, TCGv, TCGv, TCGArg, MemOp),
+#endif
                     MemOp mop)
 {
     TCGv dest = dest_gpr(ctx, a->rd);
-    TCGv src1, src2 = get_gpr(ctx, a->rs2, EXT_NONE);
+#ifdef TARGET_CHERI
+    TCGv_cap_checked_ptr src1;
+#else
+    TCGv src1;
+#endif
+    TCGv src2 = get_gpr(ctx, a->rs2, EXT_NONE);
     MemOp size = mop & MO_SIZE;
 
     mop |= mo_endian(ctx);
@@ -1264,7 +1506,23 @@ static bool gen_amo(DisasContext *ctx, arg_atomic *a,
     }
 
     decode_save_opc(ctx, RISCV_UW2_ALWAYS_STORE_AMO);
+#ifdef TARGET_CHERI
+    src1 = get_capmode_dependent_rmw_addr(ctx, a->rs1, 0, mop);
+#else
     src1 = get_address(ctx, a->rs1, 0);
+#endif
+
+#ifdef TARGET_CHERI
+    if (mop & MO_ALIGN) {
+        cheri_debug_assert((mop & MO_ALIGN) && "RMW AMOs must be aligned");
+    }
+    if (memop_size(mop) > 1) {
+        TCGv_i32 tmop = tcg_constant_i32(mop);
+        TCGv_i32 tcode = tcg_constant_i32(RISCV_EXCP_STORE_AMO_ADDR_MIS);
+        gen_helper_check_alignment(tcg_env, (TCGv)src1, tmop, tcode);
+    }
+#endif
+
     func(dest, src1, src2, ctx->mem_idx, mop);
 
     gen_set_gpr(ctx, a->rd, dest);
@@ -1274,7 +1532,11 @@ static bool gen_amo(DisasContext *ctx, arg_atomic *a,
 static bool gen_cmpxchg(DisasContext *ctx, arg_atomic *a, MemOp mop)
 {
     TCGv dest = get_gpr(ctx, a->rd, EXT_NONE);
+#ifdef TARGET_CHERI
+    TCGv_cap_checked_ptr src1 = get_capmode_dependent_rmw_addr(ctx, a->rs1, 0, mop);
+#else
     TCGv src1 = get_address(ctx, a->rs1, 0);
+#endif
     TCGv src2 = get_gpr(ctx, a->rs2, EXT_NONE);
 
     mop |= mo_endian(ctx);
@@ -1301,6 +1563,7 @@ static uint32_t opcode_at(DisasContextBase *dcbase, target_ulong pc)
 /* Must be included first since the helpers are used by trans_rvi.c.inc */
 #include "insn_trans/trans_cheri.c.inc"
 #endif
+
 // Helpers to generate a virtual address that has been checked by the CHERI
 // capability helpers: If ctx->capmode is set, the register number will be
 // a capability and we check that capability, otherwise we treat the register
@@ -1310,10 +1573,14 @@ static inline TCGv_cap_checked_ptr _get_capmode_dependent_addr(
     DisasContext *ctx, int reg_num, target_long regoffs,
 #ifdef TARGET_CHERI
     void (*gen_check_cap)(TCGv_cap_checked_ptr, uint32_t, target_long, MemOp),
+    void (*check_ddc)(TCGv_cap_checked_ptr, DisasContext *, TCGv, target_ulong),
 #endif
     MemOp mop)
+
 {
     TCGv_cap_checked_ptr result = tcg_temp_new_cap_checked();
+#ifdef TARGET_CHERI
+    // XXX-AM: Unsupported pointer masking extensions
     if (ctx->capmode) {
         gen_check_cap(result, reg_num, regoffs, mop);
     } else {
@@ -1321,17 +1588,48 @@ static inline TCGv_cap_checked_ptr _get_capmode_dependent_addr(
                                                  mop, check_ddc);
     }
 #else
+    TCGv tmp = get_address(ctx, reg_num, regoffs);
+    tcg_gen_mov_tl(result, tmp);
+#endif
     return result;
+}
+
 static inline TCGv_cap_checked_ptr
 get_capmode_dependent_load_addr(DisasContext *ctx, int reg_num,
                                target_long regoffs, MemOp mop)
+{
     return _get_capmode_dependent_addr(ctx, reg_num, regoffs,
+#ifdef TARGET_CHERI
                                        &generate_cap_load_check_imm,
+                                       &generate_ddc_checked_load_ptr,
+#endif
                                        mop);
+}
+
+static inline TCGv_cap_checked_ptr
 get_capmode_dependent_store_addr(DisasContext *ctx, int reg_num,
+                                target_long regoffs, MemOp mop)
+{
+    return _get_capmode_dependent_addr(ctx, reg_num, regoffs,
+#ifdef TARGET_CHERI
                                        &generate_cap_store_check_imm,
+                                       &generate_ddc_checked_store_ptr,
+#endif
+                                       mop);
+}
+
+static inline TCGv_cap_checked_ptr
 get_capmode_dependent_rmw_addr(DisasContext *ctx, int reg_num,
+                               target_long regoffs, MemOp mop)
+{
+    return _get_capmode_dependent_addr(ctx, reg_num, regoffs,
+#ifdef TARGET_CHERI
                                        &generate_cap_rmw_check_imm,
+                                       &generate_ddc_checked_rmw_ptr,
+#endif
+                                       mop);
+}
+
 #include "insn_trans/trans_rvi.c.inc"
 #include "insn_trans/trans_rvm.c.inc"
 #include "insn_trans/trans_rva.c.inc"
@@ -1368,14 +1666,18 @@ get_capmode_dependent_rmw_addr(DisasContext *ctx, int reg_num,
 
 static bool trans_c_hint(DisasContext *ctx, arg_c_hint *a)
 {
+    return true;
 }
+
 #ifndef TARGET_CHERI
+
 #define TRANS_STUB(instr)                                                      \
     static bool trans_##instr(DisasContext *ctx, arg_##instr *a)               \
     {                                                                          \
         g_assert_not_reached();                                                \
         return false;                                                          \
     }
+
 /* Stubs needed for mode-dependent compressed instructions */
 TRANS_STUB(lc)
 TRANS_STUB(sc)
@@ -1384,7 +1686,10 @@ TRANS_STUB(cmv)
 TRANS_STUB(lr_c)
 TRANS_STUB(sc_c)
 TRANS_STUB(amoswap_c)
+#else
+static bool trans_sq(DisasContext *ctx, arg_sq *a) { return false; }
 #endif
+
 /* The specification allows for longer insns, but not supported by qemu. */
 #define MAX_INSN_LEN  4
 
@@ -1395,11 +1700,6 @@ const RISCVDecoder decoder_table[] = {
 };
 
 const size_t decoder_table_size = ARRAY_SIZE(decoder_table);
-
-static bool trans_c_hint(DisasContext *ctx, arg_c_hint *a)
-{
-    return true;
-}
 
 static void decode_opc(CPURISCVState *env, DisasContext *ctx)
 {
@@ -1433,6 +1733,7 @@ static void decode_opc(CPURISCVState *env, DisasContext *ctx)
         gen_check_pcc_bounds_next_inst(ctx, 2);
         gen_rvfi_dii_set_field_const_i64(INST, insn, opcode);
         ctx->opcode = (uint16_t)opcode;
+        ctx->pc_succ_insn = ctx->base.pc_next + 2;
         /*
          * The Zca extension is added as way to refer to instructions in the C
          * extension that do not include the floating-point loads and stores
@@ -1444,19 +1745,23 @@ static void decode_opc(CPURISCVState *env, DisasContext *ctx)
     } else {
         if (!pc_is_4byte_align) {
             /* Load last 2 bytes of instruction here */
-            opcode = deposit32(opcode, 16, 16,
-                               translator_lduw(env, &ctx->base,
-                                               ctx->base.pc_next + 2));
 #ifdef CONFIG_RVFI_DII
             // We have to avoid memory accesses for injected instructions since
             // the PC could point somewhere invalid.
+            uint16_t next_16 = env->rvfi_dii_have_injected_insn
                               ? (env->rvfi_dii_injected_insn >> 16)
+                              : translator_lduw(env, &ctx->base,
+                                                ctx->base.pc_next + 2);
 #else
+            uint16_t next_16 = translator_lduw(env, &ctx->base,
+                                               ctx->base.pc_next + 2);
 #endif
+            opcode = deposit32(opcode, 16, 16, next_16);
         }
         gen_riscv_log_instr32(ctx, opcode);
         gen_check_pcc_bounds_next_inst(ctx, 4);
         ctx->opcode = opcode;
+        ctx->pc_succ_insn = ctx->base.pc_next + 4;
         gen_rvfi_dii_set_field_const_i64(INST, insn, opcode);
 
         for (guint i = 0; i < ctx->decoders->len; ++i) {
@@ -1483,9 +1788,14 @@ static void riscv_tr_init_disas_context(DisasContextBase *dcbase, CPUState *cs)
     ctx->mem_idx = FIELD_EX32(tb_flags, TB_FLAGS, MEM_IDX);
     ctx->mstatus_fs = FIELD_EX32(tb_flags, TB_FLAGS, FS);
     ctx->mstatus_vs = FIELD_EX32(tb_flags, TB_FLAGS, VS);
+#ifdef TARGET_CHERI
     ctx->capmode = tb_in_capmode(ctx->base.tb);
+#ifdef TARGET_CHERI_RISCV_V9
     ctx->cheri_v9_semantics = cpu->cfg.ext_cheri_v9;
+#endif
+    ctx->hybrid = riscv_has_cheri_hybrid(env);
     ctx->cre = riscv_cpu_mode_cre(env);
+#endif
     ctx->priv_ver = env->priv_ver;
     ctx->virt_enabled = FIELD_EX32(tb_flags, TB_FLAGS, VIRT_ENABLED);
     ctx->misa_ext = env->misa_ext;
@@ -1542,9 +1852,13 @@ static void riscv_tr_translate_insn(DisasContextBase *dcbase, CPUState *cpu)
 {
     DisasContext *ctx = container_of(dcbase, DisasContext, base);
     CPURISCVState *env = cpu_env(cpu);
+#ifdef CONFIG_RVFI_DII
+    gen_rvfi_dii_set_field_const_i64(PC, pc_rdata, ctx->base.pc_next);
+#endif
 
     decode_opc(env, ctx);
     ctx->base.pc_next += ctx->cur_insn_len;
+    gen_rvfi_dii_set_field_const_i64(PC, pc_wdata, ctx->base.pc_next);
 
     /*
      * If 'fcfi_lp_expected' is still true after processing the instruction,
@@ -1590,7 +1904,6 @@ static void riscv_tr_tb_stop(DisasContextBase *dcbase, CPUState *cpu)
 
     switch (ctx->base.is_jmp) {
     case DISAS_TOO_MANY:
-        gen_goto_tb(ctx, 0, 0);
         /* CHERI PCC bounds check done on next ifetch. */
         gen_goto_tb(ctx, 0, 0, /*bounds_check=*/false);
         break;
@@ -1601,20 +1914,40 @@ static void riscv_tr_tb_stop(DisasContextBase *dcbase, CPUState *cpu)
     }
 }
 
+static bool riscv_tr_disas_log(const DisasContextBase *dcbase, CPUState *cpu,
+                               FILE *logfile)
+{
+#ifndef CONFIG_USER_ONLY
+    RISCVCPU *rvcpu = RISCV_CPU(cpu);
+    CPURISCVState *env = &rvcpu->env;
 #endif
+
 #ifdef CONFIG_RVFI_DII
     if (env->rvfi_dii_have_injected_insn) {
         assert(dcbase->num_insns == 1);
         uint32_t insn = env->rvfi_dii_injected_insn;
         fprintf(logfile, "IN: %s\n", lookup_symbol(dcbase->pc_first));
         target_disas_buf(logfile, cpu, &insn, sizeof(insn), dcbase->pc_first, 1);
+    } else
+#endif
+    {
+        fprintf(logfile, "IN: %s\n", lookup_symbol(dcbase->pc_first));
+#ifndef CONFIG_USER_ONLY
+        fprintf(logfile, "Priv: "TARGET_FMT_ld"; Virt: %d\n",
+                env->priv, env->virt_enabled);
+#endif
+        target_disas(logfile, cpu, dcbase);
     }
+    return true;
+}
+
 static const TranslatorOps riscv_tr_ops = {
     .init_disas_context = riscv_tr_init_disas_context,
     .tb_start           = riscv_tr_tb_start,
     .insn_start         = riscv_tr_insn_start,
     .translate_insn     = riscv_tr_translate_insn,
     .tb_stop            = riscv_tr_tb_stop,
+    .disas_log          = riscv_tr_disas_log,
 };
 
 void riscv_translate_code(CPUState *cs, TranslationBlock *tb,
@@ -1629,13 +1962,13 @@ void riscv_translate_init(void)
 {
     int i;
 
+#ifndef TARGET_CHERI
     /*
      * cpu_gpr[0] is a placeholder for the zero register. Do not use it.
      * Use the gen_set_gpr and get_gpr helper functions when accessing regs,
      * unless you specifically block reads/writes to reg 0.
      */
     cpu_gpr[0] = NULL;
-    cpu_gprh[0] = NULL;
 
     for (i = 1; i < 32; i++) {
         cpu_gpr[i] = tcg_global_mem_new(tcg_env,
@@ -1653,9 +1986,15 @@ void riscv_translate_init(void)
      */
     for (i = 1; i < 32; i++) {
         _cpu_cursors_do_not_access_directly[i] = tcg_global_mem_new(
+            tcg_env,
             offsetof(CPURISCVState, gpcapregs.decompressed[i].cap._cr_cursor),
             riscv_int_regnames[i]);
     }
+#endif
+#ifdef CONFIG_RVFI_DII
+    cpu_rvfi_available_fields = tcg_global_mem_new_i32(
+        tcg_env, offsetof(CPURISCVState, rvfi_dii_trace.available_fields),
+        "rvfi_available_fields");
 #endif
 
     for (i = 0; i < 32; i++) {
@@ -1664,19 +2003,32 @@ void riscv_translate_init(void)
     }
 
 #ifdef TARGET_CHERI
+    cpu_pc = tcg_global_mem_new(tcg_env,
                                 offsetof(CPURISCVState, pcc._cr_cursor), "pc");
+    /// XXXAR: We currently interpose using DDC.cursor and not DDC.base!
+    ddc_interposition = tcg_global_mem_new(
         tcg_env, offsetof(CPURISCVState, ddc._cr_cursor), "ddc_interpose");
+#else
     cpu_pc = tcg_global_mem_new(tcg_env, offsetof(CPURISCVState, pc), "pc");
+#endif
     cpu_vl = tcg_global_mem_new(tcg_env, offsetof(CPURISCVState, vl), "vl");
     cpu_vstart = tcg_global_mem_new(tcg_env, offsetof(CPURISCVState, vstart),
                             "vstart");
+#ifdef CONFIG_DEBUG_TCG
+    _pc_is_current = tcg_global_mem_new(
+        tcg_env, offsetof(CPURISCVState, _pc_is_current), "_pc_is_current");
+#endif
     load_res = (TCGv_cap_checked_ptr)tcg_global_mem_new(
         tcg_env, offsetof(CPURISCVState, load_res), "load_res");
     load_val = tcg_global_mem_new(tcg_env, offsetof(CPURISCVState, load_val),
                              "load_val");
 }
+
+void gen_cheri_break_loadlink(TCGv_cap_checked_ptr out_addr)
+{
     // The SC implementation uses load_res directly, and apparently this helper
     // can be called from inside the addr==load_res check and the cmpxchg being
     // executed.
     // Until this is fixed, comment out the invalidation
     // tcg_gen_movi_tl((TCGv)load_res, -1);
+}

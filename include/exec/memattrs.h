@@ -48,6 +48,8 @@ typedef struct MemTxAttrs {
     unsigned int debug:1;
     /* Requester ID (for MSI for example) */
     unsigned int requester_id:16;
+    /* This operation is also writing a tag */
+    unsigned int tag_setting : 1;
 
     /*
      * PID (PCI PASID) support: Limited to 8 bits process identifier.

@@ -22,4 +22,8 @@
 
 #define TARGET_INSN_START_EXTRA_WORDS 2
 
+#ifdef CONFIG_TCG_LOG_INSTR
+#define TARGET_MAX_INSN_SIZE 4
+#endif
+
 #endif

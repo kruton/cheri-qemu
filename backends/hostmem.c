@@ -329,6 +329,16 @@ size_t host_memory_backend_pagesize(HostMemoryBackend *memdev)
     return pagesize;
 }
 
+void cheri_tag_init(MemoryRegion *mr, uint64_t memory_size);
+__attribute__((weak)) void cheri_tag_init(MemoryRegion *mr,
+                                          uint64_t memory_size)
+{
+    /*
+     * No-op for non-CHERI targets. This needs to exist unconditionally since
+     * backend->cheri_tags is set in vl.c where we can't check TARGET_CHERI.
+     */
+}
+
 static void
 host_memory_backend_memory_complete(UserCreatable *uc, Error **errp)
 {
@@ -417,6 +427,9 @@ host_memory_backend_memory_complete(UserCreatable *uc, Error **errp)
         }
     }
 #endif
+    if (backend->cheri_tags) {
+        cheri_tag_init(&backend->mr, sz);
+    }
     /*
      * Preallocate memory after the NUMA policy has been instantiated.
      * This is necessary to guarantee memory is allocated with
@@ -500,6 +513,21 @@ host_memory_backend_set_use_canonical_path(Object *obj, bool value,
     backend->use_canonical_path = value;
 }
 
+static bool host_memory_backend_get_cheri_tags(Object *obj, Error **errp)
+{
+    HostMemoryBackend *backend = MEMORY_BACKEND(obj);
+
+    return backend->cheri_tags;
+}
+
+static void host_memory_backend_set_cheri_tags(Object *obj, bool value,
+                                               Error **errp)
+{
+    HostMemoryBackend *backend = MEMORY_BACKEND(obj);
+
+    backend->cheri_tags = value;
+}
+
 static void
 host_memory_backend_class_init(ObjectClass *oc, const void *data)
 {
@@ -575,6 +603,9 @@ host_memory_backend_class_init(ObjectClass *oc, const void *data)
     object_class_property_add_bool(oc, "x-use-canonical-path-for-ramblock-id",
         host_memory_backend_get_use_canonical_path,
         host_memory_backend_set_use_canonical_path);
+    object_class_property_add_bool(oc, "cheri-tags",
+                                   host_memory_backend_get_cheri_tags,
+                                   host_memory_backend_set_cheri_tags);
 }
 
 static const TypeInfo host_memory_backend_info = {

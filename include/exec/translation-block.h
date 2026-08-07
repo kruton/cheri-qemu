@@ -66,6 +66,13 @@ struct TranslationBlock {
      */
     uint64_t cs_base;
 
+    vaddr pcc_base; /* CHERI: Base of program counter for this block */
+    vaddr pcc_top; /* CHERI: End of program counter for this block */
+    uint32_t cheri_flags; /* Extra flags for CHERI. We need more bits than are
+                             available in flags (at least for MIPS) and this
+                             will allow us to avoid continuously changing the
+                             bits that we use when merging from upstream. */
+
     uint32_t flags; /* flags defining in which context the code was generated */
     uint32_t cflags;    /* compile flags */
 
@@ -81,6 +88,7 @@ struct TranslationBlock {
 #define CF_NOIRQ         0x00010000 /* Generate an uninterruptible TB */
 #define CF_PCREL         0x00020000 /* Opcodes in TB are PC-relative */
 #define CF_BP_PAGE       0x00040000 /* Breakpoint present in code page */
+#define CF_LOG_INSTR     0x00400000 /* Generate calls to instruction tracing */
 #define CF_CLUSTER_MASK  0xff000000 /* Top 8 bits are cluster ID */
 #define CF_CLUSTER_SHIFT 24
 

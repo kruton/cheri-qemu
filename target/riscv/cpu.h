@@ -25,15 +25,20 @@
 #include "hw/qdev-properties.h"
 #include "exec/cpu-common.h"
 #include "exec/cpu-defs.h"
+#include "exec/memop.h"
+
+#include "qemu/units.h"
 #include "exec/cpu-interrupt.h"
 #include "exec/gdbstub.h"
 #include "qemu/cpu-float.h"
 #include "qom/object.h"
 #include "qemu/int128.h"
 #include "cpu_bits.h"
+#include "rvfi_dii.h"
 #include "cpu_cfg.h"
 #include "qapi/qapi-types-common.h"
 #include "cpu-qom.h"
+
 
 typedef struct CPUArchState CPURISCVState;
 
@@ -130,7 +135,10 @@ enum {
     TRANSLATE_SUCCESS,
     TRANSLATE_FAIL,
     TRANSLATE_PMP_FAIL,
-    TRANSLATE_G_STAGE_FAIL
+    TRANSLATE_G_STAGE_FAIL,
+#if defined(TARGET_CHERI) && !defined(TARGET_RISCV32)
+    TRANSLATE_CHERI_FAIL,
+#endif
 };
 
 /* Extension context status */
@@ -220,6 +228,9 @@ typedef struct PMUFixedCtrState {
 } PMUFixedCtrState;
 
 struct CPUArchState {
+#ifdef TARGET_CHERI
+    struct GPCapRegs gpcapregs;
+#else
     target_ulong gpr[32];
     target_ulong gprh[32]; /* 64 top bits of the 128-bit registers */
 #endif
@@ -234,11 +245,21 @@ struct CPUArchState {
     bool vill;
 
 #ifdef TARGET_CHERI
-    cap_register_t PCC; // TODO: implement this properly
+    cap_register_t pcc; // SCR 0 Program counter cap. (PCC) TODO: implement this properly
+    cap_register_t ddc; // SCR 1 Default data cap. (DDC)
+#else
+    target_ulong pc;
+#endif
+#ifdef CONFIG_DEBUG_TCG
+    target_ulong _pc_is_current;
 #endif
 
     target_ulong load_res;
     target_ulong load_val;
+#ifdef TARGET_CHERI
+    target_ulong load_pesbt;
+    bool load_tag;
+#endif
 
     /* Floating-Point state */
     uint64_t fpr[32]; /* assume both F and D extensions */
@@ -263,14 +284,20 @@ struct CPUArchState {
     // The cause field reports the cause of the last capability exception,
     // following the encoding described in Table 3.9.2.
     // See enum CheriCapExc in cheri-archspecific.h
+    uint8_t last_cap_cause; // Used to populate xtval
     // The cap idx field reports the index of the capability register that
     // caused the last exception. When the most significant bit is set, the 5
     // least significant bits are used to index the special purpose capability
     // register file described in Table 5.3, otherwise, they index the
     // general-purpose capability register file.
+    uint8_t last_cap_index; /* Used to populate xtval in v9 (now just debug). */
+#ifdef TARGET_CHERI_RISCV_STD_093
+    /* Cheri093CapExcType */ uint8_t last_cap_type; /* To populate xtval2 */
 #endif
+#else
     /* 128-bit helpers upper part return value */
     target_ulong retxh;
+#endif
 
     target_ulong jvt;
 
@@ -297,7 +324,6 @@ struct CPUArchState {
     target_ulong geilen;
     uint64_t resetvec;
 
-    target_ulong mhartid;
     /*
      * For RV32 this is 32-bit mstatus and 32-bit mstatush.
      * For RV64 this is a 64-bit mstatus.
@@ -335,15 +361,26 @@ struct CPUArchState {
     target_ulong stval;
     target_ulong medeleg;
 
+#if defined(TARGET_CHERI) && !defined(TARGET_RISCV32)
+    target_ulong sccsr;
 #endif
+
 #ifdef TARGET_CHERI
     cap_register_t stvecc;    // SCR 12 Supervisor trap code cap. (STCC)
+    cap_register_t sepcc;     // SCR 15 Supervisor exception PC cap. (SEPCC)
+#else
     target_ulong stvec;
     target_ulong sepc;
+#endif
     target_ulong scause;
 
+#ifdef TARGET_CHERI
+    cap_register_t mtvecc;    // SCR 28 Machine trap code cap. (MTCC)
+    cap_register_t mepcc;     // SCR 31 Machine exception PC cap. (MEPCC)
+#else
     target_ulong mtvec;
     target_ulong mepc;
+#endif
     target_ulong mcause;
     target_ulong mtval;  /* since: priv-1.10.0 */
 
@@ -390,20 +427,25 @@ struct CPUArchState {
     target_ulong hvictl;
     uint8_t hviprio[64];
 
+    /* Virtual CSRs */
+#ifdef TARGET_CHERI
+    cap_register_t vstvecc;
+    cap_register_t vsscratchc;
+    cap_register_t vsepcc;
+#else
     /* Upper 64-bits of 128-bit CSRs */
     uint64_t mscratchh;
     uint64_t sscratchh;
 
-    /* Virtual CSRs */
+    target_ulong vstvec;
     target_ulong vsepc;
+    target_ulong vsscratch;
+#endif
     /*
      * For RV32 this is 32-bit vsstatus and 32-bit vsstatush.
      * For RV64 this is a 64-bit vsstatus.
      */
     uint64_t vsstatus;
-    target_ulong vstvec;
-    target_ulong vsscratch;
-    target_ulong vsepc;
     target_ulong vscause;
     target_ulong vstval;
     target_ulong vsatp;
@@ -417,14 +459,18 @@ struct CPUArchState {
     /* HS Backup CSRs */
 #ifdef TARGET_CHERI
     cap_register_t stcc_hs;
+    cap_register_t sepcc_hs;
+    cap_register_t sscratchc_hs;
+
+#ifdef TARGET_CHERI_RISCV_STD_093
     target_ulong stval2;
     target_ulong vstval2;
     target_ulong stval2_hs;
 #endif
 #else
     target_ulong stvec_hs;
-    target_ulong sscratch_hs;
     target_ulong sepc_hs;
+    target_ulong sscratch_hs;
 #endif
     target_ulong scause_hs;
     target_ulong stval_hs;
@@ -460,14 +506,45 @@ struct CPUArchState {
     /* PMU event selector configured values. First three are unused */
     target_ulong mhpmevent_val[RV_MAX_MHPMEVENTS];
 
+#ifdef TARGET_CHERI
+    /* zstid registers */
+    cap_register_t mtidc;
+    cap_register_t stidc;
+    cap_register_t utidc;
     cap_register_t vstidc;
+    cap_register_t stidc_hs;
+#else
+    /* zstid registers in integer mode */
+    target_ulong mtid;
+    target_ulong stid;
+    target_ulong utid;
+    target_ulong vstid;
+    target_ulong stid_hs;
+#endif
+
+#ifdef TARGET_CHERI_RISCV_V9
+    /* V9-only special capability registers */
+    cap_register_t mtdc;  /* Machine trap data cap */
+    cap_register_t stdc;  /* Supervisor trap data cap */
+    cap_register_t vstdc; /* Virtual Supervisor trap data cap */
+#endif
+
     /* PMU event selector configured values for RV32 */
     target_ulong mhpmeventh_val[RV_MAX_MHPMEVENTS];
 
     PMUFixedCtrState pmu_fixed_ctrs[2];
 
+#ifdef TARGET_CHERI
+    cap_register_t sscratchc;
+    cap_register_t mscratchc;
+#else
     target_ulong sscratch;
     target_ulong mscratch;
+#endif
+
+    /* temporary htif regs */
+    uint64_t mfromhost;
+    uint64_t mtohost;
 
     /* Sstc CSRs */
     uint64_t stimecmp;
@@ -518,6 +595,7 @@ struct CPUArchState {
     uint64_t sstateen[SMSTATEEN_MAX_COUNT];
     uint64_t henvcfg;
 #endif
+
 #ifdef TARGET_CHERI
     // Some statcounters:
     uint64_t statcounters_cap_read;
@@ -530,11 +608,36 @@ struct CPUArchState {
 
 #endif
 
+    /* Fields up to this point are cleared by a TestRIG reset */
+    struct {} end_testrig_reset_fields;
+
+
+#ifdef CONFIG_RVFI_DII
+    struct {
+        struct rvfi_dii_instruction_metadata INST;
+        struct rvfi_dii_pc_data PC;
+        struct rvfi_dii_integer_data INTEGER;
+        struct rvfi_dii_memory_access_data MEM;
+        // TODO: struct rvfi_dii_csr_data CSR;
+        // TODO: struct rvfi_dii_fp_data FP;
+        // TODO: struct rvfi_dii_cheri_data CHERI;
+        // TODO: struct rvfi_dii_cheri_scr_data CHERI_SCR;
+        // TODO: struct rvfi_dii_trap_data TRAP;
+        uint32_t available_fields;
+    } rvfi_dii_trace;
+    bool rvfi_dii_have_injected_insn;
+    uint32_t rvfi_dii_injected_insn;
 #endif
+
+
+
     target_ulong mhartid;
+
     uint32_t features;
+
 #ifdef CONFIG_USER_ONLY
     uint32_t elf_flags;
+#endif
     /* Fields from here on are preserved across CPU reset. */
     QEMUTimer *stimer; /* Internal timer for S-mode interrupt */
     QEMUTimer *vstimer; /* Internal timer for VS-mode interrupt */
@@ -588,7 +691,11 @@ struct ArchCPU {
 
     GDBFeature dyn_csr_feature;
     GDBFeature dyn_vreg_feature;
+#ifdef TARGET_CHERI_RISCV_STD
+    GDBFeature dyn_ycsr_feature;
 #elif defined(TARGET_CHERI_RISCV_V9)
+    GDBFeature dyn_scr_feature;
+#endif
 
     /* Configuration Settings */
     RISCVCPUConfig cfg;
@@ -635,6 +742,7 @@ static inline int riscv_has_ext(CPURISCVState *env, uint32_t ext)
     return (env->misa_ext & ext) != 0;
 }
 
+
 #include "cpu_user.h"
 
 extern const char * const riscv_int_regnames[];
@@ -645,11 +753,20 @@ extern const char * const riscv_rvv_regnames[];
 /* Needed for cheri-common logging */
 extern const char * const cheri_gp_regnames[];
 #endif
+
 #ifdef CONFIG_TCG_LOG_INSTR
+void riscv_log_instr_csr_changed(CPURISCVState *env, int csrno);
+
 #define log_changed_special_reg(env, name, newval, index, type)                \
     do {                                                                       \
+        if (qemu_log_instr_enabled(env))                                       \
+            qemu_log_instr_reg(env, name, newval, index, type);                \
     } while (0)
+#else /* !CONFIG_TCG_LOG_INSTR */
 #define log_changed_special_reg(env, name, newval) ((void)0)
+#define riscv_log_instr_csr_changed(env, csrno) ((void)0)
+#endif /* !CONFIG_TCG_LOG_INSTR */
+
 #define CHK_BLK_POW2(prop) \
 do { \
     if ((cpu->cfg.prop == 0) || \
@@ -657,9 +774,30 @@ do { \
         error_setg(errp, "%s must be a power of 2.", tostring(prop)); \
         return; \
     } \
+} while (0)
+
 /*
+ * From 5.3.6 Special Capability Registers (SCRs)
+ * Where an SCR extends a RISC-V CSR, e.g. MTCC extending mtvec, any read to the
+ * CSR shall return the address (offset for ISAv8) of the corresponding SCR.
+ * Similarly, any write to the CSR shall set the address (offset for ISAv8) of
+ * the SCR to the value written.
  */
+#ifdef TARGET_CHERI
+#define SCR_TO_PROGRAM_COUNTER(env, scr)                                       \
+    (CHERI_NO_RELOCATION(env) ? cap_get_cursor(scr)                            \
+                              : (target_ulong)cap_get_offset(scr))
+/**
+ * @returns the architectural view of the underlying SCR,address/offset
+ * depending on CHERI ISA version.
+ */
+#define GET_SPECIAL_REG_ARCH(env, name, cheri_name)                            \
     SCR_TO_PROGRAM_COUNTER(env, &((env)->cheri_name))
+/**
+ * @returns the address of a given SCR as we feed our PC around as an address
+ * not the architectural offset.
+ */
+#define GET_SPECIAL_REG_ADDR(env, name, cheri_name)                            \
     ((target_ulong)cap_get_cursor(&((env)->cheri_name)))
 void update_special_register(CPURISCVState *env, cap_register_t *scr,
                              const char *name, target_ulong value);
@@ -667,13 +805,102 @@ void update_special_register(CPURISCVState *env, cap_register_t *scr,
     update_special_register(env, scr, name, value)
 #define SET_SPECIAL_REG(env, name, cheri_name, value)                          \
     SCR_SET_PROGRAM_COUNTER(env, &((env)->cheri_name), #cheri_name, value)
+
+#else /* ! TARGET_CHERI */
 #define GET_SPECIAL_REG_ARCH(env, name, cheri_name) ((env)->name)
+#define GET_SPECIAL_REG_ADDR(env, name, cheri_name) ((env)->name)
+#define SET_SPECIAL_REG(env, name, cheri_name, value)                          \
     do {                                                                       \
         env->name = value;                                                     \
+        log_changed_special_reg(env, #name, value, 0, LRI_CSR_ACCESS);         \
     } while (false)
+#endif /* ! TARGET_CHERI */
+
+#ifdef CONFIG_RVFI_DII
+#define RVFI_DII_RAM_START 0x80000000
+#define RVFI_DII_RAM_SIZE (8 * MiB)
+#define RVFI_DII_RAM_END (RVFI_DII_RAM_START + RVFI_DII_RAM_SIZE)
+void rvfi_dii_communicate(CPUState *cs, CPURISCVState *env, bool was_trap);
+#define CHECK_SAME_TYPE(a, b, msg)                                             \
+    _Static_assert(__builtin_types_compatible_p(a*, b*), msg)
+#define rvfi_dii_offset(type, field)                                           \
+    offsetof(CPURISCVState, rvfi_dii_trace.type.rvfi_##field)
+#define gen_rvfi_dii_set_field(type, field, arg)                               \
+    do {                                                                       \
+        CHECK_SAME_TYPE(                                                       \
+            typeof(((CPURISCVState *)NULL)->rvfi_dii_trace.type.rvfi_##field), \
+            uint64_t, "Should only be used for uint64_t fields");              \
+        CHECK_SAME_TYPE(TCGv_i64, typeof(arg), "Expected 64-bit store");       \
         tcg_gen_st_i64(arg, cpu_env, rvfi_dii_offset(type, field));            \
+        tcg_gen_ori_i32(cpu_rvfi_available_fields, cpu_rvfi_available_fields,  \
+                        RVFI_##type##_DATA);                                   \
+    } while (0)
+#define gen_rvfi_dii_set_field_const_iN(n, st_op, type, field, constant)       \
+    do {                                                                       \
+        CHECK_SAME_TYPE(                                                       \
+            typeof(((CPURISCVState *)NULL)->rvfi_dii_trace.type.rvfi_##field), \
+            uint##n##_t, "Should only be used for uint64_t fields");           \
+        TCGv_i64 rvfi_tc = tcg_const_i64(constant);                            \
         tcg_gen_##st_op(rvfi_tc, cpu_env, rvfi_dii_offset(type, field));       \
+        tcg_gen_ori_i32(cpu_rvfi_available_fields, cpu_rvfi_available_fields,  \
+                        RVFI_##type##_DATA);                                   \
+        tcg_temp_free_i64(rvfi_tc);                                            \
+    } while (0)
+#define gen_rvfi_dii_set_field_const_i8(type, field, constant)                 \
+    gen_rvfi_dii_set_field_const_iN(8, st8_i64, type, field, constant)
+#define gen_rvfi_dii_set_field_const_i16(type, field, constant)                \
+    gen_rvfi_dii_set_field_const_iN(16, tcg_gen_st16_i64, type, field, constant)
+#define gen_rvfi_dii_set_field_const_i32(type, field, constant)                \
+    gen_rvfi_dii_set_field_const_iN(32, st32_i64, type, field, constant)
+#define gen_rvfi_dii_set_field_const_i64(type, field, constant)                \
+    gen_rvfi_dii_set_field_const_iN(64, st_i64, type, field, constant)
+#define gen_rvfi_dii_set_field_zext_i32(type, field, arg)                      \
+    do {                                                                       \
+        CHECK_SAME_TYPE(TCGv_i32, typeof(arg), "Expected i32");                \
+        TCGv_i64 tmp = tcg_temp_new_i64();                                     \
+        tcg_gen_extu_i32_i64(tmp, arg);                                        \
+        gen_rvfi_dii_set_field(type, field, tmp);                              \
+        tcg_temp_free_i64(tmp);                                                \
+    } while (0)
+#if TARGET_LONG_BITS == 32
+#define gen_rvfi_dii_set_field_zext_tl(type, field, arg)                       \
+    gen_rvfi_dii_set_field_zext_i32(type, field, arg)
 #else
+#define gen_rvfi_dii_set_field_zext_tl(type, field, arg)                       \
+    gen_rvfi_dii_set_field(type, field, arg)
+#endif
+#define gen_rvfi_dii_set_field_zext_addr(type, field, arg)                     \
+    do {                                                                       \
+        CHECK_SAME_TYPE(TCGv_cap_checked_ptr, typeof(arg), "Expected addr");   \
+        TCGv_i64 tmp = tcg_temp_new_i64();                                     \
+        tcg_gen_extu_tl_i64(tmp, (TCGv)arg);                                   \
+        gen_rvfi_dii_set_field(type, field, tmp);                              \
+        tcg_temp_free_i64(tmp);                                                \
+    } while (0)
+#define gen_rvfi_dii_set_mem_data(rw, addr, val, memop, extend_to_i64)         \
+    do {                                                                       \
+        TCGv_i64 tmp = tcg_temp_new_i64();                                     \
+        extend_to_i64(tmp, val);                                               \
+        tcg_gen_andi_i64(tmp, tmp, MAKE_64BIT_MASK(0, 8 * memop_size(memop))); \
+        gen_rvfi_dii_set_field_zext_addr(MEM, mem_addr, addr);                 \
+        gen_rvfi_dii_set_field(MEM, mem_##rw##data[0], tmp);                   \
+        gen_rvfi_dii_set_field_const_i32(MEM, mem_##rw##mask,                  \
+                                         memop_rvfi_mask(memop));              \
+        tcg_temp_free_i64(tmp);                                                \
+    } while (0)
+#define gen_rvfi_dii_set_mem_data_i32(rw, addr, val_i32, memop)                \
+    gen_rvfi_dii_set_mem_data(rw, addr, val_i32, memop, tcg_gen_extu_i32_i64)
+#define gen_rvfi_dii_set_mem_data_i64(rw, addr, val_i64, memop)                \
+    gen_rvfi_dii_set_mem_data(rw, addr, val_i64, memop, tcg_gen_mov_i64)
+#else
+#define gen_rvfi_dii_set_field(type, field, arg) ((void)0)
+#define gen_rvfi_dii_set_field_zext_i32(type, field, arg) ((void)0)
+#define gen_rvfi_dii_set_field_zext_addr(type, field, arg) ((void)0)
+#define gen_rvfi_dii_set_field_zext_tl(type, field, arg) ((void)0)
+#define gen_rvfi_dii_set_field_const_i8(type, field, constant) ((void)0)
+#define gen_rvfi_dii_set_field_const_i16(type, field, constant) ((void)0)
+#define gen_rvfi_dii_set_field_const_i32(type, field, constant) ((void)0)
+#define gen_rvfi_dii_set_field_const_i64(type, field, constant) ((void)0)
 #endif
 
 const char *riscv_cpu_get_trap_name(target_ulong cause, bool async);
@@ -697,6 +924,9 @@ void riscv_cpu_set_virt_enabled(CPURISCVState *env, bool enable);
 int riscv_env_mmu_index(CPURISCVState *env, bool ifetch);
 #ifdef TARGET_CHERI
 hwaddr cpu_riscv_translate_address_tagmem(CPURISCVState *env,
+                                          target_ulong address,
+                                          MMUAccessType rw, int reg, int *prot,
+                                          uintptr_t retpc);
 #endif
 bool cpu_get_fcfien(CPURISCVState *env);
 bool cpu_get_bcfien(CPURISCVState *env);
@@ -724,7 +954,7 @@ void riscv_cpu_do_transaction_failed(CPUState *cs, hwaddr physaddr,
                                      MemTxResult response, uintptr_t retaddr);
 hwaddr riscv_cpu_get_phys_page_debug(CPUState *cpu, vaddr addr);
 bool riscv_cpu_exec_interrupt(CPUState *cs, int interrupt_request);
-void riscv_cpu_swap_hypervisor_regs(CPURISCVState *env);
+void riscv_cpu_swap_hypervisor_regs(CPURISCVState *env, bool hs_mode_trap);
 int riscv_cpu_claim_interrupts(RISCVCPU *cpu, uint64_t interrupts);
 uint64_t riscv_cpu_update_mip(CPURISCVState *env, uint64_t mask,
                               uint64_t value);
@@ -760,31 +990,72 @@ G_NORETURN void riscv_raise_exception(CPURISCVState *env,
 
 target_ulong riscv_cpu_get_fflags(CPURISCVState *env);
 void riscv_cpu_set_fflags(CPURISCVState *env, target_ulong);
+bool csr_needs_asr(uint32_t csrno, bool write);
+
+static inline const RISCVCPUConfig *riscv_cpu_cfg(CPURISCVState *env)
 {
+    return &env_archcpu(env)->cfg;
 }
+
+static inline bool riscv_has_cheri(CPURISCVState *env)
 {
 #ifdef TARGET_CHERI
+    return riscv_cpu_cfg(env)->ext_cheri;
 #else
-#endif
-}
-#ifdef TARGET_CHERI
-#else
+    return false;
 #endif
 }
 
+static inline bool riscv_has_cheri_hybrid(CPURISCVState *env)
+{
+#ifdef TARGET_CHERI
+    if (!riscv_cpu_cfg(env)->ext_cheri) {
+        return false;
+    }
+#ifdef TARGET_CHERI_RISCV_V9
     return true;
+#else
+    return riscv_cpu_cfg(env)->ext_zyhybrid;
 #endif
+#else
+    return false;
+#endif
+}
+
+static inline bool riscv_has_stid(CPURISCVState *env)
+{
+#ifdef TARGET_CHERI
+    return true;
+#else
+    return false;
+#endif
+}
+
+#include "cpu_cheri.h"
+#include "exec/log_instr.h"
+
 static inline bool pc_is_current(CPURISCVState *env)
+{
 #ifdef CONFIG_DEBUG_TCG
     return env->_pc_is_current;
+#else
+    return true;
+#endif
+}
+
 /*
  * Note: the pc does not have to be up-to-date, tb start is fine.
  * We may miss a few dumps or print too many if -dfilter is on but
  * that shouldn't really matter.
  */
 static inline target_ulong cpu_get_recent_pc(CPURISCVState *env)
+{
+#ifdef TARGET_CHERI
     return env->pcc._cr_cursor;
+#else
     return env->pc;
+#endif
+}
 FIELD(TB_FLAGS, MEM_IDX, 0, 3)
 FIELD(TB_FLAGS, FS, 3, 2)
 /* Vector flags */
@@ -826,9 +1097,6 @@ static inline RISCVMXL riscv_cpu_mxl(CPURISCVState *env)
 #endif
 #define riscv_cpu_mxl_bits(env) (1UL << (4 + riscv_cpu_mxl(env)))
 
-static inline const RISCVCPUConfig *riscv_cpu_cfg(CPURISCVState *env)
-{
-}
 
 #if !defined(CONFIG_USER_ONLY)
 static inline int cpu_address_mode(CPURISCVState *env)
@@ -958,6 +1226,31 @@ static inline uint32_t vext_get_vlmax(uint32_t vlenb, uint32_t vsew,
     return vlen >> (vsew + 3 - lmul);
 }
 
+#ifdef CONFIG_TCG_LOG_INSTR
+#define RISCV_LOG_INSTR_CPU_U QEMU_LOG_INSTR_CPU_USER
+#define RISCV_LOG_INSTR_CPU_S QEMU_LOG_INSTR_CPU_SUPERVISOR
+#define RISCV_LOG_INSTR_CPU_H QEMU_LOG_INSTR_CPU_HYPERVISOR
+#define RISCV_LOG_INSTR_CPU_M QEMU_LOG_INSTR_CPU_TARGET1
+extern const char * const riscv_cpu_mode_names[];
+
+static inline bool cpu_in_user_mode(CPURISCVState *env)
+{
+    return env->priv == PRV_U;
+}
+
+static inline unsigned cpu_get_asid(CPURISCVState *env, target_ulong pc)
+{
+    return get_field(env->satp, SATP_ASID);
+}
+
+static inline const char *cpu_get_mode_name(qemu_log_instr_cpu_mode_t mode)
+{
+    if (riscv_cpu_mode_names[mode])
+        return riscv_cpu_mode_names[mode];
+    return "<invalid>";
+}
+#endif
+
 bool riscv_cpu_is_32bit(RISCVCPU *cpu);
 
 bool riscv_cpu_virt_mem_enabled(CPURISCVState *env);
@@ -965,27 +1258,29 @@ RISCVPmPmm riscv_pm_get_pmm(CPURISCVState *env);
 RISCVPmPmm riscv_pm_get_virt_pmm(CPURISCVState *env);
 uint32_t riscv_pm_get_pmlen(RISCVPmPmm pmm);
 
+RISCVException riscv_csrrw_check(CPURISCVState *env, int csrno,
+                                 bool write);
 RISCVException riscv_csrr(CPURISCVState *env, int csrno,
-                          target_ulong *ret_value);
-
+                          target_ulong *ret_value, uintptr_t retpc);
 RISCVException riscv_csrrw(CPURISCVState *env, int csrno,
-                           target_ulong *ret_value, target_ulong new_value,
-                           target_ulong write_mask, uintptr_t ra);
+                           target_ulong *ret_value,
+                           target_ulong new_value, target_ulong write_mask,
+                           uintptr_t retpc);
 RISCVException riscv_csrrw_debug(CPURISCVState *env, int csrno,
                                  target_ulong *ret_value,
                                  target_ulong new_value,
                                  target_ulong write_mask);
 
 static inline void riscv_csr_write(CPURISCVState *env, int csrno,
-                                   target_ulong val)
+                                   target_ulong val, uintptr_t retpc)
 {
-    riscv_csrrw(env, csrno, NULL, val, MAKE_64BIT_MASK(0, TARGET_LONG_BITS), 0);
+    riscv_csrrw(env, csrno, NULL, val, MAKE_64BIT_MASK(0, TARGET_LONG_BITS), retpc);
 }
 
-static inline target_ulong riscv_csr_read(CPURISCVState *env, int csrno)
+static inline target_ulong riscv_csr_read(CPURISCVState *env, int csrno, uintptr_t retpc)
 {
     target_ulong val = 0;
-    riscv_csrr(env, csrno, &val);
+    riscv_csrr(env, csrno, &val, retpc);
     return val;
 }
 
@@ -1000,12 +1295,15 @@ typedef RISCVException (*riscv_csr_op_fn)(CPURISCVState *env, int csrno,
                                           target_ulong *ret_value,
                                           target_ulong new_value,
                                           target_ulong write_mask);
+typedef void (*riscv_csr_log_update_fn)(CPURISCVState *env, int csrno,
+                                        target_ulong new_value);
 
 RISCVException riscv_csrr_i128(CPURISCVState *env, int csrno,
-                               Int128 *ret_value);
+                               Int128 *ret_value, uintptr_t retpc);
 RISCVException riscv_csrrw_i128(CPURISCVState *env, int csrno,
-                                Int128 *ret_value, Int128 new_value,
-                                Int128 write_mask, uintptr_t ra);
+                                Int128 *ret_value,
+                                Int128 new_value, Int128 write_mask,
+                                uintptr_t retpc);
 
 typedef RISCVException (*riscv_csr_read128_fn)(CPURISCVState *env, int csrno,
                                                Int128 *ret_value);
@@ -1087,37 +1385,74 @@ void riscv_set_csr_ops(int csrno, const riscv_csr_operations *ops);
 
 void riscv_cpu_register_gdb_regs_for_features(CPUState *cs);
 
+#ifdef TARGET_CHERI
+typedef struct _csr_cap_ops riscv_csr_cap_ops;
+typedef cap_register_t (*riscv_csr_cap_read_fn)(CPURISCVState *env,
+                                                riscv_csr_cap_ops *cap);
+typedef void (*riscv_csr_cap_write_fn)(CPURISCVState *env,
+                                       riscv_csr_cap_ops *cap,
+                                       cap_register_t src, target_ulong newval,
+                                       bool clen);
+
+#define CSR_OP_REQUIRE_CRE   (1 << 0)
+#define CSR_OP_IA_CONVERSION (1 << 1)
+#define CSR_OP_UPDATE_SCADDR (1 << 2)
+#define CSR_OP_EXTENDED_REG  (1 << 3)
+#define CSR_OP_IS_CODE_PTR   (1 << 4)
+#define CSR_OP_DIRECT_WRITE  (0)
+
+struct _csr_cap_ops {
+    const char *name;
+    uint32_t reg_num;
+    riscv_csr_cap_read_fn read;
+    riscv_csr_cap_write_fn write;
+    uint8_t flags;
+};
+riscv_csr_cap_ops *get_csr_cap_info(uint32_t csrnum);
+cap_register_t *get_cap_csr(CPUArchState *env, uint32_t index);
+
 /* Do the CRE bits allow cheri access in the current CPU mode? */
 static inline bool riscv_cpu_mode_cre(CPURISCVState *env)
 {
+#ifdef TARGET_CHERI_RISCV_V9
+    return env_archcpu(env)->cfg.ext_cheri;
 #else
     /*
      * CRE bits are defined only if Zcherihybrid is supported.
      * For Zcheripurecap, cheri register access is always allowed.
      */
+    if (!riscv_has_cheri_hybrid(env)) {
         return true;
     }
+
     if (env->mseccfg & MSECCFG_CRE) {
         /* CRE bits allow cheri in M mode */
         if (env->priv == PRV_M)
             return true;
+
         if (env->menvcfg & MENVCFG_CRE) {
             /* CRE bits allow cheri in S mode (and in M mode) */
             if (env->priv == PRV_S)
                 return true;
+
             if (env->senvcfg & SENVCFG_CRE) {
                 /* CRE bits allow cheri in U mode (and in M, S modes) */
                 if (env->priv == PRV_U)
+                    return true;
             }
         }
     }
+
     /*
      * For now, we do not support the hypervisor extension. It'll probably
      * have another CRE bit for H mode.
      */
+
     return false;
 #endif
 }
+#endif
+
 target_ulong riscv_new_csr_seed(target_ulong new_value,
                                 target_ulong write_mask);
 

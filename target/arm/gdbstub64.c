@@ -39,13 +39,13 @@ int aarch64_cpu_gdb_read_register(CPUState *cs, GByteArray *mem_buf, int n)
 
     if (n < 31) {
         /* Core integer register.  */
-        return gdb_get_reg64(mem_buf, env->xregs[n]);
+        return gdb_get_reg64(mem_buf, arm_get_a64_reg(env, n));
     }
     switch (n) {
     case 31:
-        return gdb_get_reg64(mem_buf, env->xregs[31]);
+        return gdb_get_reg64(mem_buf, arm_get_a64_reg(env, 31));
     case 32:
-        return gdb_get_reg64(mem_buf, env->pc);
+        return gdb_get_reg64(mem_buf, get_aarch_reg_as_x(&env->pc));
     case 33:
         /* pstate is now a 64-bit value; can we simply adjust the xml? */
         return gdb_get_reg32(mem_buf, pstate_read(env));
@@ -64,15 +64,15 @@ int aarch64_cpu_gdb_write_register(CPUState *cs, uint8_t *mem_buf, int n)
 
     if (n < 31) {
         /* Core integer register.  */
-        env->xregs[n] = tmp;
+        arm_set_a64_reg(env, n, tmp);
         return 8;
     }
     switch (n) {
     case 31:
-        env->xregs[31] = tmp;
+        arm_set_a64_reg(env, 31, tmp);
         return 8;
     case 32:
-        env->pc = tmp;
+        set_aarch_reg_to_x(env, &env->pc, tmp);
         return 8;
     case 33:
         /* CPSR */
@@ -251,6 +251,63 @@ int aarch64_gdb_set_sve_reg(CPUState *cs, uint8_t *buf, int reg)
     return 0;
 }
 
+#ifdef TARGET_CHERI
+int aarch64_gdb_get_cheri_reg(CPUState *cs, GByteArray *buf, int n)
+{
+    ARMCPU *cpu = ARM_CPU(cs);
+    CPUARMState *env = &cpu->env;
+    if (n < 31) {
+        /* Core capability register.  */
+        return gdb_get_general_purpose_capreg(buf, env, n);
+    }
+    switch (n) {
+    case 31:
+        return gdb_get_general_purpose_capreg(buf, env, n);
+    case 32:
+        return gdb_get_capreg(buf, cheri_get_current_pcc(env));
+    case 33:
+        return gdb_get_capreg(buf, cheri_get_ddc(env));
+    case 34:
+        return gdb_get_capreg(buf, &env->cp15.tpidr_el[0].cap);
+    case 35:
+        return gdb_get_capreg(buf, &env->sp_el[4].cap);
+    case 36:
+        return gdb_get_capreg(buf, &env->DDCs[4].cap);
+    case 37:
+        return gdb_get_capreg(buf, &env->cp15.rtpidr_el0.cap);
+    case 38:
+        return gdb_get_capreg(buf, &env->cid_el0.cap);
+    case 39:
+        /* cctlr */
+        return gdb_get_regl(buf, env->CCTLR_el[0]);
+    }
+    return 0;
+}
+
+int aarch64_gdb_set_cheri_reg(CPUState *cs, uint8_t *mem_buf, int n)
+{
+    ARMCPU *cpu = ARM_CPU(cs);
+    CPUARMState *env = &cpu->env;
+    /* All CHERI registers are read-only currently.  */
+    if (n < 31) {
+        /* Core capability register.  */
+        return CHERI_CAP_SIZE + 1;
+    }
+    switch (n) {
+    case 31:
+    case 32:
+    case 33:
+    case 34:
+    case 35:
+    case 36:
+    case 37:
+    case 38:
+        return CHERI_CAP_SIZE + 1;
+    }
+    return 0;
+}
+#endif
+
 int aarch64_gdb_get_sme_reg(CPUState *cs, GByteArray *buf, int reg)
 {
     ARMCPU *cpu = ARM_CPU(cs);
@@ -394,7 +451,7 @@ int aarch64_gdb_get_tls_reg(CPUState *cs, GByteArray *buf, int reg)
 
     switch (reg) {
     case 0: /* TPIDR_EL0 */
-        return gdb_get_reg64(buf, env->cp15.tpidr_el[0]);
+        return gdb_get_reg64(buf, get_aarch_reg_as_x(&env->cp15.tpidr_el[0]));
     case 1: /* TPIDR2_EL0 */
         return gdb_get_reg64(buf, env->cp15.tpidr2_el0);
     default:
@@ -412,7 +469,7 @@ int aarch64_gdb_set_tls_reg(CPUState *cs, uint8_t *buf, int reg)
 
     switch (reg) {
     case 0: /* TPIDR_EL0 */
-        env->cp15.tpidr_el[0] = ldq_p(buf);
+        set_aarch_reg_to_x(env, &env->cp15.tpidr_el[0], ldq_p(buf));
         return 8;
     case 1: /* TPIDR2_EL0 */
         env->cp15.tpidr2_el0 = ldq_p(buf);

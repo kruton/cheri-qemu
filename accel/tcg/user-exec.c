@@ -159,6 +159,7 @@ bool handle_sigsegv_accerr_write(CPUState *cpu, sigset_t *old_set,
     }
 }
 
+
 typedef struct PageFlagsNode {
     struct rcu_head rcu;
     IntervalTreeNode itree;
@@ -742,9 +743,9 @@ int page_unprotect(CPUState *cpu, tb_page_addr_t address, uintptr_t pc)
     return current_tb_invalidated ? 2 : 1;
 }
 
-static int probe_access_internal(CPUArchState *env, vaddr addr,
-                                 int fault_size, MMUAccessType access_type,
-                                 bool nonfault, uintptr_t ra)
+static QEMU_ALWAYS_INLINE int
+probe_access_internal(CPUArchState *env, vaddr addr, int fault_size,
+                      MMUAccessType access_type, bool nonfault, uintptr_t ra)
 {
     int acc_flag;
     bool maperr;
@@ -796,8 +797,9 @@ int probe_access_flags(CPUArchState *env, vaddr addr, int size,
     return flags;
 }
 
-void *probe_access(CPUArchState *env, vaddr addr, int size,
-                   MMUAccessType access_type, int mmu_idx, uintptr_t ra)
+static inline QEMU_ALWAYS_INLINE void *
+probe_access_inlined(CPUArchState *env, vaddr addr, int size,
+                     MMUAccessType access_type, int mmu_idx, uintptr_t ra)
 {
     int flags;
 
@@ -807,6 +809,8 @@ void *probe_access(CPUArchState *env, vaddr addr, int size,
 
     return size ? g2h(env_cpu(env), addr) : NULL;
 }
+
+#include "probe-access.inc.c"
 
 void *tlb_vaddr_to_host(CPUArchState *env, vaddr addr,
                         MMUAccessType access_type, int mmu_idx)

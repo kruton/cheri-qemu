@@ -56,6 +56,13 @@ enum {
     ARM_CP_GCSSS1                = 0x000d,
     ARM_CP_GCSSS2                = 0x000e,
 
+#ifdef TARGET_CHERI
+    ARM_CP_IC_OR_DC_VA           = 0x000f,
+    ARM_CP_IC_OR_DC_VA_STORE     = (0x000f | (1 << 25)),
+#else
+    ARM_CP_IC_OR_DC_VA           = ARM_CP_NOP,
+    ARM_CP_IC_OR_DC_VA_STORE     = ARM_CP_NOP,
+#endif
     /* Flag: reads produce resetvalue; writes ignored. */
     ARM_CP_CONST                 = 1 << 4,
     /* Flag: For ARM_CP_STATE_AA32, sysreg is 64-bit. */
@@ -115,6 +122,7 @@ enum {
     ARM_CP_SVE                   = 1 << 14,
     /* Flag: Do not expose in gdb sysreg xml. */
     ARM_CP_NO_GDB                = 1 << 15,
+
     /*
      * Flags: If EL3 but not EL2...
      *   - UNDEF: discard the cpreg,
@@ -149,7 +157,19 @@ enum {
      * should not trap to EL2 when HCR_EL2.NV is set.
      */
     ARM_CP_NV_NO_TRAP            = 1 << 22,
+
+    ARM_CP_CAP                   = 1 << 23,
+    ARM_CP_CAP_ONLY              = (ARM_CP_CAP | (1 << 24)),
 };
+
+/* Mask of only the flag bits in a type field */
+#define ARM_CP_FLAG_MASK 0x3fff0ff
+
+#ifdef TARGET_CHERI
+#define ARM_CP_CAP_ON_MORELLO ARM_CP_CAP
+#else
+#define ARM_CP_CAP_ON_MORELLO 0
+#endif
 
 /*
  * Interface for defining coprocessor registers.
@@ -269,8 +289,7 @@ typedef enum {
     ARM_CP_STATE_BOTH = 2,
 } CPState;
 
-/*
- * ARM CP register secure state flags.  These flags identify security state
+/* ARM CP register secure state flags.  These flags identify security state
  * attributes for a given CP register entry.
  * The existence of both or neither secure and non-secure flags indicates that
  * the register has both a secure and non-secure hash entry.  A single one of
@@ -305,6 +324,19 @@ typedef enum {
  * do the more restrictive/complex check inside a helper function.
  */
 typedef enum {
+#ifdef TARGET_CHERI
+    PL_IN_RESTRICTED = 0x400,
+    PL_IN_EXECUTIVE = 0x200,
+// Requiring the system access bit is the default.
+// Anything that can be accessed without it needs this flag.
+    PL_NO_SYSREG  = 0x100,
+#else
+    PL_IN_RESTRICTED  = 0,
+    PL_IN_EXECUTIVE = 0,
+    PL_NO_SYSREG = 0,
+#endif
+
+#define PL_CHERI (PL_IN_RESTRICTED | PL_IN_EXECUTIVE | PL_NO_SYSREG)
     PL3_R = 0x80,
     PL3_W = 0x40,
     PL2_R = 0x20 | PL3_R,
@@ -331,6 +363,23 @@ typedef enum {
     PL1_RW = PL1_R | PL1_W,
     PL0_RW = PL0_R | PL0_W,
 } CPAccessRights;
+
+/*
+ * For user-mode some registers are accessible to EL0 via a kernel
+ * trap-and-emulate ABI. In this case we define the read permissions
+ * as actually being PL0_R. However some bits of any given register
+ * may still be masked.
+ */
+#ifdef CONFIG_USER_ONLY
+#define PL0U_R PL0_R
+#else
+#define PL0U_R PL1_R
+#endif
+
+#define PL3_RW (PL3_R | PL3_W)
+#define PL2_RW (PL2_R | PL2_W)
+#define PL1_RW (PL1_R | PL1_W)
+#define PL0_RW (PL0_R | PL0_W)
 
 typedef enum CPAccessResult {
     /* Access is permitted */
@@ -910,19 +959,24 @@ typedef CPAccessResult CPAccessFn(CPUARMState *env,
 /* Hook function for register reset */
 typedef void CPResetFn(CPUARMState *env, const ARMCPRegInfo *ri);
 
+#ifdef TARGET_CHERI
+typedef void CPReadFnCap(CPUARMState *env, const ARMCPRegInfo *opaque,
+                         cap_register_t *cap_out);
+typedef void CPWriteFnCap(CPUARMState *env, const ARMCPRegInfo *opaque,
+                          uint64_t value, const cap_register_t *cap);
+#endif
+
 #define CP_ANY 0xff
 
 /* Flags in the high bits of nv2_redirect_offset */
 #define NV2_REDIR_NV1 0x4000 /* Only redirect when HCR_EL2.NV1 == 1 */
 #define NV2_REDIR_NO_NV1 0x8000 /* Only redirect when HCR_EL2.NV1 == 0 */
 #define NV2_REDIR_FLAG_MASK 0xc000
-
 /* Definition of an ARM coprocessor register */
 struct ARMCPRegInfo {
     /* Name of register (useful mainly for debugging, need not be unique) */
     const char *name;
-    /*
-     * Location of register: coprocessor number and (crn,crm,opc1,opc2)
+    /* Location of register: coprocessor number and (crn,crm,opc1,opc2)
      * tuple. Any of crm, opc1 and opc2 may be CP_ANY to indicate a
      * 'wildcard' field -- any value of that field in the MRC/MCR insn
      * will be decoded to this register. The register read and write
@@ -984,16 +1038,29 @@ struct ARMCPRegInfo {
      * fieldoffset is non-zero, the reset value of the register.
      */
     uint64_t resetvalue;
-    /*
-     * Offset of the field in CPUARMState for this register.
+
+    /* To avoid a massive refactor, there is a seperate field for resetting
+     * cap registers. A special value of resetfn selects this for use */
+#ifdef TARGET_CHERI
+    cap_register_t capresetvalue;
+    bool has_special_capresetvalue;
+#define CAPRESETVALUE(cap)                                                     \
+    .capresetvalue = (cap), .has_special_capresetvalue = true
+#else
+#define CAPRESETVALUE(cap) /* ignored */
+#endif
+
+    /* Offset of the field in CPUARMState for this register.
+     *
      * This is not needed if either:
      *  1. type is ARM_CP_CONST or one of the ARM_CP_SPECIALs
      *  2. both readfn and writefn are specified
      */
     ptrdiff_t fieldoffset; /* offsetof(CPUARMState, field) */
 
-    /*
-     * Offsets of the secure and non-secure fields in CPUARMState for the
+    /* This seems simpler than using multiple hash entries */
+    ptrdiff_t restricted_alias_offset;
+    /* Offsets of the secure and non-secure fields in CPUARMState for the
      * register if it is banked.  These fields are only used during the static
      * registration of a register.  During hashing the bank associated
      * with a given security state is copied to fieldoffset which is used from
@@ -1006,47 +1073,51 @@ struct ARMCPRegInfo {
      */
     ptrdiff_t bank_fieldoffsets[2];
 
-    /*
-     * Function for making any access checks for this register in addition to
+    /* Function for making any access checks for this register in addition to
      * those specified by the 'access' permissions bits. If NULL, no extra
      * checks required. The access check is performed at runtime, not at
      * translate time.
      */
     CPAccessFn *accessfn;
-    /*
-     * Function for handling reads of this register. If NULL, then reads
+    /* Function for handling reads of this register. If NULL, then reads
      * will be done by loading from the offset into CPUARMState specified
      * by fieldoffset.
      */
     CPReadFn *readfn;
-    /*
-     * Function for handling writes of this register. If NULL, then writes
+#ifdef TARGET_CHERI
+    CPReadFnCap *readfn_cap;
+#endif
+
+    /* Function for handling writes of this register. If NULL, then writes
      * will be done by writing to the offset into CPUARMState specified
      * by fieldoffset.
      */
     CPWriteFn *writefn;
-    /*
-     * Function for doing a "raw" read; used when we need to copy
+#ifdef TARGET_CHERI
+    CPWriteFnCap *writefn_cap;
+#endif
+    /* Function for doing a "raw" read; used when we need to copy
      * coprocessor state to the kernel for KVM or out for
      * migration. This only needs to be provided if there is also a
      * readfn and it has side effects (for instance clear-on-read bits).
      */
     CPReadFn *raw_readfn;
-    /*
-     * Function for doing a "raw" write; used when we need to copy KVM
+    /* Function for doing a "raw" write; used when we need to copy KVM
      * kernel coprocessor state into userspace, or for inbound
      * migration. This only needs to be provided if there is also a
      * writefn and it masks out "unwritable" bits or has write-one-to-clear
      * or similar behaviour.
      */
     CPWriteFn *raw_writefn;
-    /*
-     * Function for resetting the register. If NULL, then reset will be done
+    /* Function for resetting the register. If NULL, then reset will be done
      * by writing resetvalue to the field specified in fieldoffset. If
      * fieldoffset is 0 then no reset will be done.
      */
     CPResetFn *resetfn;
 };
+
+#define CPREG_FIELDCAP(env, ri)                                                \
+    (*(cap_register_t *)((char *)(env) + (ri)->fieldoffset))
 
 void define_one_arm_cp_reg(ARMCPU *cpu, const ARMCPRegInfo *regs);
 void define_arm_cp_regs_len(ARMCPU *cpu, const ARMCPRegInfo *regs, size_t len);
@@ -1103,8 +1174,7 @@ uint64_t raw_read(CPUARMState *env, const ARMCPRegInfo *ri);
 /* CPWriteFn that just writes the value to ri->fieldoffset */
 void raw_write(CPUARMState *env, const ARMCPRegInfo *ri, uint64_t value);
 
-/*
- * CPResetFn that does nothing, for use if no reset is required even
+/* CPResetFn that does nothing, for use if no reset is required even
  * if fieldoffset is non zero.
  */
 void arm_cp_reset_ignore(CPUARMState *env, const ARMCPRegInfo *ri);
@@ -1119,6 +1189,24 @@ static inline MemOp cpreg_field_type(const ARMCPRegInfo *ri)
             ? MO_64 : MO_32);
 }
 
+static inline bool cpreg_field_is_cap(const ARMCPRegInfo *ri)
+{
+#ifdef TARGET_CHERI
+    return (ri->type & ARM_CP_CAP) == ARM_CP_CAP;
+#else
+    return false;
+#endif
+}
+
+static inline bool cpreg_field_is_cap_only(const ARMCPRegInfo *ri)
+{
+#ifdef TARGET_CHERI
+    return (ri->type & ARM_CP_CAP_ONLY) == ARM_CP_CAP_ONLY;
+#else
+    return false;
+#endif
+}
+
 static inline bool cp_access_ok(int current_el,
                                 const ARMCPRegInfo *ri, int isread)
 {
@@ -1127,6 +1215,10 @@ static inline bool cp_access_ok(int current_el,
 
 /* Raw read of a coprocessor register (as needed for migration, etc) */
 uint64_t read_raw_cp_reg(CPUARMState *env, const ARMCPRegInfo *ri);
+#ifdef TARGET_CHERI
+cap_register_t read_raw_cp_reg_cap(CPUARMState *env, const ARMCPRegInfo *ri);
+#endif
+
 
 /*
  * Return true if the cp register encoding is in the "feature ID space" as

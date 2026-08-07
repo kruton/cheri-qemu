@@ -27,9 +27,12 @@
 #include "exec/target_page.h"
 #include "accel/tcg/cpu-ldst.h"
 #include "exec/log.h"
+#include "exec/log_instr.h"
 #include "qemu/atomic.h"
 #include "qemu/error-report.h"
 #include "exec/helper-proto.h"
+
+static bool r4k_lookup_tlb(CPUMIPSState *env, int *matching, bool use_extra);
 
 /* TLB management */
 static void r4k_mips_tlb_flush_extra(CPUMIPSState *env, int first)
@@ -73,14 +76,26 @@ static void r4k_fill_tlb(CPUMIPSState *env, int idx)
     tlb->V0 = (env->CP0_EntryLo0 & 2) != 0;
     tlb->D0 = (env->CP0_EntryLo0 & 4) != 0;
     tlb->C0 = (env->CP0_EntryLo0 >> 3) & 0x7;
+#if defined(TARGET_CHERI)
+    tlb->L0 = (env->CP0_EntryLo0 >> CP0EnLo_L) & 1;
+    tlb->S0 = (env->CP0_EntryLo0 >> CP0EnLo_S) & 1;
+    tlb->CLG0 = (env->CP0_EntryLo0 >> CP0EnLo_CLG) & 1;
+#else
     tlb->XI0 = (env->CP0_EntryLo0 >> CP0EnLo_XI) & 1;
     tlb->RI0 = (env->CP0_EntryLo0 >> CP0EnLo_RI) & 1;
+#endif /* TARGET_CHERI */
     tlb->PFN[0] = (get_tlb_pfn_from_entrylo(env->CP0_EntryLo0) & ~mask) << 12;
     tlb->V1 = (env->CP0_EntryLo1 & 2) != 0;
     tlb->D1 = (env->CP0_EntryLo1 & 4) != 0;
     tlb->C1 = (env->CP0_EntryLo1 >> 3) & 0x7;
+#if defined(TARGET_CHERI)
+    tlb->L1 = (env->CP0_EntryLo1 >> CP0EnLo_L) & 1;
+    tlb->S1 = (env->CP0_EntryLo1 >> CP0EnLo_S) & 1;
+    tlb->CLG1 = (env->CP0_EntryLo1 >> CP0EnLo_CLG) & 1;
+#else
     tlb->XI1 = (env->CP0_EntryLo1 >> CP0EnLo_XI) & 1;
     tlb->RI1 = (env->CP0_EntryLo1 >> CP0EnLo_RI) & 1;
+#endif /* TARGET_CHERI */
     tlb->PFN[1] = (get_tlb_pfn_from_entrylo(env->CP0_EntryLo1) & ~mask) << 12;
 }
 
@@ -114,16 +129,22 @@ static void r4k_helper_tlbinvf(CPUMIPSState *env)
     cpu_mips_tlb_flush(env);
 }
 
-static void r4k_helper_tlbwi(CPUMIPSState *env)
+static void r4k_helper_tlbwi(CPUMIPSState *env, uintptr_t retpc)
 {
     bool mi = !!((env->CP0_Config5 >> CP0C5_MI) & 1);
     target_ulong VPN;
     uint16_t ASID = env->CP0_EntryHi & env->CP0_EntryHi_ASID_mask;
     uint32_t MMID = env->CP0_MemoryMapID;
     uint32_t tlb_mmid;
-    bool EHINV, G, V0, D0, V1, D1, XI0, XI1, RI0, RI1;
+    bool EHINV, G, V0, D0, V1, D1;
+#if defined(TARGET_CHERI)
+    bool S0, S1, L0, L1, CLG0, CLG1;
+#else
+    bool XI0, XI1, RI0, RI1;
+#endif
     r4k_tlb_t *tlb;
     int idx;
+    int duplicate = -1;
 
     MMID = mi ? MMID : (uint32_t) ASID;
 
@@ -137,12 +158,24 @@ static void r4k_helper_tlbwi(CPUMIPSState *env)
     G = env->CP0_EntryLo0 & env->CP0_EntryLo1 & 1;
     V0 = (env->CP0_EntryLo0 & 2) != 0;
     D0 = (env->CP0_EntryLo0 & 4) != 0;
+#if defined(TARGET_CHERI)
+    S0 = (env->CP0_EntryLo0 >> CP0EnLo_S) &1;
+    L0 = (env->CP0_EntryLo0 >> CP0EnLo_L) &1;
+    CLG0 = (env->CP0_EntryLo0 >> CP0EnLo_CLG) &1;
+#else
     XI0 = (env->CP0_EntryLo0 >> CP0EnLo_XI) &1;
     RI0 = (env->CP0_EntryLo0 >> CP0EnLo_RI) &1;
+#endif
     V1 = (env->CP0_EntryLo1 & 2) != 0;
     D1 = (env->CP0_EntryLo1 & 4) != 0;
+#if defined(TARGET_CHERI)
+    S1 = (env->CP0_EntryLo1 >> CP0EnLo_S) &1;
+    L1 = (env->CP0_EntryLo1 >> CP0EnLo_L) &1;
+    CLG1 = (env->CP0_EntryLo1 >> CP0EnLo_CLG) &1;
+#else
     XI1 = (env->CP0_EntryLo1 >> CP0EnLo_XI) &1;
     RI1 = (env->CP0_EntryLo1 >> CP0EnLo_RI) &1;
+#endif
 
     tlb_mmid = mi ? tlb->MMID : (uint32_t) tlb->ASID;
     /*
@@ -152,22 +185,53 @@ static void r4k_helper_tlbwi(CPUMIPSState *env)
     if (tlb->VPN != VPN || tlb_mmid != MMID || tlb->G != G ||
         (!tlb->EHINV && EHINV) ||
         (tlb->V0 && !V0) || (tlb->D0 && !D0) ||
+#if defined(TARGET_CHERI)
+        (!tlb->S0 && S0) || (!tlb->L0 && L0) || (tlb->CLG0 != CLG0) ||
+#else
         (!tlb->XI0 && XI0) || (!tlb->RI0 && RI0) ||
+#endif
         (tlb->V1 && !V1) || (tlb->D1 && !D1) ||
+#if defined(TARGET_CHERI)
+        (!tlb->S1 && S1) || (!tlb->L1 && L1) || (tlb->CLG1 != CLG1)) {
+#else
         (!tlb->XI1 && XI1) || (!tlb->RI1 && RI1)) {
+#endif
         r4k_mips_tlb_flush_extra(env, env->tlb->nb_tlb);
+    }
+
+    /*
+     * Check if the tlb contains another entry with the same
+     * VPN and ASID. If so, raise a Machine Check Exception.
+     */
+    if (r4k_lookup_tlb(env, &duplicate, /*use_extra*/false) &&
+        duplicate != idx) {
+        do_raise_exception(env, EXCP_MCHECK, retpc);
     }
 
     r4k_invalidate_tlb(env, idx, 0);
     r4k_fill_tlb(env, idx);
+#ifdef CONFIG_TCG_LOG_INSTR
+    r4k_dump_tlb(env, idx);
+#endif /* CONFIG_TCG_LOG_INSTR */
 }
 
-static void r4k_helper_tlbwr(CPUMIPSState *env)
+static void r4k_helper_tlbwr(CPUMIPSState *env, uintptr_t retpc)
 {
     int r = cpu_mips_get_random(env);
 
+    /*
+     * Check if the tlb contains another entry with the same
+     * VPN and ASID. If so, raise a Machine Check Exception.
+     */
+    if (r4k_lookup_tlb(env, NULL, /*use_extra*/true)) {
+        do_raise_exception(env, EXCP_MCHECK, retpc);
+    }
+
     r4k_invalidate_tlb(env, r, 1);
     r4k_fill_tlb(env, r);
+#ifdef CONFIG_TCG_LOG_INSTR
+    r4k_dump_tlb(env, r);
+#endif /* CONFIG_TCG_LOG_INSTR */
 }
 
 static void r4k_helper_tlbp(CPUMIPSState *env)
@@ -254,6 +318,10 @@ static void r4k_helper_tlbr(CPUMIPSState *env)
 
     r4k_mips_tlb_flush_extra(env, env->tlb->nb_tlb);
 
+#ifdef CPU_CHERI
+    uint64_t save_clg = env->CP0_EntryHi & CP0EnHi_CLG_MASK;
+#endif
+
     if (tlb->EHINV) {
         env->CP0_EntryHi = 1 << CP0EnHi_EHINV;
         env->CP0_PageMask = 0;
@@ -264,24 +332,42 @@ static void r4k_helper_tlbr(CPUMIPSState *env)
         env->CP0_MemoryMapID = tlb->MMID;
         env->CP0_PageMask = tlb->PageMask;
         env->CP0_EntryLo0 = tlb->G | (tlb->V0 << 1) | (tlb->D0 << 2) |
+#if defined(TARGET_CHERI)
+                        ((uint64_t)tlb->L0 << CP0EnLo_L) |
+                        ((uint64_t)tlb->S0 << CP0EnLo_S) |
+                        ((uint64_t)tlb->CLG0 << CP0EnLo_CLG) |
+#else
                         ((uint64_t)tlb->RI0 << CP0EnLo_RI) |
-                        ((uint64_t)tlb->XI0 << CP0EnLo_XI) | (tlb->C0 << 3) |
+                        ((uint64_t)tlb->XI0 << CP0EnLo_XI) |
+#endif /* TARGET_CHERI */
+                        (tlb->C0 << 3) |
                         get_entrylo_pfn_from_tlb(tlb->PFN[0] >> 12);
         env->CP0_EntryLo1 = tlb->G | (tlb->V1 << 1) | (tlb->D1 << 2) |
+#if defined(TARGET_CHERI)
+                        ((uint64_t)tlb->L1 << CP0EnLo_L) |
+                        ((uint64_t)tlb->S1 << CP0EnLo_S) |
+                        ((uint64_t)tlb->CLG1 << CP0EnLo_CLG) |
+#else
                         ((uint64_t)tlb->RI1 << CP0EnLo_RI) |
-                        ((uint64_t)tlb->XI1 << CP0EnLo_XI) | (tlb->C1 << 3) |
+                        ((uint64_t)tlb->XI1 << CP0EnLo_XI) |
+#endif /* TARGET_CHERI */
+                        (tlb->C1 << 3) |
                         get_entrylo_pfn_from_tlb(tlb->PFN[1] >> 12);
     }
+
+#ifdef CPU_CHERI
+    env->CP0_EntryHi |= save_clg;
+#endif
 }
 
 void helper_tlbwi(CPUMIPSState *env)
 {
-    env->tlb->helper_tlbwi(env);
+    env->tlb->helper_tlbwi(env, GETPC());
 }
 
 void helper_tlbwr(CPUMIPSState *env)
 {
-    env->tlb->helper_tlbwr(env);
+    env->tlb->helper_tlbwr(env, GETPC());
 }
 
 void helper_tlbp(CPUMIPSState *env)
@@ -403,6 +489,27 @@ static int r4k_map_address(CPUMIPSState *env, hwaddr *physical, int *prot,
 
     MMID = mi ? MMID : (uint32_t) ASID;
 
+#if defined(TARGET_CHERI)
+    unsigned gclg_bit;
+    if (address < 0x4000000000000000) {
+        /* useg, xuseg */
+        gclg_bit = CP0EnHi_CLGU;
+    } else if (address < 0x8000000000000000) {
+        /* xsseg */
+        gclg_bit = CP0EnHi_CLGS;
+    } else if (address < 0xFFFFFFFFC0000000) {
+        /* xkphys (won't be called), xkseg, kseg0, kseg1 */
+        gclg_bit = CP0EnHi_CLGK;
+    } else if (address < 0xFFFFFFFFE0000000) {
+        /* sseg */
+        gclg_bit = CP0EnHi_CLGS;
+    } else {
+        /* kseg3 */
+        gclg_bit = CP0EnHi_CLGK;
+    }
+    bool gclg = !!(env->CP0_EntryHi & (1UL << gclg_bit));
+#endif
+
     for (i = 0; i < env->tlb->tlb_in_use; i++) {
         r4k_tlb_t *tlb = &env->tlb->mmu.r4k.tlb[i];
         /* 1k pages are not supported. */
@@ -422,21 +529,61 @@ static int r4k_map_address(CPUMIPSState *env, hwaddr *physical, int *prot,
             if (!(n ? tlb->V1 : tlb->V0)) {
                 return TLBRET_INVALID;
             }
+#if defined(TARGET_CHERI)
+            if (access_type == MMU_DATA_CAP_STORE) {
+                /*
+                 * If we're trying to do a cap-store, first check for the
+                 * dirty/store-permitted bit before looking at the the
+                 * store-capability inhibit.
+                 */
+                if (!(n ? tlb->D1 : tlb->D0)) {
+                    return TLBRET_DIRTY;
+                }
+                if (n ? tlb->S1 : tlb->S0) {
+                    return TLBRET_S;
+                }
+            }
+
+            if (n ? tlb->S1 : tlb->S0) {
+                *prot |= PAGE_SC_TRAP;
+            }
+#else
             if (access_type == MMU_INST_FETCH && (n ? tlb->XI1 : tlb->XI0)) {
                 return TLBRET_XI;
             }
             if (access_type == MMU_DATA_LOAD && (n ? tlb->RI1 : tlb->RI0)) {
                 return TLBRET_RI;
             }
-            if (access_type != MMU_DATA_STORE || (n ? tlb->D1 : tlb->D0)) {
+#endif /* TARGET_CHERI */
+            if (((access_type != MMU_DATA_STORE)
+#if defined(TARGET_CHERI)
+                  && (access_type != MMU_DATA_CAP_STORE)
+#endif
+                ) || (n ? tlb->D1 : tlb->D0)) {
+
                 *physical = tlb->PFN[n] | (address & (mask >> 1));
                 *prot = PAGE_READ;
                 if (n ? tlb->D1 : tlb->D0) {
                     *prot |= PAGE_WRITE;
                 }
+#if !defined(TARGET_CHERI)
                 if (!(n ? tlb->XI1 : tlb->XI0)) {
+#else
+                if (true) {
+#endif
                     *prot |= PAGE_EXEC;
                 }
+
+#if defined(TARGET_CHERI)
+                if (n ? tlb->L1 : tlb->L0) {
+                    *prot |= PAGE_LC_CLEAR;
+                }
+                bool pclg = n ? tlb->CLG1 : tlb->CLG0;
+                if (pclg != gclg) {
+                    *prot |= PAGE_LC_TRAP;
+                }
+#endif
+
                 return TLBRET_MATCH;
             }
             return TLBRET_DIRTY;
@@ -498,22 +645,27 @@ void cpu_mips_tlb_flush(CPUMIPSState *env)
     env->tlb->tlb_in_use = env->tlb->nb_tlb;
 }
 
+#ifdef TARGET_CHERI
+static void raise_mmu_exception(CPUMIPSState *env, target_ulong address,
+                                MMUAccessType access_type, int tlb_error, int reg)
+#else
 static void raise_mmu_exception(CPUMIPSState *env, target_ulong address,
                                 MMUAccessType access_type, int tlb_error)
+#endif
 {
     CPUState *cs = env_cpu(env);
-    int exception = 0, error_code = 0;
+    MipsExcp exception = 0;
+    int error_code = 0;
 
     if (access_type == MMU_INST_FETCH) {
         error_code |= EXCP_INST_NOTAVAIL;
     }
-
     switch (tlb_error) {
     default:
     case TLBRET_BADADDR:
         /* Reference to kernel address from user mode or supervisor mode */
         /* Reference to supervisor address from user mode */
-        if (access_type == MMU_DATA_STORE) {
+        if (access_type == MMU_DATA_STORE || access_type == MMU_DATA_CAP_STORE) {
             exception = EXCP_AdES;
         } else {
             exception = EXCP_AdEL;
@@ -521,7 +673,7 @@ static void raise_mmu_exception(CPUMIPSState *env, target_ulong address,
         break;
     case TLBRET_NOMATCH:
         /* No TLB match for a mapped address */
-        if (access_type == MMU_DATA_STORE) {
+        if (access_type == MMU_DATA_STORE || access_type == MMU_DATA_CAP_STORE) {
             exception = EXCP_TLBS;
         } else {
             exception = EXCP_TLBL;
@@ -530,7 +682,7 @@ static void raise_mmu_exception(CPUMIPSState *env, target_ulong address,
         break;
     case TLBRET_INVALID:
         /* TLB match with no valid bit */
-        if (access_type == MMU_DATA_STORE) {
+        if (access_type == MMU_DATA_STORE || access_type == MMU_DATA_CAP_STORE) {
             exception = EXCP_TLBS;
         } else {
             exception = EXCP_TLBL;
@@ -540,6 +692,13 @@ static void raise_mmu_exception(CPUMIPSState *env, target_ulong address,
         /* TLB match but 'D' bit is cleared */
         exception = EXCP_LTLBL;
         break;
+#ifdef TARGET_CHERI
+    case TLBRET_S:
+        /* TLB capability store bit was set, blocking capability store. */
+        cpu_mips_store_capcause(env, reg, CapEx_TLBNoStoreCap);
+        exception = EXCP_C2E;
+        break;
+#else
     case TLBRET_XI:
         /* Execute-Inhibit Exception */
         if (env->CP0_PageGrain & (1 << CP0PG_IEC)) {
@@ -556,6 +715,7 @@ static void raise_mmu_exception(CPUMIPSState *env, target_ulong address,
             exception = EXCP_TLBL;
         }
         break;
+#endif /* TARGET_CHERI */
     }
     /* Raise exception */
     if (!(env->hflags & MIPS_HFLAG_DM)) {
@@ -564,10 +724,11 @@ static void raise_mmu_exception(CPUMIPSState *env, target_ulong address,
     env->CP0_Context = (env->CP0_Context & ~0x007fffff) |
                        ((address >> 9) & 0x007ffff0);
     env->CP0_EntryHi = (env->CP0_EntryHi & env->CP0_EntryHi_ASID_mask) |
+                       (env->CP0_EntryHi & CP0EnHi_CLG_MASK) |
                        (env->CP0_EntryHi & (1 << CP0EnHi_EHINV)) |
                        (address & (TARGET_PAGE_MASK << 1));
 #if defined(TARGET_MIPS64)
-    env->CP0_EntryHi &= env->SEGMask;
+    env->CP0_EntryHi &= env->SEGMask | CP0EnHi_CLG_MASK;
     env->CP0_XContext =
         (env->CP0_XContext & ((~0ULL) << (env->SEGBITS - 7))) | /* PTEBase */
         (extract64(address, 62, 2) << (env->SEGBITS - 9)) |     /* R       */
@@ -575,7 +736,11 @@ static void raise_mmu_exception(CPUMIPSState *env, target_ulong address,
 #endif
     cs->exception_index = exception;
     env->error_code = error_code;
+#ifdef TARGET_CHERI
+    if (access_type == MMU_INST_FETCH)
+        env->statcounters_itlb_miss++;
     else
+        env->statcounters_dtlb_miss++;
 #endif
 }
 
@@ -882,7 +1047,8 @@ refill:
     }
     pw_pagemask = m >> TARGET_PAGE_BITS;
     pw_pagemask = compute_pagemask(pw_pagemask << CP0PM_MASK);
-    pw_entryhi = (address & ~0x1fff) | (env->CP0_EntryHi & 0xFF);
+    pw_entryhi = (address & ~0x1fff) |
+                 (env->CP0_EntryHi & (0xFF | CP0EnHi_CLG_MASK));
     {
         target_ulong tmp_entryhi = env->CP0_EntryHi;
         int32_t tmp_pagemask = env->CP0_PageMask;
@@ -899,7 +1065,7 @@ refill:
          * identical to a TLBWR instruction as executed by the software refill
          * handler.
          */
-        r4k_helper_tlbwr(env);
+        r4k_helper_tlbwr(env, GETPC());
 
         env->CP0_EntryHi = tmp_entryhi;
         env->CP0_PageMask = tmp_pagemask;
@@ -920,6 +1086,10 @@ bool mips_cpu_tlb_fill(CPUState *cs, vaddr address, int size,
     int ret = TLBRET_BADADDR;
 
     /* data access */
+    MemTxAttrs attrs = MEMTXATTRS_UNSPECIFIED;
+#ifdef TARGET_CHERI
+    attrs.tag_setting = access_type == MMU_DATA_CAP_STORE;
+#endif
     /* XXX: put correct access by using cpu_restore_state() correctly */
     ret = get_physical_address(env, &physical, &prot, address,
                                access_type, mmu_idx);
@@ -936,9 +1106,9 @@ bool mips_cpu_tlb_fill(CPUState *cs, vaddr address, int size,
         break;
     }
     if (ret == TLBRET_MATCH) {
-        tlb_set_page(cs, address & TARGET_PAGE_MASK,
-                     physical & TARGET_PAGE_MASK, prot,
-                     mmu_idx, TARGET_PAGE_SIZE);
+        tlb_set_page_with_attrs(cs, address & TARGET_PAGE_MASK,
+                                physical & TARGET_PAGE_MASK, attrs, prot,
+                                mmu_idx, TARGET_PAGE_SIZE);
         return true;
     }
 #if !defined(TARGET_MIPS64)
@@ -954,9 +1124,9 @@ bool mips_cpu_tlb_fill(CPUState *cs, vaddr address, int size,
             ret = get_physical_address(env, &physical, &prot, address,
                                        access_type, mmu_idx);
             if (ret == TLBRET_MATCH) {
-                tlb_set_page(cs, address & TARGET_PAGE_MASK,
-                             physical & TARGET_PAGE_MASK, prot,
-                             mmu_idx, TARGET_PAGE_SIZE);
+                tlb_set_page_with_attrs(cs, address & TARGET_PAGE_MASK,
+                                        physical & TARGET_PAGE_MASK, attrs,
+                                        prot, mmu_idx, TARGET_PAGE_SIZE);
                 return true;
             }
         }
@@ -966,7 +1136,16 @@ bool mips_cpu_tlb_fill(CPUState *cs, vaddr address, int size,
         return false;
     }
 
+#ifdef TARGET_CHERI
+    /*
+     * NOTE: The register for the exception has possibly already been set.
+     * An extra reg argument might have been preferable, but this interferes
+     * less with the other targets, which don't pass a register number here.
+     */
+    raise_mmu_exception(env, address, access_type, ret, 0xff);
+#else
     raise_mmu_exception(env, address, access_type, ret);
+#endif
     do_raise_exception_err(env, cs->exception_index, env->error_code, retaddr);
 }
 
@@ -985,8 +1164,13 @@ hwaddr cpu_mips_translate_address(CPUMIPSState *env, target_ulong address,
         return physical;
     }
 
+#ifdef TARGET_CHERI
+    raise_mmu_exception(env, address, access_type, ret, 0xff);
+#else
     raise_mmu_exception(env, address, access_type, ret);
+#endif
     cpu_loop_exit_restore(cs, retaddr);
+    return -1LL;
 }
 
 static void set_hflags_for_handler(CPUMIPSState *env)
@@ -1005,14 +1189,14 @@ static inline void set_badinstr_registers(CPUMIPSState *env)
 {
     if (env->insn_flags & ISA_NANOMIPS32) {
         if (env->CP0_Config3 & (1 << CP0C3_BI)) {
-            uint32_t instr = (cpu_lduw_code(env, env->active_tc.PC)) << 16;
+            uint32_t instr = (cpu_lduw_code(env, PC_ADDR(env))) << 16;
             if ((instr & 0x10000000) == 0) {
-                instr |= cpu_lduw_code(env, env->active_tc.PC + 2);
+                instr |= cpu_lduw_code(env, PC_ADDR(env) + 2);
             }
             env->CP0_BadInstr = instr;
 
             if ((instr & 0xFC000000) == 0x60000000) {
-                instr = cpu_lduw_code(env, env->active_tc.PC + 4) << 16;
+                instr = cpu_lduw_code(env, PC_ADDR(env) + 4) << 16;
                 env->CP0_BadInstrX = instr;
             }
         }
@@ -1024,30 +1208,56 @@ static inline void set_badinstr_registers(CPUMIPSState *env)
         return;
     }
     if (env->CP0_Config3 & (1 << CP0C3_BI)) {
-        env->CP0_BadInstr = cpu_ldl_code(env, env->active_tc.PC);
+        env->CP0_BadInstr = cpu_ldl_code(env, PC_ADDR(env));
     }
     if ((env->CP0_Config3 & (1 << CP0C3_BP)) &&
         (env->hflags & MIPS_HFLAG_BMASK)) {
-        env->CP0_BadInstrP = cpu_ldl_code(env, env->active_tc.PC - 4);
+        env->CP0_BadInstrP = cpu_ldl_code(env, PC_ADDR(env) - 4);
     }
+}
+
+static inline void mips_update_pc_for_exc_handler(CPUMIPSState *env,
+                                                  target_ulong new_pc)
+{
+#ifdef TARGET_CHERI
+    /* always set PCC from KCC even with EXL */
+    cheri_update_pcc_for_exc_handler(&env->active_tc.PCC,
+                                     &env->active_tc.CHWR.KCC, new_pc);
+#else
+    mips_update_pc(env, new_pc, /*can_be_unrep=*/true);
+#endif
 }
 
 void mips_cpu_do_interrupt(CPUState *cs)
 {
     MIPSCPU *cpu = MIPS_CPU(cs);
     CPUMIPSState *env = &cpu->env;
+    cheri_debug_assert(pc_is_current(env));
     bool update_badinstr = 0;
     target_ulong offset;
     int cause = -1;
-    uint64_t last_pc = env->active_tc.PC;
+    uint64_t last_pc = cpu_get_recent_pc(env);
 
-        && cs->exception_index != EXCP_EXT_INTERRUPT) {
-        qemu_log("%s enter: PC " TARGET_FMT_lx " EPC " TARGET_FMT_lx
-                 " %s exception\n",
-                 __func__, env->active_tc.PC, env->CP0_EPC,
-                 mips_exception_name(cs->exception_index));
+    /* Log interrupt extra debug info */
+    if (qemu_log_instr_or_mask_enabled(env, CPU_LOG_INT) &&
         cs->exception_index != EXCP_EXT_INTERRUPT) {
+        qemu_log_instr_or_mask_msg(
+            env, CPU_LOG_INT,
+            "%s enter: PC " TARGET_FMT_lx " EPC " TARGET_FMT_lx
+            " %s exception, (hflags & MIPS_HFLAG_BMASK)=%x, hflags=%x\n",
+            __func__, PC_ADDR(env), get_CP0_EPC(env),
+            mips_exception_name(cs->exception_index),
+            env->hflags & MIPS_HFLAG_BMASK, env->hflags);
+#ifdef TARGET_CHERI
+        qemu_log_instr_or_mask_msg(env, CPU_LOG_INT,
+            "\tPCC=" PRINT_CAP_FMTSTR "\n\tKCC= " PRINT_CAP_FMTSTR
+            "\n\tEPCC=" PRINT_CAP_FMTSTR "\n",
+            PRINT_CAP_ARGS(cheri_get_current_pcc(env)),
+            PRINT_CAP_ARGS(&env->active_tc.CHWR.KCC),
+            PRINT_CAP_ARGS(&env->active_tc.CHWR.EPCC));
+#endif
     }
+
     if (cs->exception_index == EXCP_EXT_INTERRUPT &&
         (env->hflags & MIPS_HFLAG_DM)) {
         cs->exception_index = EXCP_DINT;
@@ -1057,7 +1267,11 @@ void mips_cpu_do_interrupt(CPUState *cs)
     case EXCP_SEMIHOST:
         cs->exception_index = EXCP_NONE;
         mips_semihosting(env);
+#ifdef TARGET_CHERI
+        env->active_tc.PCC._cr_cursor+= env->error_code;
+#else
         env->active_tc.PC += env->error_code;
+#endif
         qemu_plugin_vcpu_hostcall_cb(cs, last_pc);
         return;
     case EXCP_DSS:
@@ -1068,7 +1282,7 @@ void mips_cpu_do_interrupt(CPUState *cs)
          * (but we assume the pc has always been updated during
          * code translation).
          */
-        env->CP0_DEPC = env->active_tc.PC | !!(env->hflags & MIPS_HFLAG_M16);
+        env->CP0_DEPC = PC_ADDR(env) | !!(env->hflags & MIPS_HFLAG_M16);
         goto enter_debug_mode;
     case EXCP_DINT:
         env->CP0_Debug |= 1 << CP0DB_DINT;
@@ -1104,7 +1318,7 @@ void mips_cpu_do_interrupt(CPUState *cs)
         if (!(env->CP0_Status & (1 << CP0St_EXL))) {
             env->CP0_Cause &= ~(1U << CP0Ca_BD);
         }
-        env->active_tc.PC = env->exception_base + 0x480;
+        mips_update_pc_for_exc_handler(env, env->exception_base + 0x480);
         set_hflags_for_handler(env);
         break;
     case EXCP_RESET:
@@ -1117,7 +1331,11 @@ void mips_cpu_do_interrupt(CPUState *cs)
     case EXCP_NMI:
         env->CP0_Status |= (1 << CP0St_NMI);
  set_error_EPC:
-        env->CP0_ErrorEPC = exception_resume_pc(env);
+#ifdef TARGET_CHERI
+        env->active_tc.CHWR.ErrorEPCC = *cheri_get_current_pcc(env);
+        // Note: set_CP0_ErrorEPC() handles the special cases of sealed/unrep EPCC
+#endif /* TARGET_CHERI */
+        set_CP0_ErrorEPC(env, exception_resume_pc(env));
         env->hflags &= ~MIPS_HFLAG_BMASK;
         env->CP0_Status |= (1 << CP0St_ERL) | (1 << CP0St_BEV);
         if (env->insn_flags & ISA_MIPS3) {
@@ -1132,7 +1350,7 @@ void mips_cpu_do_interrupt(CPUState *cs)
         if (!(env->CP0_Status & (1 << CP0St_EXL))) {
             env->CP0_Cause &= ~(1U << CP0Ca_BD);
         }
-        env->active_tc.PC = env->exception_base;
+        mips_update_pc_for_exc_handler(env, env->exception_base);
         set_hflags_for_handler(env);
         break;
     case EXCP_EXT_INTERRUPT:
@@ -1222,6 +1440,7 @@ void mips_cpu_do_interrupt(CPUState *cs)
         update_badinstr = 1;
         goto set_EPC;
     case EXCP_IBE:
+        update_badinstr = 0;
         cause = 6;
         goto set_EPC;
     case EXCP_DBE:
@@ -1263,6 +1482,12 @@ void mips_cpu_do_interrupt(CPUState *cs)
         goto set_EPC;
     case EXCP_C2E:
         cause = 18;
+        update_badinstr = !(env->error_code & EXCP_INST_NOTAVAIL);
+#ifdef TARGET_CHERI
+        if ((env->CP2_CapCause >> 8) == CapEx_CallTrap ||
+                (env->CP2_CapCause >> 8) == CapEx_ReturnTrap)
+            offset = 0x280;
+#endif /* TARGET_CHERI */
         goto set_EPC;
     case EXCP_TLBRI:
         cause = 19;
@@ -1296,7 +1521,11 @@ void mips_cpu_do_interrupt(CPUState *cs)
         offset = 0x100;
  set_EPC:
         if (!(env->CP0_Status & (1 << CP0St_EXL))) {
-            env->CP0_EPC = exception_resume_pc(env);
+#ifdef TARGET_CHERI
+            env->active_tc.CHWR.EPCC = *cheri_get_current_pcc(env);
+            // Note: set_CP0_EPC() handles the special cases of sealed/unrep EPCC
+#endif /* TARGET_CHERI */
+            set_CP0_EPC(env, exception_resume_pc(env));
             if (update_badinstr) {
                 set_badinstr_registers(env);
             }
@@ -1317,17 +1546,18 @@ void mips_cpu_do_interrupt(CPUState *cs)
             env->hflags &= ~(MIPS_HFLAG_KSU);
         }
         env->hflags &= ~MIPS_HFLAG_BMASK;
+        target_ulong new_pc;
         if (env->CP0_Status & (1 << CP0St_BEV)) {
-            env->active_tc.PC = env->exception_base + 0x200;
+            new_pc = env->exception_base + 0x200;
         } else if (cause == 30 && !(env->CP0_Config3 & (1 << CP0C3_SC) &&
                                     env->CP0_Config5 & (1 << CP0C5_CV))) {
             /* Force KSeg1 for cache errors */
-            env->active_tc.PC = KSEG1_BASE | (env->CP0_EBase & 0x1FFFF000);
+            new_pc = KSEG1_BASE | (env->CP0_EBase & 0x1FFFF000);
         } else {
-            env->active_tc.PC = env->CP0_EBase & ~0xfff;
+            new_pc = env->CP0_EBase & ~0xfff;
         }
-
-        env->active_tc.PC += offset;
+        new_pc += offset;
+        mips_update_pc_for_exc_handler(env, new_pc);
         set_hflags_for_handler(env);
         env->CP0_Cause = (env->CP0_Cause & ~(0x1f << CP0Ca_EC)) |
                          (cause << CP0Ca_EC);
@@ -1335,11 +1565,56 @@ void mips_cpu_do_interrupt(CPUState *cs)
     default:
         abort();
     }
-    if (qemu_loglevel_mask(CPU_LOG_INT)
+
+#ifdef TARGET_CHERI
+    // We may have to change the CP0 access flag since CHERI may have previously
+    // disabled it by installing a $pcc without the Access_Sys_Regs flag
+    update_cp0_access_for_pc(env);
+    assert(can_access_cp0(env) && "Installing $pcc without ASR in exception?");
+    assert(!cheri_get_current_pcc(env)->cr_tag ||
+           cap_is_representable(cheri_get_current_pcc(env)));
+#endif /* TARGET_CHERI */
+
+#ifdef CONFIG_TCG_LOG_INSTR
+    if (qemu_log_instr_enabled(env)) {
+        uint32_t log_cause;
+        /* Log generic exception/interrupt info */
+        if (cs->exception_index == EXCP_EXT_INTERRUPT) {
+            log_cause = (env->CP0_Cause & CP0Ca_IP_mask) >> CP0Ca_IP;
+            qemu_log_instr_interrupt(env, log_cause, PC_ADDR(env));
+        } else {
+            /*
+             * Note on CHERI-MIPS the logged cause is the concatenation
+             * {cap_cause | cause}.
+             */
+#ifdef TARGET_CHERI
+            log_cause = cause | (((uint32_t)env->CP2_CapCause) << 8);
+#else
+            log_cause = cause;
+#endif
+            qemu_log_instr_exception(env, log_cause, PC_ADDR(env),
+                                     env->CP0_BadVAddr);
+        }
+#ifdef TARGET_CHERI
+        /* Log extra changed register information */
+        qemu_log_instr_cap(env, "PCC", cheri_get_current_pcc(env), 14,
+                           LRI_CSR_ACCESS);
+        qemu_log_instr_cap(env, "EPCC", &env->active_tc.CHWR.EPCC, 14,
+                           LRI_CSR_ACCESS);
+        qemu_log_instr_cap(env, "ErrorEPCC", &env->active_tc.CHWR.ErrorEPCC, 30,
+                           LRI_CSR_ACCESS);
+#endif
+        qemu_log_instr_reg(env, "ErrorEPC", get_CP0_ErrorEPC(env), 30,
+                           LRI_CSR_ACCESS);
+    }
+#endif /* CONFIG_TCG_LOG_INSTR */
+
+    if (qemu_log_instr_or_mask_enabled(env, CPU_LOG_INT)
         && cs->exception_index != EXCP_EXT_INTERRUPT) {
-        qemu_log("%s: PC " TARGET_FMT_lx " EPC " TARGET_FMT_lx " cause %d\n"
+        qemu_log_instr_or_mask_msg(env, CPU_LOG_INT, "%s: PC " TARGET_FMT_lx
+                 " EPC " TARGET_FMT_lx " cause %d\n"
                  "    S %08x C %08x A " TARGET_FMT_lx " D " TARGET_FMT_lx "\n",
-                 __func__, env->active_tc.PC, env->CP0_EPC, cause,
+                 __func__, PC_ADDR(env), get_CP0_EPC(env), cause,
                  env->CP0_Status, env->CP0_Cause, env->CP0_BadVAddr,
                  env->CP0_DEPC);
     }
@@ -1352,6 +1627,45 @@ void mips_cpu_do_interrupt(CPUState *cs)
         qemu_plugin_vcpu_exception_cb(cs, last_pc);
     }
     cs->exception_index = EXCP_NONE;
+
+#ifdef CONFIG_TCG_LOG_INSTR
+    mips_log_instr_mode_changed(env, cpu_get_recent_pc(env));
+#endif
+}
+
+static bool r4k_lookup_tlb(CPUMIPSState *env, int *matching, bool use_extra)
+{
+    bool mi = !!((env->CP0_Config5 >> CP0C5_MI) & 1);
+    r4k_tlb_t *tlb;
+    target_ulong mask;
+    target_ulong tag;
+    target_ulong VPN;
+    uint16_t ASID = env->CP0_EntryHi & env->CP0_EntryHi_ASID_mask;
+    uint32_t MMID = env->CP0_MemoryMapID;
+    uint32_t tlb_mmid;
+    int i;
+    int limit = (use_extra) ? env->tlb->tlb_in_use : env->tlb->nb_tlb;
+
+    MMID = mi ? MMID : (uint32_t) ASID;
+    for (i = 0; i < limit; i++) {
+        tlb = &env->tlb->mmu.r4k.tlb[i];
+        /* 1k pages are not supported. */
+        mask = tlb->PageMask | ~(TARGET_PAGE_MASK << 1);
+        tag = env->CP0_EntryHi & ~mask;
+        VPN = tlb->VPN & ~mask;
+#if defined(TARGET_MIPS64)
+        tag &= env->SEGMask;
+#endif
+        tlb_mmid = mi ? tlb->MMID : (uint32_t) tlb->ASID;
+        /* Check ASID/MMID, virtual page number & size */
+        if ((tlb->G == 1 || tlb_mmid == MMID) && VPN == tag && !tlb->EHINV) {
+            if (matching)
+                *matching = i;
+            return true;
+        }
+    }
+
+    return false;
 }
 
 bool mips_cpu_exec_interrupt(CPUState *cs, int interrupt_request)

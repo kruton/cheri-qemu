@@ -31,7 +31,7 @@ static bool trans_wrs_sto(DisasContext *ctx, arg_wrs_sto *a)
      */
 
     /* Clear the load reservation  (if any).  */
-    tcg_gen_movi_tl(load_res, -1);
+    tcg_gen_movi_tl((TCGv)load_res, -1);
 
     gen_update_pc(ctx, ctx->cur_insn_len);
     tcg_gen_exit_tb(NULL, 0);

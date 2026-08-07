@@ -21,5 +21,7 @@ int disas_gstring_printf(FILE *stream, const char *fmt, ...)
 
 int print_insn_od_host(bfd_vma pc, disassemble_info *info);
 int print_insn_od_target(bfd_vma pc, disassemble_info *info);
+int host_read_memory(bfd_vma memaddr, bfd_byte *myaddr, int length,
+                     struct disassemble_info *info);
 
 #endif

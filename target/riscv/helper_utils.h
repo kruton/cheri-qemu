@@ -39,6 +39,7 @@
 #ifdef TARGET_CHERI
 #include "cheri-lazy-capregs.h"
 #endif
+#include "exec/helper-proto.h"
 
 static inline void gpr_set_int_value(CPUArchState *env, unsigned reg,
                                      target_ulong value)
@@ -49,18 +50,34 @@ static inline void gpr_set_int_value(CPUArchState *env, unsigned reg,
 #else
     env->gpr[reg] = value;
 #endif
-#if defined(CONFIG_MIPS_LOG_INSTR)
-    helper_log_gpr_write(reg, value, cpu_get_recent_pc(env));
+#if defined(CONFIG_TCG_LOG_INSTR)
+    // TODO(am2419): should be using qemu_log_isntr_cap_int()?
+    helper_riscv_log_gpr_write(env, reg, value);
 #endif
 }
 
 static inline target_ulong gpr_int_value(CPURISCVState* env, unsigned reg) {
 #ifdef TARGET_CHERI
-    return env->gpcapregs.decompressed[reg]._cr_cursor;
+    return get_cap_in_gpregs(&env->gpcapregs, reg)->_cr_cursor;
 #else
     return env->gpr[reg];
 #endif
 }
+
 static inline void riscv_update_pc(CPURISCVState *env, target_ulong pc_addr,
                                    RISCVMXL xl, bool can_be_unrepresentable)
+{
+#ifdef TARGET_CHERI
     cheri_update_pcc(&env->pcc, pc_addr, can_be_unrepresentable);
+#else
+    if (xl == MXL_RV32) {
+        env->pc = (int32_t)pc_addr;
+    } else {
+        env->pc = pc_addr;
+    }
+    env->pc = pc_addr;
+#endif
+#ifdef CONFIG_DEBUG_TCG
+    env->_pc_is_current = true;
+#endif
+}

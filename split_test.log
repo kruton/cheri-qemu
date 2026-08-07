@@ -1,0 +1,383 @@
+Loaded 2598 commits.
+Tracking mapped files...
+
+[1/2598] Processing commit 4555166b90: Add a CHERI target based on MIPS64.
+  Patch apply failed for configure: Applied patch to 'configure' with conflicts.
+U configure
+Failed to apply patch for configure to any mapped path: ['configure']
+Applied patch for default-configs/cheri-softmmu.mak to default-configs/cheri-softmmu.mak
+Successfully committed 4555166b90
+
+[2/2598] Processing commit a78cda6e02: CHERI hardware has 40 bit physical address.
+Applied patch for hw/mips/addr.c to target/mips/system/addr.c
+  Patch apply failed for target/mips/system/physaddr.c: Applied patch to 'target/mips/system/physaddr.c' with conflicts.
+U target/mips/system/physaddr.c
+  Patch apply failed for target/mips/tcg/op_helper.c: Applied patch to 'target/mips/tcg/op_helper.c' with conflicts.
+U target/mips/tcg/op_helper.c
+  Patch apply failed for target/mips/tcg/system/special_helper.c: Applied patch to 'target/mips/tcg/system/special_helper.c' with conflicts.
+U target/mips/tcg/system/special_helper.c
+  Patch apply failed for target/mips/tcg/system/tlb_helper.c: Applied patch to 'target/mips/tcg/system/tlb_helper.c' with conflicts.
+U target/mips/tcg/system/tlb_helper.c
+Failed to apply patch for target-mips/helper.c to any mapped path: ['target/mips/system/physaddr.c', 'target/mips/tcg/op_helper.c', 'target/mips/tcg/system/special_helper.c', 'target/mips/tcg/system/tlb_helper.c']
+Applied patch for target-mips/translate_init.c to target/mips/cpu-defs.c.inc
+Successfully committed a78cda6e02
+
+[3/2598] Processing commit 13db571f5a: Add CHERI capability register definitions.
+  Patch apply failed for target/mips/cpu.h: Applied patch to 'target/mips/cpu.h' with conflicts.
+U target/mips/cpu.h
+Failed to apply patch for target-mips/cpu.h to any mapped path: ['target/mips/cpu.h']
+Staging via heuristic match: target/mips/cpu.h @@ -468,11 +494,28 @@ struct TCState { (a36ad8e:5,19,22,24)
+Successfully committed 13db571f5a
+
+[4/2598] Processing commit 5c2ee7b433: Add CHERI instructions to built-in disassembler.
+Applied patch for disas/mips.c to disas/mips.c
+Successfully committed 5c2ee7b433
+
+[5/2598] Processing commit b6ddb8e4c7: Add BERI register dumping extensions for testing.
+  Patch apply failed for gdbstub/gdbstub.c: Applied patch to 'gdbstub/gdbstub.c' with conflicts.
+U gdbstub/gdbstub.c
+Failed to apply patch for gdbstub.c to any mapped path: ['gdbstub/gdbstub.c']
+Staging via heuristic match: gdbstub/gdbstub.c @@ -2309,6 +2324,14 @@ static int gdb_handle_packet(const char *line_buf) (1cbdea4:4)
+  Patch apply failed for target/mips/helper.h: Applied patch to 'target/mips/helper.h' with conflicts.
+U target/mips/helper.h
+Failed to apply patch for target-mips/helper.h to any mapped path: ['target/mips/helper.h']
+Staging via heuristic match: target/mips/helper.h @@ -25,6 +25,88 @@ DEF_HELPER_3(crc32, tl, tl, tl, i32) (5bade5e:21,27,30,32)
+  Patch apply failed for target/mips/tcg/op_helper.c: Applied patch to 'target/mips/tcg/op_helper.c' with conflicts.
+U target/mips/tcg/op_helper.c
+  Patch apply failed for target/mips/tcg/system/cp0_helper.c: Applied patch to 'target/mips/tcg/system/cp0_helper.c' with conflicts.
+U target/mips/tcg/system/cp0_helper.c
+  Patch apply failed for target/mips/op_helper_log_instr.c: error: target/mips/op_helper_log_instr.c: does not exist in index
+  Patch apply failed for target/mips/op_helper_cheri.c: error: target/mips/op_helper_cheri.c: does not exist in index
+Failed to apply patch for target-mips/op_helper.c to any mapped path: ['target/mips/tcg/op_helper.c', 'target/mips/tcg/system/cp0_helper.c', 'target/mips/op_helper_log_instr.c', 'target/mips/op_helper_cheri.c']
+Staging via heuristic match: target/mips/op_helper_cheri.c @@ -0,0 +1,867 @@ (edf9e08:71,84,788-793,795,811,813-816,820-821,824,834,836)
+  Patch apply failed for target/mips/tcg/translate.c: Applied patch to 'target/mips/tcg/translate.c' with conflicts.
+U target/mips/tcg/translate.c
+  Patch apply failed for target/mips/tcg/translate_cheri.c: error: target/mips/tcg/translate_cheri.c: does not exist in index
+Failed to apply patch for target-mips/translate.c to any mapped path: ['target/mips/tcg/translate.c', 'target/mips/tcg/translate_cheri.c']
+Staging via heuristic match: target/mips/tcg/translate.c @@ -6510,6 +7151,8 @@ static void gen_mtc0(DisasContext *ctx, TCGv arg, int reg, int sel) (0cfe419:5)
+Staging via heuristic match: target/mips/tcg/translate_cheri.c @@ -0,0 +1,1554 @@ (c44da77:40,44,531,555,827,829,831-834,836-837,840,846-849,852,854,869,1554)
+Staging via heuristic match: target/mips/tcg/translate.c @@ -7967,6 +8666,8 @@ static void gen_dmtc0(DisasContext *ctx, TCGv arg, int reg, int sel) (067e2ab:5)
+Staging via heuristic match: target/mips/tcg/translate_cheri.c @@ -0,0 +1,1554 @@ (3316454:40,44,117,119,531,555,838,845,852,869,871,873,1276,1278,1545,1549-1550,1554)
+Staging via heuristic match: target/mips/tcg/translate.c @@ -14825,6 +15656,117 @@ static bool decode_opc_legacy(CPUMIPSState *env, DisasContext *ctx) (5a225b2:4,16,32,52,56,114)
+Successfully committed b6ddb8e4c7
+
+[6/2598] Processing commit dee6534104: Add -bp commandline option for adding breakpoint.
+  Patch apply failed for configure: Applied patch to 'configure' with conflicts.
+U configure
+Failed to apply patch for configure to any mapped path: ['configure']
+  Patch apply failed for gdbstub/gdbstub.c: Applied patch to 'gdbstub/gdbstub.c' with conflicts.
+U gdbstub/gdbstub.c
+Failed to apply patch for gdbstub.c to any mapped path: ['gdbstub/gdbstub.c']
+Staging via heuristic match: gdbstub/gdbstub.c @@ -2309,6 +2324,14 @@ static int gdb_handle_packet(const char *line_buf) (1cbdea4:4,7-8,10-11)
+Failed to apply patch for hw/mips/mips_mipssim.c to any mapped path: ['hw/mips/mips_mipssim.c']
+  Patch apply failed for include/hw/boards.h: Applied patch to 'include/hw/boards.h' with conflicts.
+U include/hw/boards.h
+Failed to apply patch for include/hw/boards.h to any mapped path: ['include/hw/boards.h']
+Applied patch for qemu-options.hx to qemu-options.hx
+Failed to apply patch for vl.c to any mapped path: ['vl.c']
+No changes staged. Committing empty for dee6534104
+Committed EMPTY for dee6534104
+
+[7/2598] Processing commit ee5314b61c: Update to new version of CHERI Spec.
+  Patch apply failed for target/mips/cpu.h: Applied patch to 'target/mips/cpu.h' with conflicts.
+U target/mips/cpu.h
+Failed to apply patch for target-mips/cpu.h to any mapped path: ['target/mips/cpu.h']
+  Patch apply failed for target/mips/tcg/op_helper.c: Applied patch to 'target/mips/tcg/op_helper.c' with conflicts.
+U target/mips/tcg/op_helper.c
+  Patch apply failed for target/mips/tcg/system/cp0_helper.c: Applied patch to 'target/mips/tcg/system/cp0_helper.c' with conflicts.
+U target/mips/tcg/system/cp0_helper.c
+  Patch apply failed for target/mips/op_helper_log_instr.c: error: target/mips/op_helper_log_instr.c: does not exist in index
+  Patch apply failed for target/mips/op_helper_cheri.c: error: target/mips/op_helper_cheri.c: does not exist in index
+Failed to apply patch for target-mips/op_helper.c to any mapped path: ['target/mips/tcg/op_helper.c', 'target/mips/tcg/system/cp0_helper.c', 'target/mips/op_helper_log_instr.c', 'target/mips/op_helper_cheri.c']
+Staging via heuristic match: target/mips/op_helper_cheri.c @@ -0,0 +1,867 @@ (edf9e08:824,834)
+Applied patch for target-mips/translate.c to target/mips/tcg/translate.c
+Successfully committed ee5314b61c
+
+[8/2598] Processing commit 535a4b53a1: Check the PC and Load/Store addresses against PCC and DDC.
+  Patch apply failed for target/mips/cpu.h: Applied patch to 'target/mips/cpu.h' with conflicts.
+U target/mips/cpu.h
+Failed to apply patch for target-mips/cpu.h to any mapped path: ['target/mips/cpu.h']
+  Patch apply failed for target/mips/helper.h: Applied patch to 'target/mips/helper.h' with conflicts.
+U target/mips/helper.h
+Failed to apply patch for target-mips/helper.h to any mapped path: ['target/mips/helper.h']
+Staging via heuristic match: target/mips/helper.h @@ -25,6 +25,88 @@ DEF_HELPER_3(crc32, tl, tl, tl, i32) (5bade5e:36,48)
+  Patch apply failed for target/mips/tcg/op_helper.c: Applied patch to 'target/mips/tcg/op_helper.c' with conflicts.
+U target/mips/tcg/op_helper.c
+  Patch apply failed for target/mips/tcg/system/cp0_helper.c: Applied patch to 'target/mips/tcg/system/cp0_helper.c' with conflicts.
+U target/mips/tcg/system/cp0_helper.c
+  Patch apply failed for target/mips/op_helper_log_instr.c: error: target/mips/op_helper_log_instr.c: does not exist in index
+  Patch apply failed for target/mips/op_helper_cheri.c: Applied patch to 'target/mips/op_helper_cheri.c' with conflicts.
+U target/mips/op_helper_cheri.c
+Failed to apply patch for target-mips/op_helper.c to any mapped path: ['target/mips/tcg/op_helper.c', 'target/mips/tcg/system/cp0_helper.c', 'target/mips/op_helper_log_instr.c', 'target/mips/op_helper_cheri.c']
+Staging via heuristic match: target/mips/op_helper_cheri.c @@ -1,2 +1,867 @@ (527f81b:33,71,84,113,130,160,381,405,410,415,609)
+  Patch apply failed for target/mips/tcg/translate.c: Applied patch to 'target/mips/tcg/translate.c' with conflicts.
+U target/mips/tcg/translate.c
+  Patch apply failed for target/mips/tcg/translate_cheri.c: Applied patch to 'target/mips/tcg/translate_cheri.c' with conflicts.
+U target/mips/tcg/translate_cheri.c
+Failed to apply patch for target-mips/translate.c to any mapped path: ['target/mips/tcg/translate.c', 'target/mips/tcg/translate_cheri.c']
+Staging via heuristic match: target/mips/tcg/translate_cheri.c @@ -1,33 +1,1554 @@ (ef23548:51,55,694,812,821,824,859,862)
+Staging via heuristic match: target/mips/tcg/translate.c @@ -15310,36 +16365,16 @@ void mips_tcg_init(void) (b6d91e6:21)
+Successfully committed 535a4b53a1
+
+[9/2598] Processing commit 009148e36f: Add instruction decoding for CHERI instructions.
+  Patch apply failed for target/mips/tcg/translate.c: Applied patch to 'target/mips/tcg/translate.c' with conflicts.
+U target/mips/tcg/translate.c
+  Patch apply failed for target/mips/tcg/translate_cheri.c: Applied patch to 'target/mips/tcg/translate_cheri.c' with conflicts.
+U target/mips/tcg/translate_cheri.c
+Failed to apply patch for target-mips/translate.c to any mapped path: ['target/mips/tcg/translate.c', 'target/mips/tcg/translate_cheri.c']
+Staging via heuristic match: target/mips/tcg/translate.c @@ -140,6 +143,16 @@ enum { (3fbbcd6:4-13)
+Staging via heuristic match: target/mips/tcg/translate.c @@ -968,6 +994,218 @@ enum { (e6c992a:4,6-7,13-31,34-41,48,51-54,58-59,63-65,69-74,80-83,87-90,101,103-106,113,115-118,212)
+Staging via heuristic match: target/mips/tcg/translate.c @@ -3582,6 +4103,7 @@ static void gen_cl(DisasContext *ctx, uint32_t opc, (1837b0c:4)
+Staging via heuristic match: target/mips/tcg/translate.c @@ -6630,9 +7278,11 @@ static void gen_dmfc0(DisasContext *ctx, TCGv arg, int reg, int sel) (a45e039:8)
+Staging via heuristic match: target/mips/tcg/translate_cheri.c @@ -1,41 +1,1554 @@ (ff89c2f:60,64,92,117,119,542,839,887,892,896,900,904,909,913,915,917,922,938,943,947,956,961,966,971,981,986,991,996,1001,1006,1092,1113,1118,1128,1133,1214,1219,1224,1235,1239,1244,1249,1254-1256,1261,1266,1271,1286,1290,1294,1300,1313,1318,1323,1328-1329,1333-1334,1338,1340,1345,1351,1355,1360,1362,1367,1372,1377,1381,1383,1388,1393,1398,1403,1408,1424,1428-1429,1434,1438-1439,1441,1443,1447,1449,1453,1455,1459,1462,1468,1470,1472,1477,1479,1483,1485,1489,1491,1495,1497,1501,1503,1507,1516,1546,1548)
+Staging via heuristic match: target/mips/tcg/translate.c @@ -14828,10 +15657,115 @@ static bool decode_opc_legacy(CPUMIPSState *env, DisasContext *ctx) (a1de81f:4,15,52-53,58,66,99,105)
+Successfully committed 009148e36f
+
+[10/2598] Processing commit e33207812c: Add CHERI CGetPCC instruction support.
+  Patch apply failed for target/mips/helper.h: Applied patch to 'target/mips/helper.h' with conflicts.
+U target/mips/helper.h
+Failed to apply patch for target-mips/helper.h to any mapped path: ['target/mips/helper.h']
+Staging via heuristic match: target/mips/helper.h @@ -25,6 +25,88 @@ DEF_HELPER_3(crc32, tl, tl, tl, i32) (5bade5e:48)
+  Patch apply failed for target/mips/tcg/op_helper.c: Applied patch to 'target/mips/tcg/op_helper.c' with conflicts.
+U target/mips/tcg/op_helper.c
+  Patch apply failed for target/mips/tcg/system/cp0_helper.c: Applied patch to 'target/mips/tcg/system/cp0_helper.c' with conflicts.
+U target/mips/tcg/system/cp0_helper.c
+  Patch apply failed for target/mips/op_helper_log_instr.c: error: target/mips/op_helper_log_instr.c: does not exist in index
+  Patch apply failed for target/mips/op_helper_cheri.c: Applied patch to 'target/mips/op_helper_cheri.c' with conflicts.
+U target/mips/op_helper_cheri.c
+Failed to apply patch for target-mips/op_helper.c to any mapped path: ['target/mips/tcg/op_helper.c', 'target/mips/tcg/system/cp0_helper.c', 'target/mips/op_helper_log_instr.c', 'target/mips/op_helper_cheri.c']
+Staging via heuristic match: target/mips/op_helper_cheri.c @@ -1,2 +1,867 @@ (527f81b:33,71,84,115,131,148,160,317-318)
+  Patch apply failed for target/mips/tcg/translate.c: Applied patch to 'target/mips/tcg/translate.c' with conflicts.
+U target/mips/tcg/translate.c
+  Patch apply failed for target/mips/tcg/translate_cheri.c: Applied patch to 'target/mips/tcg/translate_cheri.c' with conflicts.
+U target/mips/tcg/translate_cheri.c
+Failed to apply patch for target-mips/translate.c to any mapped path: ['target/mips/tcg/translate.c', 'target/mips/tcg/translate_cheri.c']
+Staging via heuristic match: target/mips/tcg/translate_cheri.c @@ -1,148 +1,1554 @@ (eafe1d7:67,71,116,289,475)
+Staging via heuristic match: target/mips/tcg/translate.c @@ -7102,6 +7687,22 @@ static void gen_dmfc0(DisasContext *ctx, TCGv arg, int reg, int sel) (f974726:5,8)
+Staging via heuristic match: target/mips/tcg/translate.c @@ -7717,6 +8324,13 @@ static void gen_dmtc0(DisasContext *ctx, TCGv arg, int reg, int sel) (7af9ce4:9)
+Successfully committed e33207812c
+
+[11/2598] Processing commit afcff8ea26: Add CHERI CGetPerm instruction support.
+  Patch apply failed for target/mips/helper.h: Applied patch to 'target/mips/helper.h' with conflicts.
+U target/mips/helper.h
+Failed to apply patch for target-mips/helper.h to any mapped path: ['target/mips/helper.h']
+Staging via heuristic match: target/mips/helper.h @@ -25,6 +25,88 @@ DEF_HELPER_3(crc32, tl, tl, tl, i32) (5bade5e:49)
+  Patch apply failed for target/mips/tcg/op_helper.c: Applied patch to 'target/mips/tcg/op_helper.c' with conflicts.
+U target/mips/tcg/op_helper.c
+  Patch apply failed for target/mips/tcg/system/cp0_helper.c: Applied patch to 'target/mips/tcg/system/cp0_helper.c' with conflicts.
+U target/mips/tcg/system/cp0_helper.c
+  Patch apply failed for target/mips/op_helper_log_instr.c: error: target/mips/op_helper_log_instr.c: does not exist in index
+  Patch apply failed for target/mips/op_helper_cheri.c: Applied patch to 'target/mips/op_helper_cheri.c' with conflicts.
+U target/mips/op_helper_cheri.c
+Failed to apply patch for target-mips/op_helper.c to any mapped path: ['target/mips/tcg/op_helper.c', 'target/mips/tcg/system/cp0_helper.c', 'target/mips/op_helper_log_instr.c', 'target/mips/op_helper_cheri.c']
+Staging via heuristic match: target/mips/op_helper_cheri.c @@ -1,2 +1,867 @@ (527f81b:33,71,84,115,148,160,166)
+  Patch apply failed for target/mips/tcg/translate.c: Applied patch to 'target/mips/tcg/translate.c' with conflicts.
+U target/mips/tcg/translate.c
+  Patch apply failed for target/mips/tcg/translate_cheri.c: Applied patch to 'target/mips/tcg/translate_cheri.c' with conflicts.
+U target/mips/tcg/translate_cheri.c
+Failed to apply patch for target-mips/translate.c to any mapped path: ['target/mips/tcg/translate.c', 'target/mips/tcg/translate_cheri.c']
+Staging via heuristic match: target/mips/tcg/translate_cheri.c @@ -1,153 +1,1554 @@ (7d3ec64:76,79,82,221)
+Staging via heuristic match: target/mips/tcg/translate.c @@ -14616,7 +15365,7 @@ static bool decode_opc_legacy(CPUMIPSState *env, DisasContext *ctx) (ed25bf4:4)
+Successfully committed afcff8ea26
+
+[12/2598] Processing commit 31f0a64121: Add CHERI CGetSealed instruction support.
+  Patch apply failed for target/mips/helper.h: Applied patch to 'target/mips/helper.h' with conflicts.
+U target/mips/helper.h
+Failed to apply patch for target-mips/helper.h to any mapped path: ['target/mips/helper.h']
+Staging via heuristic match: target/mips/helper.h @@ -25,6 +25,88 @@ DEF_HELPER_3(crc32, tl, tl, tl, i32) (5bade5e:49)
+  Patch apply failed for target/mips/tcg/op_helper.c: Applied patch to 'target/mips/tcg/op_helper.c' with conflicts.
+U target/mips/tcg/op_helper.c
+  Patch apply failed for target/mips/tcg/system/cp0_helper.c: Applied patch to 'target/mips/tcg/system/cp0_helper.c' with conflicts.
+U target/mips/tcg/system/cp0_helper.c
+  Patch apply failed for target/mips/op_helper_log_instr.c: error: target/mips/op_helper_log_instr.c: does not exist in index
+  Patch apply failed for target/mips/op_helper_cheri.c: Applied patch to 'target/mips/op_helper_cheri.c' with conflicts.
+U target/mips/op_helper_cheri.c
+Failed to apply patch for target-mips/op_helper.c to any mapped path: ['target/mips/tcg/op_helper.c', 'target/mips/tcg/system/cp0_helper.c', 'target/mips/op_helper_log_instr.c', 'target/mips/op_helper_cheri.c']
+Staging via heuristic match: target/mips/op_helper_cheri.c @@ -1,2 +1,867 @@ (527f81b:33,71,84,115,148,160,166,168)
+  Patch apply failed for target/mips/tcg/translate.c: Applied patch to 'target/mips/tcg/translate.c' with conflicts.
+U target/mips/tcg/translate.c
+  Patch apply failed for target/mips/tcg/translate_cheri.c: Applied patch to 'target/mips/tcg/translate_cheri.c' with conflicts.
+U target/mips/tcg/translate_cheri.c
+Failed to apply patch for target-mips/translate.c to any mapped path: ['target/mips/tcg/translate.c', 'target/mips/tcg/translate_cheri.c']
+Staging via heuristic match: target/mips/tcg/translate_cheri.c @@ -1,157 +1,1554 @@ (0aebeea:531,1230)
+Successfully committed 31f0a64121
+
+[13/2598] Processing commit 98c85ef85b: Add CHERI CGetTag instruction support.
+  Patch apply failed for target/mips/helper.h: Applied patch to 'target/mips/helper.h' with conflicts.
+U target/mips/helper.h
+Failed to apply patch for target-mips/helper.h to any mapped path: ['target/mips/helper.h']
+Staging via heuristic match: target/mips/helper.h @@ -25,6 +25,88 @@ DEF_HELPER_3(crc32, tl, tl, tl, i32) (5bade5e:49)
+  Patch apply failed for target/mips/tcg/op_helper.c: Applied patch to 'target/mips/tcg/op_helper.c' with conflicts.
+U target/mips/tcg/op_helper.c
+  Patch apply failed for target/mips/tcg/system/cp0_helper.c: Applied patch to 'target/mips/tcg/system/cp0_helper.c' with conflicts.
+U target/mips/tcg/system/cp0_helper.c
+  Patch apply failed for target/mips/op_helper_log_instr.c: error: target/mips/op_helper_log_instr.c: does not exist in index
+  Patch apply failed for target/mips/op_helper_cheri.c: Applied patch to 'target/mips/op_helper_cheri.c' with conflicts.
+U target/mips/op_helper_cheri.c
+Failed to apply patch for target-mips/op_helper.c to any mapped path: ['target/mips/tcg/op_helper.c', 'target/mips/tcg/system/cp0_helper.c', 'target/mips/op_helper_log_instr.c', 'target/mips/op_helper_cheri.c']
+Staging via heuristic match: target/mips/op_helper_cheri.c @@ -1,2 +1,867 @@ (527f81b:33,71,84,148,160,168)
+  Patch apply failed for target/mips/tcg/translate.c: Applied patch to 'target/mips/tcg/translate.c' with conflicts.
+U target/mips/tcg/translate.c
+  Patch apply failed for target/mips/tcg/translate_cheri.c: Applied patch to 'target/mips/tcg/translate_cheri.c' with conflicts.
+U target/mips/tcg/translate_cheri.c
+Failed to apply patch for target-mips/translate.c to any mapped path: ['target/mips/tcg/translate.c', 'target/mips/tcg/translate_cheri.c']
+Staging via heuristic match: target/mips/tcg/translate_cheri.c @@ -1,159 +1,1554 @@ (5481b86:95,106,113,229)
+Staging via heuristic match: target/mips/tcg/translate.c @@ -7015,6 +7588,14 @@ static void gen_dmfc0(DisasContext *ctx, TCGv arg, int reg, int sel) (924e1de:10)
+Successfully committed 98c85ef85b
+
+[14/2598] Processing commit 41bbc1b1cb: Add CHERI CGetType instruction support.
+  Patch apply failed for target/mips/helper.h: Applied patch to 'target/mips/helper.h' with conflicts.
+U target/mips/helper.h
+Failed to apply patch for target-mips/helper.h to any mapped path: ['target/mips/helper.h']
+Staging via heuristic match: target/mips/helper.h @@ -25,6 +25,88 @@ DEF_HELPER_3(crc32, tl, tl, tl, i32) (5bade5e:49)
+  Patch apply failed for target/mips/tcg/op_helper.c: Applied patch to 'target/mips/tcg/op_helper.c' with conflicts.
+U target/mips/tcg/op_helper.c
+  Patch apply failed for target/mips/tcg/system/cp0_helper.c: Applied patch to 'target/mips/tcg/system/cp0_helper.c' with conflicts.
+U target/mips/tcg/system/cp0_helper.c
+  Patch apply failed for target/mips/op_helper_log_instr.c: error: target/mips/op_helper_log_instr.c: does not exist in index
+  Patch apply failed for target/mips/op_helper_cheri.c: Applied patch to 'target/mips/op_helper_cheri.c' with conflicts.
+U target/mips/op_helper_cheri.c
+Failed to apply patch for target-mips/op_helper.c to any mapped path: ['target/mips/tcg/op_helper.c', 'target/mips/tcg/system/cp0_helper.c', 'target/mips/op_helper_log_instr.c', 'target/mips/op_helper_cheri.c']
+Staging via heuristic match: target/mips/op_helper_cheri.c @@ -1,2 +1,867 @@ (527f81b:33,71,84,148,160,168)
+  Patch apply failed for target/mips/tcg/translate.c: Applied patch to 'target/mips/tcg/translate.c' with conflicts.
+U target/mips/tcg/translate.c
+  Patch apply failed for target/mips/tcg/translate_cheri.c: Applied patch to 'target/mips/tcg/translate_cheri.c' with conflicts.
+U target/mips/tcg/translate_cheri.c
+Failed to apply patch for target-mips/translate.c to any mapped path: ['target/mips/tcg/translate.c', 'target/mips/tcg/translate_cheri.c']
+Staging via heuristic match: target/mips/tcg/translate_cheri.c @@ -1,163 +1,1554 @@ (1f0f1b5:893,1236)
+Successfully committed 41bbc1b1cb
+
+[15/2598] Processing commit 5ce7df8138: Add CHERI CGetBase instruction support.
+  Patch apply failed for target/mips/helper.h: Applied patch to 'target/mips/helper.h' with conflicts.
+U target/mips/helper.h
+Failed to apply patch for target-mips/helper.h to any mapped path: ['target/mips/helper.h']
+Staging via heuristic match: target/mips/helper.h @@ -25,6 +25,88 @@ DEF_HELPER_3(crc32, tl, tl, tl, i32) (5bade5e:49)
+  Patch apply failed for target/mips/tcg/op_helper.c: Applied patch to 'target/mips/tcg/op_helper.c' with conflicts.
+U target/mips/tcg/op_helper.c
+  Patch apply failed for target/mips/tcg/system/cp0_helper.c: Applied patch to 'target/mips/tcg/system/cp0_helper.c' with conflicts.
+U target/mips/tcg/system/cp0_helper.c
+  Patch apply failed for target/mips/op_helper_log_instr.c: error: target/mips/op_helper_log_instr.c: does not exist in index
+  Patch apply failed for target/mips/op_helper_cheri.c: Applied patch to 'target/mips/op_helper_cheri.c' with conflicts.
+U target/mips/op_helper_cheri.c
+Failed to apply patch for target-mips/op_helper.c to any mapped path: ['target/mips/tcg/op_helper.c', 'target/mips/tcg/system/cp0_helper.c', 'target/mips/op_helper_log_instr.c', 'target/mips/op_helper_cheri.c']
+Staging via heuristic match: target/mips/op_helper_cheri.c @@ -1,2 +1,867 @@ (527f81b:33,71,84,148,160,168)
+  Patch apply failed for target/mips/tcg/translate.c: Applied patch to 'target/mips/tcg/translate.c' with conflicts.
+U target/mips/tcg/translate.c
+  Patch apply failed for target/mips/tcg/translate_cheri.c: Applied patch to 'target/mips/tcg/translate_cheri.c' with conflicts.
+U target/mips/tcg/translate_cheri.c
+Failed to apply patch for target-mips/translate.c to any mapped path: ['target/mips/tcg/translate.c', 'target/mips/tcg/translate_cheri.c']
+Staging via heuristic match: target/mips/tcg/translate_cheri.c @@ -1,165 +1,1554 @@ (4050a75:897,1287)
+Successfully committed 5ce7df8138
+
+[16/2598] Processing commit 9c8a8259b6: Add CHERI CGetCause instruction support.
+  Patch apply failed for target/mips/helper.h: Applied patch to 'target/mips/helper.h' with conflicts.
+U target/mips/helper.h
+Failed to apply patch for target-mips/helper.h to any mapped path: ['target/mips/helper.h']
+Staging via heuristic match: target/mips/helper.h @@ -25,6 +25,88 @@ DEF_HELPER_3(crc32, tl, tl, tl, i32) (5bade5e:47)
+  Patch apply failed for target/mips/tcg/op_helper.c: Applied patch to 'target/mips/tcg/op_helper.c' with conflicts.
+U target/mips/tcg/op_helper.c
+  Patch apply failed for target/mips/tcg/system/cp0_helper.c: Applied patch to 'target/mips/tcg/system/cp0_helper.c' with conflicts.
+U target/mips/tcg/system/cp0_helper.c
+  Patch apply failed for target/mips/op_helper_log_instr.c: error: target/mips/op_helper_log_instr.c: does not exist in index
+  Patch apply failed for target/mips/op_helper_cheri.c: Applied patch to 'target/mips/op_helper_cheri.c' with conflicts.
+U target/mips/op_helper_cheri.c
+Failed to apply patch for target-mips/op_helper.c to any mapped path: ['target/mips/tcg/op_helper.c', 'target/mips/tcg/system/cp0_helper.c', 'target/mips/op_helper_log_instr.c', 'target/mips/op_helper_cheri.c']
+Staging via heuristic match: target/mips/op_helper_cheri.c @@ -1,2 +1,867 @@ (527f81b:33,71,84,148,160,168,304-305,310)
+  Patch apply failed for target/mips/tcg/translate.c: Applied patch to 'target/mips/tcg/translate.c' with conflicts.
+U target/mips/tcg/translate.c
+  Patch apply failed for target/mips/tcg/translate_cheri.c: Applied patch to 'target/mips/tcg/translate_cheri.c' with conflicts.
+U target/mips/tcg/translate_cheri.c
+Failed to apply patch for target-mips/translate.c to any mapped path: ['target/mips/tcg/translate.c', 'target/mips/tcg/translate_cheri.c']
+Staging via heuristic match: target/mips/tcg/translate_cheri.c @@ -1,167 +1,1554 @@ (585f4ed:107,126,280,387)
+Staging via heuristic match: target/mips/tcg/translate.c @@ -1363,6 +1533,11 @@ static inline void save_cpu_state(DisasContext *ctx, int do_save_pc) (1b46bbd:7)
+Successfully committed 9c8a8259b6
+
+[17/2598] Processing commit 87e43dba3a: Add CHERI CGetLen instruction support.
+  Patch apply failed for target/mips/helper.h: Applied patch to 'target/mips/helper.h' with conflicts.
+U target/mips/helper.h
+Failed to apply patch for target-mips/helper.h to any mapped path: ['target/mips/helper.h']
+Staging via heuristic match: target/mips/helper.h @@ -25,6 +25,88 @@ DEF_HELPER_3(crc32, tl, tl, tl, i32) (5bade5e:49)
+  Patch apply failed for target/mips/tcg/op_helper.c: Applied patch to 'target/mips/tcg/op_helper.c' with conflicts.
+U target/mips/tcg/op_helper.c
+  Patch apply failed for target/mips/tcg/system/cp0_helper.c: Applied patch to 'target/mips/tcg/system/cp0_helper.c' with conflicts.
+U target/mips/tcg/system/cp0_helper.c
+  Patch apply failed for target/mips/op_helper_log_instr.c: error: target/mips/op_helper_log_instr.c: does not exist in index
+  Patch apply failed for target/mips/op_helper_cheri.c: Applied patch to 'target/mips/op_helper_cheri.c' with conflicts.
+U target/mips/op_helper_cheri.c
+Failed to apply patch for target-mips/op_helper.c to any mapped path: ['target/mips/tcg/op_helper.c', 'target/mips/tcg/system/cp0_helper.c', 'target/mips/op_helper_log_instr.c', 'target/mips/op_helper_cheri.c']
+Staging via heuristic match: target/mips/op_helper_cheri.c @@ -1,2 +1,867 @@ (527f81b:33,71,84,148,160,168)
+  Patch apply failed for target/mips/tcg/translate.c: Applied patch to 'target/mips/tcg/translate.c' with conflicts.
+U target/mips/tcg/translate.c
+  Patch apply failed for target/mips/tcg/translate_cheri.c: Applied patch to 'target/mips/tcg/translate_cheri.c' with conflicts.
+U target/mips/tcg/translate_cheri.c
+Failed to apply patch for target-mips/translate.c to any mapped path: ['target/mips/tcg/translate.c', 'target/mips/tcg/translate_cheri.c']
+Staging via heuristic match: target/mips/tcg/translate_cheri.c @@ -1,171 +1,1554 @@ (79d4984:901,1310)
+Successfully committed 87e43dba3a
+
+[18/2598] Processing commit a7d772ee91: Add CHERI CGetOffset instruction support.
+  Patch apply failed for target/mips/helper.h: Applied patch to 'target/mips/helper.h' with conflicts.
+U target/mips/helper.h
+Failed to apply patch for target-mips/helper.h to any mapped path: ['target/mips/helper.h']
+Staging via heuristic match: target/mips/helper.h @@ -25,6 +25,88 @@ DEF_HELPER_3(crc32, tl, tl, tl, i32) (5bade5e:49)
+  Patch apply failed for target/mips/tcg/op_helper.c: Applied patch to 'target/mips/tcg/op_helper.c' with conflicts.
+U target/mips/tcg/op_helper.c
+  Patch apply failed for target/mips/tcg/system/cp0_helper.c: Applied patch to 'target/mips/tcg/system/cp0_helper.c' with conflicts.
+U target/mips/tcg/system/cp0_helper.c
+  Patch apply failed for target/mips/op_helper_log_instr.c: error: target/mips/op_helper_log_instr.c: does not exist in index
+  Patch apply failed for target/mips/op_helper_cheri.c: Applied patch to 'target/mips/op_helper_cheri.c' with conflicts.
+U target/mips/op_helper_cheri.c
+Failed to apply patch for target-mips/op_helper.c to any mapped path: ['target/mips/tcg/op_helper.c', 'target/mips/tcg/system/cp0_helper.c', 'target/mips/op_helper_log_instr.c', 'target/mips/op_helper_cheri.c']
+Staging via heuristic match: target/mips/op_helper_cheri.c @@ -1,2 +1,867 @@ (527f81b:33,71,84,148,160,168)
+  Patch apply failed for target/mips/tcg/translate.c: Applied patch to 'target/mips/tcg/translate.c' with conflicts.
+U target/mips/tcg/translate.c
+  Patch apply failed for target/mips/tcg/translate_cheri.c: Applied patch to 'target/mips/tcg/translate_cheri.c' with conflicts.
+U target/mips/tcg/translate_cheri.c
+Failed to apply patch for target-mips/translate.c to any mapped path: ['target/mips/tcg/translate.c', 'target/mips/tcg/translate_cheri.c']
+Staging via heuristic match: target/mips/tcg/translate_cheri.c @@ -1,173 +1,1554 @@ (f774c3c:905,1352)
+Successfully committed a7d772ee91
+
+[19/2598] Processing commit 0ea9544518: Add CHERI CSetCause instruction support.
+  Patch apply failed for target/mips/helper.h: Applied patch to 'target/mips/helper.h' with conflicts.
+U target/mips/helper.h
+Failed to apply patch for target-mips/helper.h to any mapped path: ['target/mips/helper.h']
+Staging via heuristic match: target/mips/helper.h @@ -25,6 +25,88 @@ DEF_HELPER_3(crc32, tl, tl, tl, i32) (5bade5e:51)
+  Patch apply failed for target/mips/tcg/op_helper.c: Applied patch to 'target/mips/tcg/op_helper.c' with conflicts.
+U target/mips/tcg/op_helper.c
+  Patch apply failed for target/mips/tcg/system/cp0_helper.c: Applied patch to 'target/mips/tcg/system/cp0_helper.c' with conflicts.
+U target/mips/tcg/system/cp0_helper.c
+  Patch apply failed for target/mips/op_helper_log_instr.c: error: target/mips/op_helper_log_instr.c: does not exist in index
+  Patch apply failed for target/mips/op_helper_cheri.c: Applied patch to 'target/mips/op_helper_cheri.c' with conflicts.
+U target/mips/op_helper_cheri.c
+Failed to apply patch for target-mips/op_helper.c to any mapped path: ['target/mips/tcg/op_helper.c', 'target/mips/tcg/system/cp0_helper.c', 'target/mips/op_helper_log_instr.c', 'target/mips/op_helper_cheri.c']
+Staging via heuristic match: target/mips/op_helper_cheri.c @@ -1,2 +1,867 @@ (527f81b:33,71,84,148,160,499,504)
+  Patch apply failed for target/mips/tcg/translate.c: Applied patch to 'target/mips/tcg/translate.c' with conflicts.
+U target/mips/tcg/translate.c
+  Patch apply failed for target/mips/tcg/translate_cheri.c: Applied patch to 'target/mips/tcg/translate_cheri.c' with conflicts.
+U target/mips/tcg/translate_cheri.c
+Failed to apply patch for target-mips/translate.c to any mapped path: ['target/mips/tcg/translate.c', 'target/mips/tcg/translate_cheri.c']
+Staging via heuristic match: target/mips/tcg/translate_cheri.c @@ -1,175 +1,1554 @@ (94b89a9:121,126,480)
+Staging via heuristic match: target/mips/tcg/translate.c @@ -1379,6 +1553,11 @@ static inline void restore_cpu_state(CPUMIPSState *env, DisasContext *ctx) (8bb878f:7)
+Staging via heuristic match: target/mips/tcg/translate.c @@ -14956,12 +15801,20 @@ static bool decode_opc_legacy(CPUMIPSState *env, DisasContext *ctx) (02e30a2:10)
+Successfully committed 0ea9544518
+
+[20/2598] Processing commit 41f78ac153: Add CHERI CSetLen instruction support.
+  Patch apply failed for target/mips/helper.h: Applied patch to 'target/mips/helper.h' with conflicts.
+U target/mips/helper.h
+Failed to apply patch for target-mips/helper.h to any mapped path: ['target/mips/helper.h']
+Staging via heuristic match: target/mips/helper.h @@ -25,6 +25,88 @@ DEF_HELPER_3(crc32, tl, tl, tl, i32) (5bade5e:53)
+  Patch apply failed for target/mips/tcg/op_helper.c: Applied patch to 'target/mips/tcg/op_helper.c' with conflicts.
+U target/mips/tcg/op_helper.c
+  Patch apply failed for target/mips/tcg/system/cp0_helper.c: Applied patch to 'target/mips/tcg/system/cp0_helper.c' with conflicts.
+U target/mips/tcg/system/cp0_helper.c
+  Patch apply failed for target/mips/op_helper_log_instr.c: error: target/mips/op_helper_log_instr.c: does not exist in index
+  Patch apply failed for target/mips/op_helper_cheri.c: Applied patch to 'target/mips/op_helper_cheri.c' with conflicts.
+U target/mips/op_helper_cheri.c
+Failed to apply patch for target-mips/op_helper.c to any mapped path: ['target/mips/tcg/op_helper.c', 'target/mips/tcg/system/cp0_helper.c', 'target/mips/op_helper_log_instr.c', 'target/mips/op_helper_cheri.c']
+  Patch apply failed for target/mips/tcg/translate.c: Applied patch to 'target/mips/tcg/translate.c' with conflicts.
+U target/mips/tcg/translate.c
+  Patch apply failed for target/mips/tcg/translate_cheri.c: Applied patch to 'target/mips/tcg/translate_cheri.c' with conflicts.
+U target/mips/tcg/translate_cheri.c
+Failed to apply patch for target-mips/translate.c to any mapped path: ['target/mips/tcg/translate.c', 'target/mips/tcg/translate_cheri.c']
+Staging via heuristic match: target/mips/tcg/translate_cheri.c @@ -1,178 +1,1554 @@ (3e751d0:115,121,126,178,392,408)
+Successfully committed 41f78ac153
+Reached limit of 20 commits. Stopping test.

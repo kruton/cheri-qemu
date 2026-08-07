@@ -166,6 +166,8 @@ typedef enum {
     rv_codec_r2_immhl,
     rv_codec_r2_imm2_imm5,
     rv_codec_fli,
+    rv_codec_cbo_rs1,
+    rv_codec_scbndsi,
     rv_codec_lp,
     rv_codec_cmop_ss,
 } rv_codec;

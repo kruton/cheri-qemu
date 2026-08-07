@@ -22,6 +22,8 @@
 #define TYPE_RAM_BLOCK_ATTRIBUTES "ram-block-attributes"
 OBJECT_DECLARE_SIMPLE_TYPE(RamBlockAttributes, RAM_BLOCK_ATTRIBUTES)
 
+struct CheriTagMem; // opaque struct
+
 struct RAMBlock {
     struct rcu_head rcu;
     struct MemoryRegion *mr;
@@ -60,6 +62,9 @@ struct RAMBlock {
 
     /* Bitmap of already received pages.  Only used on destination side. */
     unsigned long *receivedmap;
+
+    /* Bitmap of CHERI tag bits */
+    struct CheriTagMem *cheri_tags;
 
     /*
      * bitmap to track already cleared dirty bitmap.  When the bit is
@@ -131,3 +136,4 @@ static inline void *ramblock_ptr(RAMBlock *block, ram_addr_t offset)
 }
 
 #endif
+

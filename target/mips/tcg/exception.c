@@ -22,6 +22,9 @@
 #include "qemu/log.h"
 #include "cpu.h"
 #include "internal.h"
+#ifdef TARGET_CHERI
+#include "cheri_utils.h"
+#endif
 #include "exec/helper-proto.h"
 #include "exec/translation-block.h"
 
@@ -31,7 +34,7 @@ target_ulong exception_resume_pc(CPUMIPSState *env)
     target_ulong isa_mode;
 
     isa_mode = !!(env->hflags & MIPS_HFLAG_M16);
-    bad_pc = env->active_tc.PC | isa_mode;
+    bad_pc = PC_ADDR(env) | isa_mode;
     if (env->hflags & MIPS_HFLAG_BMASK) {
         /*
          * If the exception was raised from a delay slot, come back to
@@ -82,7 +85,7 @@ void mips_cpu_synchronize_from_tb(CPUState *cs, const TranslationBlock *tb)
     CPUMIPSState *env = cpu_env(cs);
 
     tcg_debug_assert(!tcg_cflags_has(cs, CF_PCREL));
-    env->active_tc.PC = tb->pc;
+    mips_update_pc(env, tb->pc, /*can_be_unrepresentable=*/false);
     env->hflags &= ~MIPS_HFLAG_BMASK;
     env->hflags |= tb->flags & MIPS_HFLAG_BMASK;
 }
@@ -136,11 +139,20 @@ const char *mips_exception_name(int32_t exception)
     return excp_names[exception];
 }
 
-void do_raise_exception_err(CPUMIPSState *env, uint32_t exception,
+void do_raise_exception_err(CPUMIPSState *env, MipsExcp exception,
                             int error_code, uintptr_t pc)
 {
     CPUState *cs = env_cpu(env);
 
+#ifdef TARGET_CHERI
+    // Translate CP0 Unusable to CP2 ASR fault if we are in kernel mode and
+    // PCC is missing ASR:
+    if (exception == EXCP_CpU && error_code == 0 && in_kernel_mode(env)) {
+        if (!cheri_have_access_sysregs(env)) {
+            do_raise_c2_exception_noreg(env, CapEx_AccessSystemRegsViolation, pc);
+        }
+    }
+#endif
     qemu_log_mask(CPU_LOG_INT, "%s: %d (%s) %d\n",
                   __func__, exception, mips_exception_name(exception),
                   error_code);
@@ -148,4 +160,19 @@ void do_raise_exception_err(CPUMIPSState *env, uint32_t exception,
     env->error_code = error_code;
 
     cpu_loop_exit_restore(cs, pc);
+}
+
+void helper_check_breakcount(CPUArchState *env)
+{
+    CPUState *cs = env_cpu(env);
+    /* Decrement the startup breakcount, if set. */
+    if (unlikely(cs->breakcount)) {
+        cs->breakcount--;
+        if (cs->breakcount == 0UL) {
+            if (qemu_log_instr_or_mask_enabled(env, CPU_LOG_INT | CPU_LOG_EXEC))
+                qemu_log_instr_or_mask_msg(env, CPU_LOG_INT | CPU_LOG_EXEC,
+                    "Reached breakcount!\n");
+            helper_raise_exception_debug(env);
+        }
+    }
 }

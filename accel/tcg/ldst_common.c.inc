@@ -119,6 +119,19 @@ void helper_st_i128(CPUArchState *env, uint64_t addr, Int128 val, MemOpIdx oi)
     helper_st16_mmu(env, addr, val, oi, GETPC());
 }
 
+#ifdef CONFIG_TCG_LOG_INSTR
+/*
+ * Log a target memory load/store via cpu_ldst.
+ */
+#define log_instr_load_int(env, addr, value, oi)        \
+    helper_qemu_log_instr_load64(env, addr, value, oi)
+#define log_instr_store_int(env, addr, value, op)       \
+    helper_qemu_log_instr_store64(env, addr, value, op)
+#else
+#define log_instr_load_int(env, addr, val, oi) ((void)0)
+#define log_instr_store_int(env, addr, val, op) ((void)0)
+#endif
+
 /*
  * Load helpers for cpu_ldst.h
  */
@@ -142,6 +155,7 @@ uint8_t cpu_ldb_mmu(CPUArchState *env, vaddr addr, MemOpIdx oi, uintptr_t ra)
     tcg_debug_assert((get_memop(oi) & MO_SIZE) == MO_UB);
     ret = do_ld1_mmu(env_cpu(env), addr, oi, ra, MMU_DATA_LOAD);
     plugin_load_cb(env, addr, ret, 0, oi);
+    log_instr_load_int(env, addr, ret, oi);
     return ret;
 }
 
@@ -153,6 +167,7 @@ uint16_t cpu_ldw_mmu(CPUArchState *env, vaddr addr,
     tcg_debug_assert((get_memop(oi) & MO_SIZE) == MO_16);
     ret = do_ld2_mmu(env_cpu(env), addr, oi, ra, MMU_DATA_LOAD);
     plugin_load_cb(env, addr, ret, 0, oi);
+    log_instr_load_int(env, addr, ret, oi);
     return ret;
 }
 
@@ -164,6 +179,7 @@ uint32_t cpu_ldl_mmu(CPUArchState *env, vaddr addr,
     tcg_debug_assert((get_memop(oi) & MO_SIZE) == MO_32);
     ret = do_ld4_mmu(env_cpu(env), addr, oi, ra, MMU_DATA_LOAD);
     plugin_load_cb(env, addr, ret, 0, oi);
+    log_instr_load_int(env, addr, ret, oi);
     return ret;
 }
 
@@ -175,6 +191,7 @@ uint64_t cpu_ldq_mmu(CPUArchState *env, vaddr addr,
     tcg_debug_assert((get_memop(oi) & MO_SIZE) == MO_64);
     ret = do_ld8_mmu(env_cpu(env), addr, oi, ra, MMU_DATA_LOAD);
     plugin_load_cb(env, addr, ret, 0, oi);
+    log_instr_load_int(env, addr, ret, oi);
     return ret;
 }
 
@@ -210,6 +227,7 @@ void cpu_stb_mmu(CPUArchState *env, vaddr addr, uint8_t val,
 {
     helper_stb_mmu(env, addr, val, oi, retaddr);
     plugin_store_cb(env, addr, val, 0, oi);
+    log_instr_store_int(env, addr, val, oi);
 }
 
 void cpu_stw_mmu(CPUArchState *env, vaddr addr, uint16_t val,
@@ -218,6 +236,7 @@ void cpu_stw_mmu(CPUArchState *env, vaddr addr, uint16_t val,
     tcg_debug_assert((get_memop(oi) & MO_SIZE) == MO_16);
     do_st2_mmu(env_cpu(env), addr, val, oi, retaddr);
     plugin_store_cb(env, addr, val, 0, oi);
+    log_instr_store_int(env, addr, val, oi);
 }
 
 void cpu_stl_mmu(CPUArchState *env, vaddr addr, uint32_t val,
@@ -226,6 +245,7 @@ void cpu_stl_mmu(CPUArchState *env, vaddr addr, uint32_t val,
     tcg_debug_assert((get_memop(oi) & MO_SIZE) == MO_32);
     do_st4_mmu(env_cpu(env), addr, val, oi, retaddr);
     plugin_store_cb(env, addr, val, 0, oi);
+    log_instr_store_int(env, addr, val, oi);
 }
 
 void cpu_stq_mmu(CPUArchState *env, vaddr addr, uint64_t val,
@@ -234,6 +254,7 @@ void cpu_stq_mmu(CPUArchState *env, vaddr addr, uint64_t val,
     tcg_debug_assert((get_memop(oi) & MO_SIZE) == MO_64);
     do_st8_mmu(env_cpu(env), addr, val, oi, retaddr);
     plugin_store_cb(env, addr, val, 0, oi);
+    log_instr_store_int(env, addr, val, oi);
 }
 
 void cpu_st16_mmu(CPUArchState *env, vaddr addr, Int128 val,

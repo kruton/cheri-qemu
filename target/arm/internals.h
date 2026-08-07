@@ -31,6 +31,7 @@
 #include "accel/tcg/tb-cpu-state.h"
 #include "hw/registerfields.h"
 #include "tcg/tcg-gvec-desc.h"
+#include "cheri-lazy-capregs.h"
 #include "system/memory.h"
 #include "syndrome.h"
 #include "cpu-features.h"
@@ -418,93 +419,6 @@ static inline FloatRoundMode arm_rmode_to_sf(ARMFPRounding rmode)
     return arm_rmode_to_sf_map[rmode];
 }
 
-/* Return the effective value of SCR_EL3.RW */
-static inline bool arm_scr_rw_eff(CPUARMState *env)
-{
-    /*
-     * SCR_EL3.RW has an effective value of 1 if:
-     *  - we are NS and EL2 is implemented but doesn't support AArch32
-     *  - we are S and EL2 is enabled (in which case it must be AArch64)
-     */
-    ARMCPU *cpu = env_archcpu(env);
-
-    if (env->cp15.scr_el3 & SCR_RW) {
-        return true;
-    }
-    if (env->cp15.scr_el3 & SCR_NS) {
-        return arm_feature(env, ARM_FEATURE_EL2) &&
-            !cpu_isar_feature(aa64_aa32_el2, cpu);
-    } else {
-        return env->cp15.scr_el3 & SCR_EEL2;
-    }
-}
-
-/* Return true if the specified exception level is running in AArch64 state. */
-static inline bool arm_el_is_aa64(CPUARMState *env, int el)
-{
-    /*
-     * This isn't valid for EL0 (if we're in EL0, is_a64() is what you want,
-     * and if we're not in EL0 then the state of EL0 isn't well defined.)
-     */
-    assert(el >= 1 && el <= 3);
-    bool aa64 = arm_feature(env, ARM_FEATURE_AARCH64);
-
-    /*
-     * The highest exception level is always at the maximum supported
-     * register width, and then lower levels have a register width controlled
-     * by bits in the SCR or HCR registers.
-     */
-    if (el == 3) {
-        return aa64;
-    }
-
-    if (arm_feature(env, ARM_FEATURE_EL3)) {
-        aa64 = aa64 && arm_scr_rw_eff(env);
-    }
-
-    if (el == 2) {
-        return aa64;
-    }
-
-    if (arm_is_el2_enabled(env)) {
-        aa64 = aa64 && (env->cp15.hcr_el2 & HCR_RW);
-    }
-
-    return aa64;
-}
-
-/*
- * Return the current Exception Level (as per ARMv8; note that this differs
- * from the ARMv7 Privilege Level).
- */
-static inline int arm_current_el(CPUARMState *env)
-{
-    if (arm_feature(env, ARM_FEATURE_M)) {
-        return arm_v7m_is_handler_mode(env) ||
-            !(env->v7m.control[env->v7m.secure] & 1);
-    }
-
-    if (is_a64(env)) {
-        return extract32(env->pstate, 2, 2);
-    }
-
-    switch (env->uncached_cpsr & 0x1f) {
-    case ARM_CPU_MODE_USR:
-        return 0;
-    case ARM_CPU_MODE_HYP:
-        return 2;
-    case ARM_CPU_MODE_MON:
-        return 3;
-    default:
-        if (arm_is_secure(env) && !arm_el_is_aa64(env, 3)) {
-            /* If EL3 is 32-bit then all secure privileged modes run in EL3 */
-            return 3;
-        }
-
-        return 1;
-    }
-}
-
 static inline bool arm_cpu_data_is_big_endian_a32(CPUARMState *env,
                                                   bool sctlr_b)
 {
@@ -531,7 +445,11 @@ static inline bool arm_cpu_data_is_big_endian_a32(CPUARMState *env,
 
 static inline bool arm_cpu_data_is_big_endian_a64(int el, uint64_t sctlr)
 {
+#ifdef TARGET_CHERI
+    return false;
+#else
     return sctlr & (el ? SCTLR_EE : SCTLR_E0E);
+#endif
 }
 
 /* Return true if the processor is in big-endian mode. */
@@ -552,25 +470,6 @@ static inline bool arm_cpu_bswap_data(CPUARMState *env)
     return TARGET_BIG_ENDIAN ^ arm_cpu_data_is_big_endian(env);
 }
 #endif
-
-static inline void aarch64_save_sp(CPUARMState *env, int el)
-{
-    if (env->pstate & PSTATE_SP) {
-        env->sp_el[el] = env->xregs[31];
-    } else {
-        env->sp_el[0] = env->xregs[31];
-    }
-}
-
-static inline void aarch64_restore_sp(CPUARMState *env, int el)
-{
-    if (env->pstate & PSTATE_SP) {
-        env->xregs[31] = env->sp_el[el];
-    } else {
-        env->xregs[31] = env->sp_el[0];
-    }
-}
-
 static inline void update_spsel(CPUARMState *env, uint32_t imm)
 {
     unsigned int cur_el = arm_current_el(env);
@@ -710,12 +609,18 @@ typedef enum ARMFaultType {
     ARMFault_AsyncExternal,
     ARMFault_Debug,
     ARMFault_TLBConflict,
+    ARMFault_HWUpdateAccessFlag,
+    ARMFault_CapTag,
+    ARMFault_CapSeal,
+    ARMFault_CapBounds,
+    ARMFault_CapPerm,
+    ARMFault_CapPagePerm,
     ARMFault_UnsuppAtomicUpdate,
     ARMFault_Lockdown,
     ARMFault_Exclusive,
     ARMFault_ICacheMaint,
     ARMFault_QEMU_NSCExec, /* v8M: NS executing in S&NSC memory */
-    ARMFault_QEMU_SFault, /* v8M: SecureFault INVTRAN, INVEP or AUVIOL */
+    ARMFault_QEMU_SFault,  /* v8M: SecureFault INVTRAN, INVEP or AUVIOL */
     ARMFault_GPCFOnWalk,
     ARMFault_GPCFOnOutput,
 } ARMFaultType;
@@ -922,6 +827,21 @@ static inline uint32_t arm_fi_to_lfsc(ARMMMUFaultInfo *fi)
         break;
     case ARMFault_Exclusive:
         fsc = 0x35;
+        break;
+    case ARMFault_CapBounds:
+        fsc = 0b101010;
+        break;
+    case ARMFault_CapTag:
+        fsc = 0b101000;
+        break;
+    case ARMFault_CapSeal:
+        fsc = 0b101001;
+        break;
+    case ARMFault_CapPerm:
+        fsc = 0b101011;
+        break;
+    case ARMFault_CapPagePerm:
+        fsc = 0b101100;
         break;
     case ARMFault_GPCFOnWalk:
         assert(fi->level >= -1 && fi->level <= 3);
@@ -1322,6 +1242,11 @@ static inline uint32_t aarch64_pstate_valid_mask(const ARMISARegisters *id)
     uint32_t valid;
 
     valid = PSTATE_M | PSTATE_DAIF | PSTATE_IL | PSTATE_SS | PSTATE_NZCV;
+
+#ifdef TARGET_CHERI
+    valid |= PSTATE_C64;
+#endif
+
     if (isar_feature_aa64_bti(id)) {
         valid |= PSTATE_BTYPE;
     }
@@ -1414,12 +1339,154 @@ int aa64_va_parameter_tbi(uint64_t tcr, ARMMMUIdx mmu_idx);
 int aa64_va_parameter_tbid(uint64_t tcr, ARMMMUIdx mmu_idx);
 int aa64_va_parameter_tcma(uint64_t tcr, ARMMMUIdx mmu_idx);
 
+// Get the target exception level for a capability access trap, for a given el.
+// Returns -1 if there is none.
+static inline int get_cap_enabled_target_exception_level_el(CPUArchState *env,
+                                                            int el)
+{
+    bool el2 = arm_feature(env, ARM_FEATURE_EL2);
+    bool el2_insecure = el2 && !arm_is_secure(env);
+
+    if ((el == 0) || (el == 1)) {
+        bool disabled;
+        if (!(env->cp15.cpacr_el1 & CPTR_CEN_LO)) {
+            disabled = true;
+        } else if (env->cp15.cpacr_el1 & CPTR_CEN_HI) {
+            disabled = false;
         } else {
+            disabled = el == 0;
         }
+
+        if (el2_insecure && (env->cp15.hcr_el2 & HCR_TGE) &&
+            (env->cp15.hcr_el2 & HCR_E2H))
+            disabled = false;
+
+        if (disabled) {
+            if (el2 && (env->cp15.hcr_el2 & HCR_TGE))
+                return 2;
+            else
+                return 1;
+        }
+    }
+
+    if (el2_insecure) {
+        if (env->cp15.hcr_el2 & HCR_E2H) {
+            bool disabled;
+            if (!(env->cp15.cptr_el[2] & CPTR_CEN_LO)) {
+                disabled = el < 3;
+            } else if (env->cp15.cptr_el[2] & CPTR_CEN_HI) {
+                disabled = false;
+            } else {
+                disabled = (el == 0) && (env->cp15.hcr_el2 & HCR_TGE);
+            }
+            if (disabled)
+                return 2;
+        } else {
             if ((env->cp15.cptr_el[2] & CPTR_TC))
+                return 2;
+        }
+    }
+
+    if (arm_feature(env, ARM_FEATURE_EL3) &&
+        (env->cp15.cptr_el[3] & CPTR_EC) == 0)
+        return 3;
+
+    return -1;
+}
+
+static inline bool is_access_to_capabilities_disabled_el3(CPUARMState *env)
+{
+    return arm_feature(env, ARM_FEATURE_EL3) &&
+           ((env->cp15.cptr_el[3] & CPTR_EC) == 0);
+}
+
+static inline bool is_access_to_capabilities_disabled_el2(CPUARMState *env)
+{
+    if (is_access_to_capabilities_disabled_el3(env))
+        return true;
+    else if (arm_feature(env, ARM_FEATURE_EL2) && !arm_is_secure(env)) {
+        return ((env->cp15.hcr_el2 & HCR_E2H) &&
+                !(env->cp15.cptr_el[2] & CPTR_CEN_LO)) ||
+               (!(env->cp15.hcr_el2 & HCR_E2H) &&
+                (env->cp15.cptr_el[2] & CPTR_TC));
     } else
+        return false;
+}
+
+static inline bool is_access_to_capabilities_disabled_el1(CPUARMState *env)
+{
+    if (is_access_to_capabilities_disabled_el2(env))
+        return true;
+    else {
+        return !(arm_feature(env, ARM_FEATURE_EL2) && !arm_is_secure(env) &&
                  (env->cp15.hcr_el2 & HCR_E2H) &&
                  (env->cp15.hcr_el2 & HCR_TGE)) &&
+               !(env->cp15.cpacr_el1 & CPTR_CEN_LO);
+    }
+}
+
+static inline bool is_access_to_capabilities_disabled_el0(CPUARMState *env)
+{
+    if (is_access_to_capabilities_disabled_el1(env))
+        return true;
+    else if (!(arm_feature(env, ARM_FEATURE_EL2) && !arm_is_secure(env) &&
+               (env->cp15.hcr_el2 & HCR_E2H) &&
+               (env->cp15.hcr_el2 & HCR_TGE)) &&
+             ((env->cp15.cpacr_el1 & CPTR_CEN) == CPTR_CEN_LO)) {
+        return true;
+    } else {
+        return (arm_feature(env, ARM_FEATURE_EL2) && !arm_is_secure(env) &&
+                (env->cp15.hcr_el2 & HCR_E2H) &&
+                (env->cp15.hcr_el2 & HCR_TGE)) &&
+               ((env->cp15.cptr_el[2] & CPTR_CEN) == CPTR_CEN_LO);
+    }
+}
+
+static inline bool is_access_to_capabilities_enabled_at_el(CPUARMState *env,
+                                                           int el)
+{
+    switch (el) {
+    case 0:
+        return !is_access_to_capabilities_disabled_el0(env);
+    case 1:
+        return !is_access_to_capabilities_disabled_el1(env);
+    case 2:
+        return !is_access_to_capabilities_disabled_el2(env);
+    case 3:
+        return !is_access_to_capabilities_disabled_el3(env);
+    default:
+        g_assert_not_reached();
+    }
+}
+
+// Get the level to take an exception to for capability data / instruction
+// aborts
+static inline int exception_target_el_capability(CPUARMState *env)
+{
+    // NOTE: HCR_EL2 is respected elsewhere
+    int highest_el = arm_highest_el(env);
+
+    // The lowest el for which capabilities are enabled, or the highest el if
+    // none are
+    int lowest_el;
+    if (highest_el == 1 || !is_access_to_capabilities_disabled_el1(env)) {
+        lowest_el = 1;
+    } else if (highest_el == 2 ||
+               !is_access_to_capabilities_disabled_el2(env)) {
+        lowest_el = 2;
+    } else {
+        lowest_el = 3;
+    }
+
+    int target_el = MAX(lowest_el, arm_current_el(env));
+
+    if (arm_is_secure(env) && !arm_el_is_aa64(env, 3) && target_el == 1) {
+        target_el = 3;
+    }
+
+    return target_el;
+}
+
 /* Determine if allocation tags are available.  */
 static inline bool allocation_tag_access_enabled(CPUARMState *env, int el,
                                                  uint64_t sctlr)
@@ -1748,6 +1815,10 @@ void aarch64_max_tcg_initfn(Object *obj);
 void aarch64_add_pauth_properties(Object *obj);
 void aarch64_add_sve_properties(Object *obj);
 void aarch64_add_sme_properties(Object *obj);
+#ifdef TARGET_CHERI
+int aarch64_gdb_get_cheri_reg(CPUState *cs, GByteArray *buf, int n);
+int aarch64_gdb_set_cheri_reg(CPUState *cs, uint8_t *mem_buf, int n);
+#endif
 
 /* Return true if the gdbstub is presenting an AArch64 CPU */
 static inline bool arm_gdbstub_is_aarch64(ARMCPU *cpu)

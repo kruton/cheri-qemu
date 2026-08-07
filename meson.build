@@ -170,7 +170,7 @@ else
   iasl = find_program(get_option('iasl'), required: true)
 endif
 
-edk2_targets = [ 'arm-softmmu', 'aarch64-softmmu', 'i386-softmmu', 'x86_64-softmmu', 'riscv64-softmmu', 'loongarch64-softmmu' ]
+edk2_targets = [ 'arm-softmmu', 'aarch64-softmmu', 'morello-softmmu', 'i386-softmmu', 'x86_64-softmmu', 'riscv64-softmmu', 'loongarch64-softmmu' ]
 unpack_edk2_blobs = false
 foreach target : edk2_targets
   if target in target_dirs
@@ -335,6 +335,7 @@ elif cpu == 'x86_64'
     'CONFIG_MSHV': ['x86_64-softmmu'],
   }
 endif
+
 
 ##################
 # Compiler flags #
@@ -2071,9 +2072,6 @@ endif
 
 fdt = not_found
 fdt_opt = get_option('fdt')
-if fdt_opt == 'enabled' and get_option('wrap_mode') == 'nodownload'
-  fdt_opt = 'system'
-endif
 if fdt_opt in ['enabled', 'system'] or (fdt_opt == 'auto' and have_system)
   fdt = cc.find_library('fdt', required: fdt_opt == 'system')
   if fdt.found() and cc.links('''
@@ -2083,7 +2081,7 @@ if fdt_opt in ['enabled', 'system'] or (fdt_opt == 'auto' and have_system)
        dependencies: fdt)
     fdt_opt = 'system'
   elif fdt_opt != 'system'
-    fdt_opt = get_option('wrap_mode') == 'nodownload' ? 'disabled' : 'internal'
+    fdt_opt = 'internal'
     fdt = not_found
   else
     error('system libfdt is too old (1.5.1 or newer required)')
@@ -2362,6 +2360,7 @@ have_virtfs = get_option('virtfs') \
     .disable_auto_if(not have_tools and not have_system) \
     .allowed()
 
+
 qga_fsfreeze = false
 qga_fstrim = false
 if host_os == 'linux'
@@ -2440,6 +2439,7 @@ if get_option('tcg_log_instr')
 endif
 if get_option('rvfi_dii')
   config_host_data.set('CONFIG_RVFI_DII', 1)
+endif
 
 kvm_targets_c = '""'
 if get_option('kvm').allowed() and host_os == 'linux'
@@ -2856,6 +2856,9 @@ endif
 
 config_host_data.set('CONFIG_PTHREAD_SETNAME_NP_W_TID', cc.links(osdep_prefix + '''
   #include <pthread.h>
+  #ifdef __FreeBSD__
+  #include <pthread_np.h>
+  #endif
 
   static void *f(void *p) { return NULL; }
   int main(void)
@@ -2867,6 +2870,9 @@ config_host_data.set('CONFIG_PTHREAD_SETNAME_NP_W_TID', cc.links(osdep_prefix + 
   }''', dependencies: threads))
 config_host_data.set('CONFIG_PTHREAD_SETNAME_NP_WO_TID', cc.links(osdep_prefix + '''
   #include <pthread.h>
+  #ifdef __FreeBSD__
+  #include <pthread_np.h>
+  #endif
 
   static void *f(void *p) { pthread_setname_np("QEMU"); return NULL; }
   int main(void)
@@ -3349,6 +3355,16 @@ foreach target : target_dirs
   endif
 
   config_target += keyval.load('configs/targets' / target + '.mak')
+  # Meson keyval does not support including other files, so do it manually (only 1 file right now)
+  if 'INCLUDE_WORKAROUND' in config_target
+    message('Loading base config ' + config_target['INCLUDE_WORKAROUND'])
+    base_config_target = keyval.load('configs/targets' / config_target['INCLUDE_WORKAROUND'])
+    config_target = base_config_target + config_target
+  endif
+  message('Loaded configs/targets' / target + '.mak')
+  foreach k, v: config_target
+    message(k + '=' + v)
+  endforeach
 
   target_kconfig = []
   foreach sym: accelerators
@@ -3370,7 +3386,11 @@ foreach target : target_dirs
   endif
 
   if get_option('tcg_log_instr')
+    config_target += {'CONFIG_TCG_LOG_INSTR': 'y'}
+  endif
   if get_option('rvfi_dii')
+    config_target += {'CONFIG_RVFI_DII': 'y'}
+  endif
   if 'TARGET_NEED_FDT' in config_target and not fdt.found()
     if default_targets
       warning('Disabling ' + target + ' due to missing libfdt')
@@ -3500,6 +3520,7 @@ if have_system and vfio_user_server_allowed
   libvfio_user_proj = subproject('libvfio-user', required: true)
   libvfio_user_dep = libvfio_user_proj.get_variable('libvfio_user_dep')
 endif
+
 
 vhost_user = not_found
 if host_os == 'linux' and have_vhost_user
@@ -3804,7 +3825,8 @@ qemuutil = declare_dependency(link_with: libqemuutil,
                               dependencies: [event_loop_base])
 
 if have_system or have_user
-  decodetree = generator(find_program('scripts/decodetree.py'),
+  decodetree_py = find_program('scripts/decodetree.py')
+  decodetree = generator(decodetree_py,
                          output: 'decode-@BASENAME@.c.inc',
                          arguments: ['@INPUT@', '@EXTRA_ARGS@', '-o', '@OUTPUT@'])
   subdir('libdecnumber')
@@ -4266,6 +4288,9 @@ foreach target : target_dirs
   link_args = emulator_link_args
 
   target_inc = [include_directories('target' / config_target['TARGET_BASE_ARCH'])]
+  # The headers from cheri-common are required in various files (even for
+  # !TARGET_CHERI), so just add the include path unconditionally.
+  target_inc += include_directories('target/cheri-common')
   if host_os == 'linux'
     target_inc += include_directories('linux-headers', is_system: true)
   endif
@@ -4483,7 +4508,17 @@ foreach target : target_dirs
       emulators += {exe['name']: emulator}
     endif
 
+    # Add qemu-system-cheri128 -> qemu-system-mips64cheri128 etc symlinks for
+    # backwards compatibility. Remove once the old names are unused.
+    # NB: No built-in symlink support, so we have to do it manually. Moreover,
+    # symlinks created in the build directory will be copied as their
+    # underlying file, not a symlink, wasting space and making it non-obvious
+    # it's a deprecated name. It also spits out a warning that the behaviour
+    # will change to the (sane) interpretation where symlinks are installed as
+    # symlinks, but we can't rely on that, so instead we create the symlink at
+    # install time.
     # TODO: meson 0.61 supports symlinks natively, use that once updated.
+    if exe['name'].startswith('qemu-system-mips64cheri')
       installbindir = get_option('prefix') / get_option('bindir')
       exe_name_alias = exe['name'].replace('-mips64', '-')
       exe_path_alias = '$DESTDIR/@0@'.format(installbindir / exe_name_alias)
@@ -4491,13 +4526,20 @@ foreach target : target_dirs
                                'ln -fs @0@ @1@'.format(exe['name'],
                                                        exe_path_alias))
     endif
+    # TODO: in the future the riscv64cheri symlink should point to the standard version
     if exe['name'] == 'qemu-system-riscv64xcheri' or exe['name'] == 'qemu-system-riscv32xcheri'
+      installbindir = get_option('prefix') / get_option('bindir')
       exe_name_alias = exe['name'].replace('xcheri', 'cheri')
+      exe_path_alias = '$DESTDIR/@0@'.format(installbindir / exe_name_alias)
+      meson.add_install_script('sh', '-c',
+                               'ln -fs @0@ @1@'.format(exe['name'],
+                                                       exe_path_alias))
+    endif
+
     traceable += [{
       'exe': exe['name'],
       'probe-prefix': 'qemu.' + target_type + '.' + target_name,
     }]
-
   endforeach
 endforeach
 

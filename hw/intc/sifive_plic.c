@@ -66,6 +66,7 @@ static void sifive_plic_set_request(SiFivePLICState *plic, int irq, bool level)
 {
     atomic_set_masked(&plic->request[irq >> 5], 1 << (irq & 31), -!!level);
 }
+
 static void sifive_plic_set_pending(SiFivePLICState *plic, int irq, bool level)
 {
     atomic_set_masked(&plic->pending[irq >> 5], 1 << (irq & 31), -!!level);

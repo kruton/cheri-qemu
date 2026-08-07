@@ -24,6 +24,7 @@
 #include "internals.h"
 #include "pmu.h"
 #include "exec/cputlb.h"
+#include "exec/log_instr.h"
 #include "exec/page-protection.h"
 #include "exec/target_page.h"
 #include "system/memory.h"
@@ -32,9 +33,25 @@
 #include "accel/tcg/cpu-ops.h"
 #include "trace.h"
 #include "semihosting/common-semi.h"
+#include "system/cpu-timers.h"
 #include "exec/icount.h"
+#include "disas/disas.h"
 #include "helper_utils.h"
+#ifdef TARGET_CHERI
 #include "cheri-helper-utils.h"
+#endif
+
+#ifdef TARGET_CHERI
+#define COPY_SPECIAL_REG(env, dst, cheri_dst, src, cheri_src)   \
+    do {                                                        \
+        (env)->cheri_dst = (env)->cheri_src;                    \
+    } while (false)
+#else
+#define COPY_SPECIAL_REG(env, dst, cheri_dst, src, cheri_src)   \
+    do {                                                        \
+        (env)->dst = (env)->src;                                \
+    } while (false)
+#endif
 #include "cpu_bits.h"
 #include "debug.h"
 #include "pmp.h"
@@ -137,6 +154,7 @@ bool riscv_env_smode_dbltrp_enabled(CPURISCVState *env, bool virt)
     }
 #endif
 }
+
 
 RISCVPmPmm riscv_pm_get_pmm(CPURISCVState *env)
 {
@@ -589,7 +607,7 @@ bool riscv_cpu_vector_enabled(CPURISCVState *env)
     return false;
 }
 
-void riscv_cpu_swap_hypervisor_regs(CPURISCVState *env)
+void riscv_cpu_swap_hypervisor_regs(CPURISCVState *env, bool hs_mode_trap)
 {
     uint64_t mstatus_mask = MSTATUS_MXR | MSTATUS_SUM |
                             MSTATUS_SPP | MSTATUS_SPIE | MSTATUS_SIE |
@@ -600,6 +618,7 @@ void riscv_cpu_swap_hypervisor_regs(CPURISCVState *env)
     }
     bool current_virt = env->virt_enabled;
 #if defined(TARGET_CHERI_RISCV_STD)
+    mstatus_mask |= MSTATUS64_UCRG;
 #endif
 
     /*
@@ -610,7 +629,6 @@ void riscv_cpu_swap_hypervisor_regs(CPURISCVState *env)
         get_field(env->henvcfg, HENVCFG_LPE)) {
         mstatus_mask |= SSTATUS_SPELP;
     }
-
     g_assert(riscv_has_ext(env, RVH));
 
     if (riscv_env_smode_dbltrp_enabled(env, current_virt)) {
@@ -622,32 +640,55 @@ void riscv_cpu_swap_hypervisor_regs(CPURISCVState *env)
         env->vsstatus = env->mstatus & mstatus_mask;
         env->mstatus &= ~mstatus_mask;
         env->mstatus |= env->mstatus_hs;
+        riscv_log_instr_csr_changed(env, CSR_VSSTATUS);
+        /* mstatus may be modified again by do_interrupt */
 
-        env->vstvec = env->stvec;
-        env->stvec = env->stvec_hs;
+        COPY_SPECIAL_REG(env, vstvec, vstvecc, stvec, stvecc);
+        COPY_SPECIAL_REG(env, stvec, stvecc, stvec_hs, stcc_hs);
+        riscv_log_instr_csr_changed(env, CSR_VSTVEC);
+        riscv_log_instr_csr_changed(env, CSR_STVEC);
 
-        env->vsscratch = env->sscratch;
-        env->sscratch = env->sscratch_hs;
+        COPY_SPECIAL_REG(env, vsscratch, vsscratchc, sscratch, sscratchc);
+        COPY_SPECIAL_REG(env, sscratch, sscratchc, sscratch_hs, sscratchc_hs);
 
-        env->vsepc = env->sepc;
-        env->sepc = env->sepc_hs;
+        riscv_log_instr_csr_changed(env, CSR_VSSCRATCH);
+        riscv_log_instr_csr_changed(env, CSR_SSCRATCH);
+
+        COPY_SPECIAL_REG(env, vsepc, vsepcc, sepc, sepcc);
+        COPY_SPECIAL_REG(env, sepc, sepcc, sepc_hs, sepcc_hs);
+        riscv_log_instr_csr_changed(env, CSR_VSEPC);
+        riscv_log_instr_csr_changed(env, CSR_SEPC);
 
         env->vscause = env->scause;
         env->scause = env->scause_hs;
+        riscv_log_instr_csr_changed(env, CSR_VSCAUSE);
         if (!hs_mode_trap) {
+            /* scause is modified again when trapping to HS-mode */
+            riscv_log_instr_csr_changed(env, CSR_SCAUSE);
         }
 
         env->vstval = env->stval;
         env->stval = env->stval_hs;
+        riscv_log_instr_csr_changed(env, CSR_VSTVAL);
+        if (!hs_mode_trap) {
+            /* stval is modified again when trapping to HS-mode */
+            riscv_log_instr_csr_changed(env, CSR_STVAL);
+        }
+
 #ifdef TARGET_CHERI_RISCV_STD_093
         env->vstval2 = env->stval2;
         env->stval2 = env->stval2_hs;
+        if (!hs_mode_trap) {
             /* stval2 will be modified again when trapping to HS-mode */
             riscv_log_instr_csr_changed(env, CSR_STVAL2);
+        }
 #endif
 
         env->vsatp = env->satp;
         env->satp = env->satp_hs;
+        riscv_log_instr_csr_changed(env, CSR_VSATP);
+        riscv_log_instr_csr_changed(env, CSR_SATP);
+
 #ifdef TARGET_CHERI
         env->vstidc = env->stidc;
         env->stidc = env->stidc_hs;
@@ -662,32 +703,54 @@ void riscv_cpu_swap_hypervisor_regs(CPURISCVState *env)
     } else {
         /* Current V=0 and we are about to change to V=1 */
         /*
+         * TODO(am2419): Not sure whether we should log assignments to
+         * *_hs register variants.
          */
         env->mstatus_hs = env->mstatus & mstatus_mask;
         env->mstatus &= ~mstatus_mask;
         env->mstatus |= env->vsstatus;
 
-        env->stvec_hs = env->stvec;
-        env->stvec = env->vstvec;
+        COPY_SPECIAL_REG(env, stvec_hs, stcc_hs, stvec, stvecc);
+        COPY_SPECIAL_REG(env, stvec, stvecc, vstvec, vstvecc);
+        riscv_log_instr_csr_changed(env, CSR_STVEC);
 
-        env->sscratch_hs = env->sscratch;
-        env->sscratch = env->vsscratch;
+        COPY_SPECIAL_REG(env, sscratch_hs, sscratchc_hs, sscratch, sscratchc);
+        COPY_SPECIAL_REG(env, sscratch, sscratchc, vsscratch, vsscratchc);
 
-        env->sepc_hs = env->sepc;
-        env->sepc = env->vsepc;
+        riscv_log_instr_csr_changed(env, CSR_SSCRATCH);
+
+        COPY_SPECIAL_REG(env, sepc_hs, sepcc_hs, sepc, sepcc);
+        COPY_SPECIAL_REG(env, sepc, sepcc, vsepc, vsepcc);
+        riscv_log_instr_csr_changed(env, CSR_SEPC);
 
         env->scause_hs = env->scause;
         env->scause = env->vscause;
+        riscv_log_instr_csr_changed(env, CSR_SCAUSE);
 
         env->stval_hs = env->stval;
         env->stval = env->vstval;
+        riscv_log_instr_csr_changed(env, CSR_STVAL);
+
 #ifdef TARGET_CHERI_RISCV_STD_093
         env->stval2_hs = env->stval2;
         env->stval2 = env->vstval2;
         riscv_log_instr_csr_changed(env, CSR_STVAL2);
+#endif
 
         env->satp_hs = env->satp;
         env->satp = env->vsatp;
+        riscv_log_instr_csr_changed(env, CSR_SATP);
+#ifdef TARGET_CHERI
+        env->stidc_hs = env->stidc;
+        env->stidc = env->vstidc;
+        riscv_log_instr_csr_changed(env, CSR_VSTIDC);
+        riscv_log_instr_csr_changed(env, CSR_STIDC);
+#else
+        env->stid_hs = env->stid;
+        env->stid = env->vstid;
+        riscv_log_instr_csr_changed(env, CSR_VSTID);
+        riscv_log_instr_csr_changed(env, CSR_STID);
+#endif
     }
 }
 
@@ -1104,10 +1167,28 @@ void riscv_cpu_set_mode(CPURISCVState *env, target_ulong newpriv, bool virt_en)
             riscv_cpu_update_mip(env, 0, 0);
         }
     }
+
+#ifdef CONFIG_TCG_LOG_INSTR
+    qemu_log_instr_cpu_mode_t mode;
+
+    switch (newpriv) {
+    case PRV_M:
+        mode = RISCV_LOG_INSTR_CPU_M;
+        break;
+    case PRV_S:
+        mode = RISCV_LOG_INSTR_CPU_S;
+        break;
+    default:
+        mode = RISCV_LOG_INSTR_CPU_U;
+    }
+    qemu_log_instr_mode_switch(env, mode, cpu_get_recent_pc(env));
 #endif
 }
 
+#ifdef CONFIG_RVFI_DII
+extern bool rvfi_debug_output;
 #endif
+
 #ifndef RISCV_PTE_TRAPPY
 /*
  * The PTW logic below supports trapping on any subset of PTE_A, PTE_D, PTE_CD
@@ -1117,6 +1198,8 @@ void riscv_cpu_set_mode(CPURISCVState *env, target_ulong newpriv, bool virt_en)
  * are 0, (PTE_A | PTE_D), or (PTE_A | PTE_D | PTE_CD).
  */
 #define RISCV_PTE_TRAPPY 0
+#endif
+
 /*
  * get_physical_address_pmp - check PMP permission for this physical address
  *
@@ -1141,7 +1224,6 @@ static int get_physical_address_pmp(CPURISCVState *env, int *prot, hwaddr addr,
         return TRANSLATE_SUCCESS;
     }
 
-    pmp_has_privs = pmp_hart_has_privs(env, addr, size, 1 << access_type,
     pmp_has_privs = pmp_hart_has_privs(env, addr, size,
                                        access_type_to_pmp_priv(access_type),
                                        &pmp_priv, mode);
@@ -1168,6 +1250,7 @@ static void pte_print(target_ulong pte, int level)
         pte & PTE_A ? "A" : "", pte & PTE_U ? "U" : "", pte & PTE_D ? "D" : "",
         pte & PTE_A ? "A" : "", pte & PTE_V ? "V" : "", level);
 }
+
 /* Returns 'true' if a svukte address check is needed */
 static bool do_svukte_check(CPURISCVState *env, bool first_stage,
                              int mode, bool virt)
@@ -1256,6 +1339,7 @@ static int get_physical_address(CPURISCVState *env, hwaddr *physical,
     int mode = mmuidx_priv(mmu_idx);
     bool virt = mmuidx_2stage(mmu_idx);
     bool use_background = false;
+#ifdef CONFIG_RVFI_DII
     if (env->rvfi_dii_have_injected_insn && access_type == MMU_INST_FETCH) {
         /*
          * Pretend we have a 1:1 mapping and never fail for instruction
@@ -1266,7 +1350,9 @@ static int get_physical_address(CPURISCVState *env, hwaddr *physical,
         *prot = PAGE_EXEC;
         return TRANSLATE_SUCCESS;
     }
+#endif
     hwaddr ppn;
+
     int napot_bits = 0;
     target_ulong napot_mask;
     bool is_sstack_idx = ((mmu_idx & MMU_IDX_SS_WRITE) == MMU_IDX_SS_WRITE);
@@ -1363,6 +1449,7 @@ static int get_physical_address(CPURISCVState *env, hwaddr *physical,
 
         if (masked_msbs != 0 && masked_msbs != mask) {
             qemu_log_mask(CPU_LOG_MMU,
+                          "%s Translate fail: top bits not a sign extension\n",
                           __func__);
             return TRANSLATE_FAIL;
         }
@@ -1436,7 +1523,6 @@ static int get_physical_address(CPURISCVState *env, hwaddr *physical,
         } else {
             pte = address_space_ldq(cs->as, pte_addr, attrs, &res);
         }
-
         pte_print(pte, i);
         if (res != MEMTX_OK) {
             qemu_log_mask(
@@ -1450,7 +1536,8 @@ static int get_physical_address(CPURISCVState *env, hwaddr *physical,
             ppn = pte >> PTE_PPN_SHIFT;
         } else {
             if (pte & PTE_RESERVED(svrsw60t59b)) {
-                qemu_log_mask(LOG_GUEST_ERROR, "%s: reserved bits set in PTE: "
+                qemu_log_mask(CPU_LOG_MMU | LOG_GUEST_ERROR,
+                              "%s: reserved bits set in PTE: "
                               "addr: 0x%" HWADDR_PRIx " pte: 0x" TARGET_FMT_lx "\n",
                               __func__, pte_addr, pte);
                 return TRANSLATE_FAIL;
@@ -1474,6 +1561,7 @@ static int get_physical_address(CPURISCVState *env, hwaddr *physical,
                               __func__, pte_addr, pte);
                 return TRANSLATE_FAIL;
             }
+#endif
 
             ppn = (pte & (target_ulong)PTE_PPN_MASK) >> PTE_PPN_SHIFT;
         }
@@ -1489,9 +1577,20 @@ static int get_physical_address(CPURISCVState *env, hwaddr *physical,
             goto leaf;
         }
 
+        /* Inner PTE, continue walking */
+#if defined(TARGET_CHERI_RISCV_STD_093) && !defined(TARGET_RISCV32)
+        if (pte & PTE_CW) {
+            qemu_log_mask(CPU_LOG_MMU | LOG_GUEST_ERROR,
+                          "%s: Reserved CW bit set in PTE: "
+                          "addr: 0x%" HWADDR_PRIx " pte: 0x" TARGET_FMT_lx "\n",
+                          __func__, pte_addr, pte);
+            return TRANSLATE_FAIL;
+        }
+#endif
         if (pte & (PTE_D | PTE_A | PTE_U | PTE_ATTR)) {
             /* D, A, and U bits are reserved in non-leaf/inner PTEs */
-            qemu_log_mask(LOG_GUEST_ERROR, "%s: D, A, or U bits set in non-leaf PTE: "
+            qemu_log_mask(CPU_LOG_MMU | LOG_GUEST_ERROR,
+                          "%s: D, A, or U bits set in non-leaf PTE: "
                           "addr: 0x%" HWADDR_PRIx " pte: 0x" TARGET_FMT_lx "\n",
                           __func__, pte_addr, pte);
             return TRANSLATE_FAIL;
@@ -1507,11 +1606,25 @@ static int get_physical_address(CPURISCVState *env, hwaddr *physical,
  leaf:
     if (ppn & ((1ULL << ptshift) - 1)) {
         /* Misaligned PPN */
-        qemu_log_mask(LOG_GUEST_ERROR, "%s: PPN bits in PTE is misaligned: "
+        qemu_log_mask(CPU_LOG_MMU | LOG_GUEST_ERROR,
+                      "%s: PPN bits in PTE is misaligned: "
                       "addr: 0x%" HWADDR_PRIx " pte: 0x" TARGET_FMT_lx "\n",
                       __func__, pte_addr, pte);
         return TRANSLATE_FAIL;
     }
+
+    target_ulong vpn = addr >> PGSHIFT;
+
+#if !defined(TARGET_CHERI_RISCV_V9)
+    if (riscv_cpu_cfg(env)->ext_svnapot && (pte & PTE_N)) {
+        napot_bits = ctzl(ppn) + 1;
+        if ((i != (levels - 1)) || (napot_bits != 4)) {
+            return TRANSLATE_FAIL;
+        }
+        napot_mask = (1 << napot_bits) - 1;
+        ppn = (ppn & ~napot_mask) | (vpn & napot_mask);
+    }
+
     if (!pbmte && (pte & PTE_PBMT)) {
         /* Reserved without Svpbmt. */
         qemu_log_mask(LOG_GUEST_ERROR, "%s: PBMT bits set in PTE, "
@@ -1520,6 +1633,7 @@ static int get_physical_address(CPURISCVState *env, hwaddr *physical,
                       __func__, pte_addr, pte);
         return TRANSLATE_FAIL;
     }
+#endif
 
     target_ulong rwx = pte & (PTE_R | PTE_W | PTE_X);
     /* Check for reserved combinations of RWX flags. */
@@ -1539,6 +1653,8 @@ static int get_physical_address(CPURISCVState *env, hwaddr *physical,
             rwx = is_sstack_idx ? (PTE_R | PTE_W) : (is_probe ? 0 :  PTE_R);
             break;
         }
+        qemu_log_mask(CPU_LOG_MMU, "%s Translate fail: Reserved WRX 100\n",
+                      __func__);
         return TRANSLATE_FAIL;
     case PTE_R:
         /*
@@ -1556,10 +1672,15 @@ static int get_physical_address(CPURISCVState *env, hwaddr *physical,
     if ((pte & (PTE_CR | PTE_CRG)) == PTE_CRG) {
         /* Reserved CHERI-extended PTE flags: no CR but CRG */
         return TRANSLATE_CHERI_FAIL;
+    }
     if ((pte & (PTE_CR | PTE_CRM | PTE_CRG)) == (PTE_CR | PTE_CRG)) {
         /* Reserved CHERI-extended PTE flags: CR and no CRM but CRG */
+        return TRANSLATE_CHERI_FAIL;
+    }
 #endif
+
     int prot = 0;
+    bool mxr = false;
     if (rwx & PTE_R) {
         prot |= PAGE_READ;
     }
@@ -1567,7 +1688,6 @@ static int get_physical_address(CPURISCVState *env, hwaddr *physical,
         prot |= PAGE_WRITE;
     }
     if (rwx & PTE_X) {
-        bool mxr = false;
 
         /*
          * Use mstatus for first stage or for the second stage without
@@ -1600,6 +1720,7 @@ static int get_physical_address(CPURISCVState *env, hwaddr *physical,
         if (mode != PRV_U) {
             if (!mmuidx_sum(mmu_idx)) {
                 qemu_log_mask(CPU_LOG_MMU,
+                              "%s Translate fail: U set but no SUM in S/M mode\n",
                               __func__);
                 return TRANSLATE_FAIL;
             }
@@ -1614,14 +1735,41 @@ static int get_physical_address(CPURISCVState *env, hwaddr *physical,
         return TRANSLATE_FAIL;
     }
 
-    if (!((prot >> access_type) & 1)) {
-         * Access check failed, access check failures for shadow stack are
-         * access faults.
+    int access_prot = 0;
+    if (access_type == MMU_DATA_LOAD || access_type == MMU_DATA_CAP_LOAD) {
+        access_prot = PAGE_READ;
+    } else if (access_type == MMU_DATA_STORE || access_type == MMU_DATA_CAP_STORE) {
+        access_prot = PAGE_WRITE;
+    } else if (access_type == MMU_INST_FETCH) {
+        access_prot = PAGE_EXEC;
+    }
+
+    if (!(prot & access_prot)) {
+        /* Access check failed */
+        if (access_prot == PAGE_READ) {
+            qemu_log_mask(CPU_LOG_MMU, "%s Translate fail: read access check failed\n", __func__);
+        } else if (access_prot == PAGE_WRITE) {
+            qemu_log_mask(CPU_LOG_MMU, "%s Translate fail: write access check failed\n", __func__);
+        } else {
             qemu_log_mask(CPU_LOG_MMU, "%s Translate fail: X bit not set\n", __func__);
+        }
         return sstack_page ? TRANSLATE_PMP_FAIL : TRANSLATE_FAIL;
     }
 
 #if defined(TARGET_CHERI) && !defined(TARGET_RISCV32)
+    if (access_type == MMU_DATA_CAP_STORE && !(pte & PTE_CW)
+#if defined(TARGET_CHERI_RISCV_STD_093)
+               && riscv_cpu_cfg(env)->cheri_pte
+#endif
+    ) {
+        /* CW inhibited */
+        qemu_log_mask(CPU_LOG_MMU,
+                      "%s Translate fail: CW bit not set on level %d\n",
+                      __func__, i);
+        return TRANSLATE_CHERI_FAIL;
+    }
+#endif
+
     target_ulong updated_pte = pte;
 
     /*
@@ -1629,21 +1777,45 @@ static int get_physical_address(CPURISCVState *env, hwaddr *physical,
      * Otherwise raise an exception if necessary.
      */
     if (adue) {
-        updated_pte |= PTE_A | (access_type == MMU_DATA_STORE ? PTE_D : 0);
-               (access_type == MMU_DATA_STORE && !(pte & PTE_D))) {
+        updated_pte |= PTE_A;
+        if (access_type == MMU_DATA_STORE) {
+            updated_pte |= PTE_D;
+        }
 #if defined(TARGET_CHERI)
+        else if (access_type == MMU_DATA_CAP_STORE) {
+            updated_pte |= PTE_D;
 #if defined(TARGET_CHERI_RISCV_V9) && !defined(TARGET_RISCV32)
+            updated_pte |= PTE_CD;
 #endif
+        }
+#endif
+    } else {
+        if (!(pte & PTE_A)) {
+            return TRANSLATE_FAIL;
+        }
         if (access_type == MMU_DATA_STORE && !(pte & PTE_D)) {
+            return TRANSLATE_FAIL;
+        }
+#if defined(TARGET_CHERI)
         if (access_type == MMU_DATA_CAP_STORE && !(pte & PTE_D)) {
+            return TRANSLATE_FAIL;
+        }
+#if defined(TARGET_CHERI_RISCV_V9) && !defined(TARGET_RISCV32)
         if (access_type == MMU_DATA_CAP_STORE && !(pte & PTE_CD)) {
             return TRANSLATE_CHERI_FAIL;
+        }
+#endif
 #endif
     }
 
     /* Page table updates need to be atomic with MTTCG enabled */
     if (updated_pte != pte && !is_debug) {
         if (!adue) {
+#if defined(TARGET_CHERI_RISCV_V9) && !defined(TARGET_RISCV32)
+            if ((updated_pte & PTE_CD) != (pte & PTE_CD)) {
+                return TRANSLATE_CHERI_FAIL;
+            }
+#endif
             return TRANSLATE_FAIL;
         }
 
@@ -1685,72 +1857,114 @@ static int get_physical_address(CPURISCVState *env, hwaddr *physical,
         }
     }
 
-    /* For superpage mappings, make a fake leaf PTE for the TLB's benefit. */
-    target_ulong vpn = addr >> PGSHIFT;
     *physical = ((ppn | (vpn & ((1ULL << ptshift) - 1))) << PGSHIFT) |
+                (addr & ~TARGET_PAGE_MASK);
 
-    if (riscv_cpu_cfg(env)->ext_svnapot && (pte & PTE_N)) {
-        napot_bits = ctzl(ppn) + 1;
-        if ((i != (levels - 1)) || (napot_bits != 4)) {
-            return TRANSLATE_FAIL;
+    /* set permissions on the TLB entry */
+    if ((pte & PTE_R) || ((pte & PTE_X) && mxr)) {
+        prot |= PAGE_READ;
     }
+    if ((pte & PTE_X)) {
+        prot |= PAGE_EXEC;
     }
+    /* add write permission on stores or if the page is already dirty,
+       so that we TLB miss on later writes to update the dirty bit */
+    if ((pte & PTE_W) &&
         (access_type == MMU_DATA_STORE ||
          access_type == MMU_DATA_CAP_STORE || (pte & PTE_D))) {
+        prot |= PAGE_WRITE;
     }
+
+#if defined(TARGET_CHERI_RISCV_V9) && !defined(TARGET_RISCV32)
     if ((pte & PTE_CR) == 0) {
         if ((pte & PTE_CRM) == 0) {
             prot |= PAGE_LC_CLEAR;
         } else {
             prot |= PAGE_LC_TRAP;
         }
+    } else {
+        if (pte & PTE_CRM) {
+            /* Cap-loads checked against [SU]GCLG in CCSR using PTE_U */
+            target_ulong gclgmask =
+                (pte & PTE_U) ? SCCSR_UGCLG : SCCSR_SGCLG;
+            bool gclg = (env->sccsr & gclgmask) != 0;
+            bool lclg = (pte & PTE_CRG) != 0;
+
+            if (gclg != lclg) {
+                prot |= PAGE_LC_TRAP;
+            }
+        }
+    }
+    if ((pte & PTE_CW) == 0 ||
+        (((pte & PTE_CD) == 0) && access_type != MMU_DATA_CAP_STORE)) {
         prot |= PAGE_SC_TRAP;
+    }
+#elif defined(TARGET_CHERI_RISCV_STD_093) && !defined(TARGET_RISCV32)
+    bool pte_crg = (pte & PTE_CRG);
+    bool status_ucrg = (env->mstatus & SSTATUS64_UCRG);
+    /* TODO: Probably shouldn't update the TLB if we are trapping */
+    if (riscv_cpu_cfg(env)->cheri_pte) {
         if (!(pte & PTE_CW)) {
+            /* CW inhibited */
+            prot |= PAGE_LC_CLEAR;
+        } else if ((pte & PTE_U) && (status_ucrg != pte_crg)) {
+            prot |= PAGE_LC_TRAP;
+        }
+
         if (!(pte & PTE_CW)) {
+            if (pte_crg) {
                 /*
+                 * Page fault or update. Trap for now, when we merge in
+                 * upstream with svadu support we will update this.
                  */
+                prot |= PAGE_SC_TRAP;
+            } else {
+                /* No cw or crg, so trap. */
+                prot |= PAGE_SC_TRAP;
+            }
         }
     }
 #endif
 
-    napot_mask = (1 << napot_bits) - 1;
-    *physical = (((ppn & ~napot_mask) | (vpn & napot_mask) |
-                  (vpn & (((target_ulong)1 << ptshift) - 1))
-                 ) << PGSHIFT) | (addr & ~TARGET_PAGE_MASK);
+    *ret_prot = prot;
+    return TRANSLATE_SUCCESS;
+}
 
 static void rvfi_dii_update_mem_addr(CPURISCVState *env,
                                      MMUAccessType access_type, vaddr addr)
 {
 #if defined(CONFIG_RVFI_DII)
     /*
-     * Remove write permission unless this is a store, or the page is
-     * already dirty, so that we TLB miss on later writes to update
-     * the dirty bit.
      * For non-ifetch, we log the mem_addr here to match sail which logs it
      * for all accesses that go down to the physical level (i.e. the ones
      * that passed CHERI and MMU checks) even if they fail then.
      */
-    if (access_type != MMU_DATA_STORE && !(pte & PTE_D)) {
-        prot &= ~PAGE_WRITE;
     if (access_type != MMU_INST_FETCH) {
         env->rvfi_dii_trace.MEM.rvfi_mem_addr = addr;
         env->rvfi_dii_trace.available_fields |= RVFI_MEM_DATA;
     }
-    *ret_prot = prot;
-
-    return TRANSLATE_SUCCESS;
 #endif
 }
 
 static void raise_mmu_exception(CPURISCVState *env, target_ulong address,
                                 MMUAccessType access_type, bool pmp_violation,
+#if defined(TARGET_CHERI) && !defined(TARGET_RISCV32)
+                                bool cheri_violation,
+#endif
                                 bool first_stage, bool two_stage,
                                 bool two_stage_indirect)
 {
     CPUState *cs = env_cpu(env);
 
+#if defined(TARGET_CHERI_RISCV_STD_093) && !defined(TARGET_RISCV32)
     /*
+     * The 0.9.3 spec also defines both CHERI+normal page fault and reporting
+     * a value of 2 for that case. However, detecting both cases requires
+     * more invasive changes that will go away once we no longer support 0.9.3.
      */
+    env->last_cap_cause = cheri_violation ? 1 : 0;
+#endif
+
     switch (access_type) {
     case MMU_INST_FETCH:
         if (pmp_violation) {
@@ -1769,16 +1983,34 @@ static void raise_mmu_exception(CPURISCVState *env, target_ulong address,
             cs->exception_index = RISCV_EXCP_LOAD_ACCESS_FAULT;
         } else if (two_stage && !first_stage) {
             cs->exception_index = RISCV_EXCP_LOAD_GUEST_ACCESS_FAULT;
+#if defined(TARGET_CHERI) && !defined(TARGET_RISCV32)
+        } else if (cheri_violation) {
+#ifdef TARGET_CHERI_RISCV_STD_093
+            cs->exception_index = RISCV_EXCP_LOAD_PAGE_FAULT;
+#else
+            cs->exception_index = RISCV_EXCP_LOAD_CAP_PAGE_FAULT;
+#endif
+#endif
         } else {
             cs->exception_index = RISCV_EXCP_LOAD_PAGE_FAULT;
         }
         break;
     case MMU_DATA_STORE:
+#if defined(TARGET_CHERI)
     case MMU_DATA_CAP_STORE:
+#endif
         if (pmp_violation) {
             cs->exception_index = RISCV_EXCP_STORE_AMO_ACCESS_FAULT;
         } else if (two_stage && !first_stage) {
             cs->exception_index = RISCV_EXCP_STORE_GUEST_AMO_ACCESS_FAULT;
+#if defined(TARGET_CHERI) && !defined(TARGET_RISCV32)
+        } else if (cheri_violation) {
+#ifdef TARGET_CHERI_RISCV_STD_093
+            cs->exception_index = RISCV_EXCP_STORE_PAGE_FAULT;
+#else
+            cs->exception_index = RISCV_EXCP_STORE_AMO_CAP_PAGE_FAULT;
+#endif
+#endif
         } else {
             cs->exception_index = RISCV_EXCP_STORE_PAGE_FAULT;
         }
@@ -1877,6 +2109,9 @@ void riscv_cpu_do_unaligned_access(CPUState *cs, vaddr addr,
 }
 
 static inline int rvfi_dii_check_addr(CPURISCVState *env, int ret, hwaddr *pa,
+                                      vaddr address, int size, int *prot,
+                                      MMUAccessType access_type)
+{
 #ifdef CONFIG_RVFI_DII
     // For RVFI-DII we have to reject all memory accesses outside of the RAM
     // region (even if there is a valid ROM there)
@@ -1889,6 +2124,7 @@ static inline int rvfi_dii_check_addr(CPURISCVState *env, int ret, hwaddr *pa,
             *prot &= PAGE_EXEC;
         } else if (*pa < RVFI_DII_RAM_START ||
                    (*pa + size) > RVFI_DII_RAM_END) {
+            if (rvfi_debug_output) {
                 fprintf(stderr,
                         "Rejecting memory access to " HWADDR_FMT_plx
                         " since it is outside the RVFI-DII range",
@@ -1901,7 +2137,10 @@ static inline int rvfi_dii_check_addr(CPURISCVState *env, int ret, hwaddr *pa,
                           __func__, address, *pa);
             return TRANSLATE_PMP_FAIL;
         }
+    }
 #endif
+    return ret;
+}
 
 static void pmu_tlb_fill_incr_ctr(RISCVCPU *cpu, MMUAccessType access_type)
 {
@@ -1949,6 +2188,7 @@ bool riscv_cpu_tlb_fill(CPUState *cs, vaddr address, int size,
     prot_lc_preserve = 0;
     prot_sc_preserve = 0;
 #endif
+
     env->guest_phys_fault_addr = 0;
 
     qemu_log_mask(CPU_LOG_MMU, "%s ad %" VADDR_PRIx " rw %d mmu_idx %d\n",
@@ -1991,7 +2231,6 @@ bool riscv_cpu_tlb_fill(CPUState *cs, vaddr address, int size,
                           HWADDR_FMT_plx " prot %d\n",
                           __func__, im_address, ret, pa, prot2);
 
-            prot &= prot2;
             /*
              * CHERI's load-side caveats are enforced only on the guest
              * tables at the moment.  Because we are about to AND the two
@@ -2001,13 +2240,18 @@ bool riscv_cpu_tlb_fill(CPUState *cs, vaddr address, int size,
              * XXX Eventually we probably want to permit the hypervisor to be
              * able to force tag clearing or trapping.  That probably looks
              * something like this (but details are subject to change):
+             *
              *   Host     Guest    Action on tagged load
              *   -------- -------- ---------------------
+             *
              *   Clear    _        Clear tag
              *   _        Clear    Clear tag
+             *
              *   Accept   Accept   Accept
              *   Accept   Trap     Supervisor (VS/S) fault
+             *
              *   Trap     _        Hypervisor (HS) fault
+             *
              * The rest of the bits are AND-ed together as before, and
              * get_physical_address already handles the store-side CHERI
              * extensions.
@@ -2076,6 +2320,7 @@ bool riscv_cpu_tlb_fill(CPUState *cs, vaddr address, int size,
         attrs.tag_setting = access_type == MMU_DATA_CAP_STORE;
 #endif
         tlb_set_page_with_attrs(cs, address & ~(tlb_size - 1), pa & ~(tlb_size - 1),
+                                attrs, prot, mmu_idx, tlb_size);
         return true;
     } else if (probe) {
         return false;
@@ -2098,6 +2343,8 @@ bool riscv_cpu_tlb_fill(CPUState *cs, vaddr address, int size,
                              wp_access, retaddr);
 
         raise_mmu_exception(env, address, access_type, pmp_violation,
+#if defined(TARGET_CHERI) && !defined(TARGET_RISCV32)
+                            ret == TRANSLATE_CHERI_FAIL,
 #endif
                             first_stage_error, two_stage_lookup,
                             two_stage_indirect_error);
@@ -2305,12 +2552,33 @@ static target_ulong riscv_transformed_insn(CPURISCVState *env,
     }
 
     if (access_size) {
-        xinsn = SET_RS1(xinsn, (taddr - (env->gpr[access_rs1] + access_imm)) &
+        xinsn = SET_RS1(xinsn, (taddr - (gpr_int_value(env, access_rs1) + access_imm)) &
                                (access_size - 1));
     }
 
     return xinsn;
 }
+
+#ifdef TARGET_CHERI
+/* TODO(am2419): do we log PCC as a changed register? */
+#define riscv_update_pc_for_exc_handler(env, src_cap, new_pc)           \
+    do {                                                                \
+        cheri_update_pcc_for_exc_handler(&env->pcc, src_cap, new_pc);   \
+        qemu_log_instr_dbg_cap(env, "PCC", &env->pcc);                  \
+    } while (false)
+#else
+/*
+ * TODO(am2419): We don't have a register ID for pc, move to a separate
+ * logging helper that maps hwreg id to names for extra registers.
+ * TODO(am2419): do we log PCC as a changed register?
+ */
+#define riscv_update_pc_for_exc_handler(env, src_cap, new_pc)                  \
+    do {                                                                       \
+        riscv_update_pc(env, new_pc, env->xl,                                  \
+                        /*can_be_unrepresentable=*/true);                      \
+        qemu_log_instr_dbg_reg(env, "pc", new_pc);                             \
+    } while (false)
+#endif /* TARGET_CHERI */
 
 static target_ulong promote_load_fault(target_ulong orig_cause)
 {
@@ -2335,8 +2603,8 @@ static void riscv_do_nmi(CPURISCVState *env, target_ulong cause, bool virt)
     env->mnstatus = set_field(env->mnstatus, MNSTATUS_MNPV, virt);
     env->mnstatus = set_field(env->mnstatus, MNSTATUS_MNPP, env->priv);
     env->mncause = cause;
-    env->mnepc = env->pc;
-    env->pc = env->rnmi_irqvec;
+    env->mnepc = PC_ADDR(env);
+    SET_SPECIAL_REG(env, pc, pcc, env->rnmi_irqvec);
 
     if (cpu_get_fcfien(env)) {
         env->mnstatus = set_field(env->mnstatus, MNSTATUS_MNPELP, env->elp);
@@ -2345,19 +2613,6 @@ static void riscv_do_nmi(CPURISCVState *env, target_ulong cause, bool virt)
     /* Trapping to M mode, virt is disabled */
     riscv_cpu_set_mode(env, PRV_M, false);
 }
-
-#ifdef TARGET_CHERI
-hwaddr cpu_riscv_translate_address_tagmem(CPUArchState *env,
-{
-                               cpu_mmu_index(env, false));
-    if (ret != TRANSLATE_SUCCESS) {
-        raise_mmu_exception(env, address, rw, false);
-        // TODO: use register
-        riscv_raise_exception(env, env_cpu(env)->exception_index, retpc);
-    }
-    return physical;
-}
-#endif /* TARGET_CHERI */
 
 /*
  * Handle Traps
@@ -2371,6 +2626,7 @@ void riscv_cpu_do_interrupt(CPUState *cs)
     CPURISCVState *env = &cpu->env;
     bool virt = env->virt_enabled;
     bool write_gva = false;
+    cheri_debug_assert(pc_is_current(env));
     bool always_storeamo = (env->excp_uw2 & RISCV_UW2_ALWAYS_STORE_AMO);
     bool vsmode_exc;
     uint64_t s;
@@ -2391,15 +2647,15 @@ void riscv_cpu_do_interrupt(CPUState *cs)
     uint64_t hdeleg = async ? env->hideleg : env->hedeleg;
     const bool prev_virt = env->virt_enabled;
     const target_ulong prev_priv = env->priv;
-    uint64_t last_pc = env->pc;
+    uint64_t last_pc = cpu_get_recent_pc(env);
     target_ulong tval = 0;
     target_ulong tinst = 0;
     target_ulong htval = 0;
     target_ulong mtval2 = 0;
-    target_ulong src;
 #ifdef TARGET_CHERI_RISCV_STD_093
     target_ulong cheri_exc_info = 0;
 #endif
+    target_ulong src = 0;
     int sxlen = 0;
     int mxlen = 16 << riscv_cpu_mxl(env);
     bool nnmi_excep = false;
@@ -2416,7 +2672,8 @@ void riscv_cpu_do_interrupt(CPUState *cs)
 #ifdef CONFIG_TCG
         case RISCV_EXCP_SEMIHOST:
             do_common_semihosting(cs);
-            env->pc += 4;
+            riscv_update_pc(env, PC_ADDR(env) + 4, env->xl,
+                            /*can_be_unrepresentable=*/false);
             qemu_plugin_vcpu_hostcall_cb(cs, last_pc);
             return;
 #endif
@@ -2428,6 +2685,7 @@ void riscv_cpu_do_interrupt(CPUState *cs)
         case RISCV_EXCP_STORE_AMO_ACCESS_FAULT:
         case RISCV_EXCP_LOAD_PAGE_FAULT:
         case RISCV_EXCP_STORE_PAGE_FAULT:
+#if defined(TARGET_CHERI_RISCV_V9) && !defined(TARGET_RISCV32)
         case RISCV_EXCP_LOAD_CAP_PAGE_FAULT:
         case RISCV_EXCP_STORE_AMO_CAP_PAGE_FAULT:
 #endif
@@ -2468,9 +2726,13 @@ void riscv_cpu_do_interrupt(CPUState *cs)
         case RISCV_EXCP_VIRT_INSTRUCTION_FAULT:
             tval = env->bins;
             break;
+#ifdef TARGET_CHERI
+        case RISCV_EXCP_CHERI:
             qemu_log_instr_or_mask_msg(
                 env, CPU_LOG_INT, "Got CHERI trap %s, caused by register %d\n",
                 cheri_cause_str(env->last_cap_cause), env->last_cap_index);
+            tcg_debug_assert(env->last_cap_cause < 32);
+            tcg_debug_assert(env->last_cap_index < 64);
 #ifdef TARGET_CHERI_RISCV_STD_093
             tcg_debug_assert(env->last_cap_type <= CapEx093_Type_Last);
             /* Remap cap causes to the 0.9.3 values. */
@@ -2480,6 +2742,11 @@ void riscv_cpu_do_interrupt(CPUState *cs)
             cheri_exc_info |= env->last_cap_type << 16;
             env->last_cap_type = CapEx093_Type_None;
 #else
+            tval = env->last_cap_cause | env->last_cap_index << 5;
+#endif
+            env->last_cap_cause = -1;
+            env->last_cap_index = -1;
+            break;
 #endif
         case RISCV_EXCP_BREAKPOINT:
             tval = env->badaddr;
@@ -2491,13 +2758,6 @@ void riscv_cpu_do_interrupt(CPUState *cs)
         case RISCV_EXCP_SW_CHECK:
             tval = env->sw_check_code;
             break;
-#ifdef TARGET_CHERI
-        case RISCV_EXCP_CHERI:
-            tcg_debug_assert(env->cap_cause < 32);
-            tcg_debug_assert(env->cap_index < 64);
-            tval = env->cap_cause | env->cap_index << 5;
-            break;
-#endif
         default:
             break;
         }
@@ -2517,13 +2777,13 @@ void riscv_cpu_do_interrupt(CPUState *cs)
         }
     }
 
-    trace_riscv_trap(env->mhartid, async, cause, env->pc, tval,
+    trace_riscv_trap(env->mhartid, async, cause, PC_ADDR(env), tval,
                      riscv_cpu_get_trap_name(cause, async));
 
     qemu_log_mask(CPU_LOG_INT,
                   "%s: hart:"TARGET_FMT_ld", async:%d, cause:"TARGET_FMT_lx", "
                   "epc:0x"TARGET_FMT_lx", tval:0x"TARGET_FMT_lx", desc=%s\n",
-                  __func__, env->mhartid, async, cause, env->pc, tval,
+                  __func__, env->mhartid, async, cause, PC_ADDR(env), tval,
                   riscv_cpu_get_trap_name(cause, async));
 
     mode = env->priv <= PRV_S && cause < 64 &&
@@ -2576,7 +2836,7 @@ void riscv_cpu_do_interrupt(CPUState *cs)
                 write_gva = false;
             } else if (env->virt_enabled) {
                 /* Trap into HS mode, from virt */
-                riscv_cpu_swap_hypervisor_regs(env);
+                riscv_cpu_swap_hypervisor_regs(env, /*hs_mode_trap*/true);
                 env->hstatus = set_field(env->hstatus, HSTATUS_SPVP,
                                          env->priv);
                 env->hstatus = set_field(env->hstatus, HSTATUS_SPV, true);
@@ -2601,17 +2861,20 @@ void riscv_cpu_do_interrupt(CPUState *cs)
             s = set_field(s, MSTATUS_SDT, 1);
         }
         env->mstatus = s;
+        riscv_log_instr_csr_changed(env, CSR_MSTATUS);
         sxlen = 16 << riscv_cpu_sxl(env);
         env->scause = cause | ((target_ulong)async << (sxlen - 1));
+        riscv_log_instr_csr_changed(env, CSR_SCAUSE);
+
         COPY_SPECIAL_REG(env, sepc, sepcc, pc, pcc);
         riscv_log_instr_csr_changed(env, CSR_SEPC);
         env->stval = tval;
+        riscv_log_instr_csr_changed(env, CSR_STVAL);
         env->htval = htval;
+        riscv_log_instr_csr_changed(env, CSR_HTVAL);
         env->htinst = tinst;
-        env->pc = (env->stvec >> 2 << 2) +
-                  ((async && (env->stvec & 3) == 1) ? cause * 4 : 0);
 #ifdef TARGET_CHERI_RISCV_STD_093
-        if (cause == RISCV_EXCP_CHERI || write_tval) {
+        if (cause == RISCV_EXCP_CHERI) {
             env->stval2 = cheri_exc_info;
             riscv_log_instr_csr_changed(env, CSR_STVAL2);
         } else if (cause == RISCV_EXCP_LOAD_PAGE_FAULT ||
@@ -2621,9 +2884,14 @@ void riscv_cpu_do_interrupt(CPUState *cs)
             env->stval2 = env->last_cap_cause;
         }
 #endif
+
+        target_ulong stvec = GET_SPECIAL_REG_ADDR(env, stvec, stvecc);
+        target_ulong new_pc = (stvec >> 2 << 2) +
+            ((async && (stvec & 3) == 1) ? cause * 4 : 0);
+        riscv_update_pc_for_exc_handler(env, &env->stvecc, new_pc);
         riscv_cpu_set_mode(env, PRV_S, virt);
 
-        src = env->sepc;
+        src = GET_SPECIAL_REG_ADDR(env, sepc, sepcc);
     } else {
         /*
          * If the hart encounters an exception while executing in M-mode
@@ -2646,7 +2914,7 @@ void riscv_cpu_do_interrupt(CPUState *cs)
 
         if (riscv_has_ext(env, RVH)) {
             if (env->virt_enabled) {
-                riscv_cpu_swap_hypervisor_regs(env);
+                riscv_cpu_swap_hypervisor_regs(env, /*hs_mode_trap*/false);
             }
             env->mstatus = set_field(env->mstatus, MSTATUS_MPV,
                                      env->virt_enabled);
@@ -2686,6 +2954,7 @@ void riscv_cpu_do_interrupt(CPUState *cs)
             s = set_field(s, MSTATUS_MDT, 1);
         }
         env->mstatus = s;
+        riscv_log_instr_csr_changed(env, CSR_MSTATUS);
         env->mcause = cause | ((target_ulong)async << (mxlen - 1));
         if (smode_double_trap) {
             env->mtval2 = env->mcause;
@@ -2693,15 +2962,15 @@ void riscv_cpu_do_interrupt(CPUState *cs)
         } else {
             env->mtval2 = mtval2;
         }
+        riscv_log_instr_csr_changed(env, CSR_MCAUSE);
+
         COPY_SPECIAL_REG(env, mepc, mepcc, pc, pcc);
         riscv_log_instr_csr_changed(env, CSR_MEPC);
         env->mtval = tval;
+        riscv_log_instr_csr_changed(env, CSR_MTVAL);
         env->mtinst = tinst;
-
 #ifdef TARGET_CHERI_RISCV_STD_093
         /*
-         * For RNMI exception, program counter is set to the RNMI exception
-         * trap handler address.
          * We do not set the mtval2 to guest_phys_fault_add in the
          * cheri exception case and report cause/type instead.
          */
@@ -2714,11 +2983,16 @@ void riscv_cpu_do_interrupt(CPUState *cs)
             env->mtval2 = env->last_cap_cause;
         }
 #endif
+        riscv_log_instr_csr_changed(env, CSR_MTVAL2);
+
+        target_ulong new_pc;
         if (nnmi_excep) {
-            env->pc = env->rnmi_excpvec;
+            new_pc = env->rnmi_excpvec;
         } else {
-            env->pc = (env->mtvec >> 2 << 2) +
-                      ((async && (env->mtvec & 3) == 1) ? cause * 4 : 0);
+            target_ulong mtvec = GET_SPECIAL_REG_ADDR(env, mtvec, mtvecc);
+            new_pc = (mtvec >> 2 << 2) +
+                ((async && (mtvec & 3) == 1) ? cause * 4 : 0);
+
             /*
              * This checks that the exception handler is at the same address that
              * caused the exception and the exception is related to reading an
@@ -2736,8 +3010,10 @@ void riscv_cpu_do_interrupt(CPUState *cs)
                 exit(EXIT_FAILURE);
             }
         }
+
+        riscv_update_pc_for_exc_handler(env, &env->mtvecc, new_pc);
         riscv_cpu_set_mode(env, PRV_M, virt);
-        src = env->mepc;
+        src = GET_SPECIAL_REG_ADDR(env, mepc, mepcc);
     }
 
     if (riscv_cpu_cfg(env)->ext_smctr || riscv_cpu_cfg(env)->ext_ssctr) {
@@ -2747,23 +3023,37 @@ void riscv_cpu_do_interrupt(CPUState *cs)
             riscv_ctr_freeze(env, XCTRCTL_BPFRZ, virt);
         }
 
-        riscv_ctr_add_entry(env, src, env->pc,
+        riscv_ctr_add_entry(env, src, GET_SPECIAL_REG_ADDR(env, pc, pcc),
                         async ? CTRDATA_TYPE_INTERRUPT : CTRDATA_TYPE_EXCEPTION,
                         prev_priv, prev_virt);
     }
 
+#ifdef CONFIG_TCG_LOG_INSTR
+    if (qemu_log_instr_enabled(env)) {
+        if (async) {
+            qemu_log_instr_interrupt(env, cause,
+                GET_SPECIAL_REG_ADDR(env, pc, pcc));
+        } else {
+            qemu_log_instr_exception(env, cause,
+                GET_SPECIAL_REG_ADDR(env, pc, pcc), tval);
         }
+    }
+#endif
+
+#ifdef CONFIG_RVFI_DII
     if (unlikely(env->rvfi_dii_have_injected_insn)) {
         qemu_log_mask(CPU_LOG_INT, "%s: Got real exception %d\n", __func__,
                       cs->exception_index);
         env->rvfi_dii_trace.INST.rvfi_trap = true;
         rvfi_dii_communicate(env_cpu(env), env, true);
+    }
+#endif
+
     if (async) {
         qemu_plugin_vcpu_interrupt_cb(cs, last_pc);
     } else {
         qemu_plugin_vcpu_exception_cb(cs, last_pc);
     }
-
     /*
      * Interrupt/exception/trap delivery is asynchronous event and as per
      * zicfilp spec CPU should clear up the ELP state. No harm in clearing
@@ -2783,8 +3073,11 @@ void riscv_cpu_do_interrupt(CPUState *cs)
 }
 
 #endif /* !CONFIG_USER_ONLY */
+
+#ifdef TARGET_CHERI
 void update_special_register(CPURISCVState *env, cap_register_t *scr,
                              const char *name, target_ulong new_value)
+{
     /* The new behaviour is that SCR updates affect the address. */
     target_ulong new_cursor = new_value;
     if (!CHERI_NO_RELOCATION(env)) {
@@ -2798,3 +3091,25 @@ void update_special_register(CPURISCVState *env, cap_register_t *scr,
         target_ulong diff = new_value - current_offset;
         new_cursor = cap_get_cursor(scr) + diff;
     }
+
+    if (!cap_is_unsealed(scr)) {
+        error_report("Attempting to modify sealed %s: " PRINT_CAP_FMTSTR "\r\n",
+                     name, PRINT_CAP_ARGS(scr));
+        qemu_log_instr_extra(env, "Attempting to modify sealed %s: "
+            PRINT_CAP_FMTSTR "\n", name, PRINT_CAP_ARGS(scr));
+        // Clear the tag bit and update the cursor:
+        cap_mark_unrepresentable(new_cursor, scr);
+    } else if (!is_representable_cap_with_addr(scr, new_cursor)) {
+        error_report(
+            "Attempting to set unrepresentable cursor (0x" TARGET_FMT_lx
+            ") on %s: " PRINT_CAP_FMTSTR "\r\n",
+            new_cursor, name, PRINT_CAP_ARGS(scr));
+        qemu_log_instr_extra(env, "Attempting to set unrepresentable cursor (0x"
+            TARGET_FMT_lx ") on %s: " PRINT_CAP_FMTSTR "\r\n", new_cursor,
+            name, PRINT_CAP_ARGS(scr));
+        cap_mark_unrepresentable(new_cursor, scr);
+    } else {
+        scr->_cr_cursor = new_cursor;
+    }
+}
+#endif

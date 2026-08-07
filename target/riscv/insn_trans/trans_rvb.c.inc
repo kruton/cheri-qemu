@@ -61,6 +61,7 @@
         }                                                                      \
     } while (0)
 
+
 static void gen_clz(TCGv ret, TCGv arg1)
 {
     tcg_gen_clzi_tl(ret, arg1, TARGET_LONG_BITS);
@@ -367,12 +368,11 @@ GEN_SHADD(3)
             TCGv offset = tcg_temp_new();                                      \
             gen_get_gpr(ctx, offset, a->rs1);                                  \
             tcg_gen_shli_tl(offset, offset, SHAMT);                            \
-            gen_helper_cincoffset(cpu_env, tcg_constant_i32(a->rd),            \
+            gen_helper_cincoffset(tcg_env, tcg_constant_i32(a->rd),            \
                                   tcg_constant_i32(a->rs2), offset);           \
-            tcg_temp_free(offset);                                             \
             return true;                                                       \
         }                                                                      \
-        return gen_arith(ctx, a, EXT_NONE, gen_sh##SHAMT##add);                \
+        return gen_arith(ctx, a, EXT_NONE, gen_sh##SHAMT##add, NULL);          \
     }
 
 GEN_SHADD(4)
@@ -481,12 +481,11 @@ GEN_SHADD_UW(3)
             gen_get_gpr(ctx, offset, a->rs1);                                  \
             tcg_gen_ext32u_tl(offset, offset);                                 \
             tcg_gen_shli_tl(offset, offset, SHAMT);                            \
-            gen_helper_cincoffset(cpu_env, tcg_constant_i32(a->rd),            \
+            gen_helper_cincoffset(tcg_env, tcg_constant_i32(a->rd),            \
                                   tcg_constant_i32(a->rs2), offset);           \
-            tcg_temp_free(offset);                                             \
             return true;                                                       \
         }                                                                      \
-        return gen_arith(ctx, a, EXT_NONE, gen_sh##SHAMT##add_uw);             \
+        return gen_arith(ctx, a, EXT_NONE, gen_sh##SHAMT##add_uw, NULL);       \
     }
 
 GEN_SHADD_UW(4)

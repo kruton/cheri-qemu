@@ -7,6 +7,8 @@
 #define EXEC_HELPER_HEAD_H
 
 #include "fpu/softfloat-types.h"
+#include "exec/memop.h"
+
 
 #define HELPER(name) glue(helper_, name)
 
@@ -25,6 +27,8 @@
 #define dh_alias_env ptr
 #define dh_alias_fpst ptr
 #define dh_alias_void void
+#define dh_alias_memop i32
+#define dh_alias_memop_idx i32
 #define dh_alias_noreturn noreturn
 #define dh_alias(t) glue(dh_alias_, t)
 
@@ -42,11 +46,16 @@
 #define dh_ctype_env CPUArchState *
 #define dh_ctype_fpst float_status *
 #define dh_ctype_void void
+#define dh_ctype_memop MemOp
+/* Can't use MemOpIdx here due to include ordering. */
+#define dh_ctype_memop_idx uint32_t /* MemOpIdx */
 #define dh_ctype_noreturn G_NORETURN void
 #define dh_ctype(t) dh_ctype_##t
 
 #ifdef COMPILING_PER_TARGET
+#include "exec/target_long.h"
 # ifdef TARGET_LONG_BITS
+
 #  if TARGET_LONG_BITS == 32
 #   define dh_alias_tl i32
 #   define dh_typecode_tl dh_typecode_i32
@@ -56,6 +65,8 @@
 #  endif
 # endif
 # define dh_ctype_tl target_ulong
+# define dh_alias_cap_checked_ptr cap_checked_ptr
+# define dh_ctype_cap_checked_ptr dh_ctype_tl
 #endif /* COMPILING_PER_TARGET */
 
 #if __SIZEOF_POINTER__ == 4
@@ -77,12 +88,14 @@
 #define dh_retvar_decl0_i64 TCGv_i64 retval
 #define dh_retval_decl0_i128 TCGv_i128 retval
 #define dh_retvar_decl0_ptr TCGv_ptr retval
+#define dh_retvar_decl0_cap_checked_ptr TCGv_cap_checked_ptr retval
 #define dh_retvar_decl0(t) glue(dh_retvar_decl0_, dh_alias(t))
 
 #define dh_retvar_decl_void
 #define dh_retvar_decl_noreturn
 #define dh_retvar_decl_i32 TCGv_i32 retval,
 #define dh_retvar_decl_i64 TCGv_i64 retval,
+#define dh_retvar_decl_cap_checked_ptr TCGv_cap_checked_ptr retval,
 #define dh_retvar_decl_i128 TCGv_i128 retval,
 #define dh_retvar_decl_ptr TCGv_ptr retval,
 #define dh_retvar_decl(t) glue(dh_retvar_decl_, dh_alias(t))
@@ -93,6 +106,7 @@
 #define dh_retvar_i64 tcgv_i64_temp(retval)
 #define dh_retvar_i128 tcgv_i128_temp(retval)
 #define dh_retvar_ptr tcgv_ptr_temp(retval)
+#define dh_retvar_cap_checked_ptr tcgv_cap_checked_ptr_temp(retval)
 #define dh_retvar(t) glue(dh_retvar_, dh_alias(t))
 
 #define dh_typecode_void 0
@@ -102,6 +116,9 @@
 #define dh_typecode_i64 4
 #define dh_typecode_s64 5
 #define dh_typecode_ptr 6
+#define dh_typecode_cap_checked_ptr dh_typecode_ptr
+#define dh_typecode_memop dh_typecode_i32
+#define dh_typecode_memop_idx dh_typecode_i32
 #define dh_typecode_i128 7
 #define dh_typecode_int dh_typecode_s32
 #define dh_typecode_f16 dh_typecode_i32
@@ -117,6 +134,9 @@
 #define dh_callflag_i128 0
 #define dh_callflag_ptr  0
 #define dh_callflag_void 0
+#define dh_callflag_memop 0
+#define dh_callflag_memop_idx 0
+#define dh_callflag_cap_checked_ptr 0
 #define dh_callflag_noreturn TCG_CALL_NO_RETURN
 #define dh_callflag(t) glue(dh_callflag_, dh_alias(t))
 

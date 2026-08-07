@@ -34,8 +34,13 @@ static bool trans_sspopchk(DisasContext *ctx, arg_sspopchk *a)
     TCGv data = tcg_temp_new();
     tcg_gen_ld_tl(addr, tcg_env, offsetof(CPURISCVState, ssp));
     decode_save_opc(ctx, RISCV_UW2_ALWAYS_STORE_AMO);
+#ifdef TARGET_CHERI
+    tcg_gen_qemu_ld_tl_with_checked_addr(data, (TCGv_cap_checked_ptr)addr, SS_MMU_INDEX(ctx),
+                                         mxl_memop(ctx) | MO_ALIGN);
+#else
     tcg_gen_qemu_ld_tl(data, addr, SS_MMU_INDEX(ctx),
                        mxl_memop(ctx) | MO_ALIGN);
+#endif
     TCGv rs1 = get_gpr(ctx, a->rs1, EXT_NONE);
     tcg_gen_brcond_tl(TCG_COND_EQ, data, rs1, skip);
     tcg_gen_st_tl(tcg_constant_tl(RISCV_EXCP_SW_CHECK_BCFI_TVAL),
@@ -62,8 +67,13 @@ static bool trans_sspush(DisasContext *ctx, arg_sspush *a)
     decode_save_opc(ctx, RISCV_UW2_ALWAYS_STORE_AMO);
     tcg_gen_ld_tl(addr, tcg_env, offsetof(CPURISCVState, ssp));
     tcg_gen_addi_tl(addr, addr, tmp);
+#ifdef TARGET_CHERI
+    tcg_gen_qemu_st_tl_with_checked_addr(data, (TCGv_cap_checked_ptr)addr, SS_MMU_INDEX(ctx),
+                                         mxl_memop(ctx) | MO_ALIGN);
+#else
     tcg_gen_qemu_st_tl(data, addr, SS_MMU_INDEX(ctx),
                        mxl_memop(ctx) | MO_ALIGN);
+#endif
     tcg_gen_st_tl(addr, tcg_env, offsetof(CPURISCVState, ssp));
 
     return true;
@@ -99,13 +109,23 @@ static bool trans_ssamoswap_w(DisasContext *ctx, arg_amoswap_w *a)
     }
 
     TCGv dest = dest_gpr(ctx, a->rd);
-    TCGv src1, src2 = get_gpr(ctx, a->rs2, EXT_NONE);
+    TCGv src2 = get_gpr(ctx, a->rs2, EXT_NONE);
+
+#ifdef TARGET_CHERI
+    TCGv_cap_checked_ptr src1;
+#else
+    TCGv src1;
+#endif
     MemOp memop = MO_ALIGN | MO_SL;
 
     decode_save_opc(ctx, RISCV_UW2_ALWAYS_STORE_AMO);
-    src1 = get_address(ctx, a->rs1, 0);
-
     memop |= mo_endian(ctx);
+#ifdef TARGET_CHERI
+    src1 = get_capmode_dependent_rmw_addr(ctx, a->rs1, 0, memop);
+#else
+    src1 = get_address(ctx, a->rs1, 0);
+#endif
+
     tcg_gen_atomic_xchg_tl(dest, src1, src2, SS_MMU_INDEX(ctx), memop);
     gen_set_gpr(ctx, a->rd, dest);
     return true;
@@ -129,13 +149,23 @@ static bool trans_ssamoswap_d(DisasContext *ctx, arg_amoswap_w *a)
     }
 
     TCGv dest = dest_gpr(ctx, a->rd);
-    TCGv src1, src2 = get_gpr(ctx, a->rs2, EXT_NONE);
+    TCGv src2 = get_gpr(ctx, a->rs2, EXT_NONE);
+
+#ifdef TARGET_CHERI
+    TCGv_cap_checked_ptr src1;
+#else
+    TCGv src1;
+#endif
     MemOp memop = MO_ALIGN | MO_SQ;
 
     decode_save_opc(ctx, RISCV_UW2_ALWAYS_STORE_AMO);
-    src1 = get_address(ctx, a->rs1, 0);
-
     memop |= mo_endian(ctx);
+#ifdef TARGET_CHERI
+    src1 = get_capmode_dependent_rmw_addr(ctx, a->rs1, 0, memop);
+#else
+    src1 = get_address(ctx, a->rs1, 0);
+#endif
+
     tcg_gen_atomic_xchg_tl(dest, src1, src2, SS_MMU_INDEX(ctx), memop);
     gen_set_gpr(ctx, a->rd, dest);
     return true;

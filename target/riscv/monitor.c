@@ -54,7 +54,7 @@ static void print_pte_header(Monitor *mon)
 }
 
 static void print_pte(Monitor *mon, int va_bits, target_ulong vaddr,
-                      hwaddr paddr, target_ulong size, int attr)
+                      hwaddr paddr, target_ulong size, target_ulong attr)
 {
     /* sanity check on vaddr */
     if (vaddr >= (1UL << va_bits)) {
@@ -66,11 +66,13 @@ static void print_pte(Monitor *mon, int va_bits, target_ulong vaddr,
     }
 
     monitor_printf(mon, TARGET_FMT_lx " " HWADDR_FMT_plx " " TARGET_FMT_lx
-                   " %c%c%c%c%c%c%c\n",
+                   " %c%c%c%c%c%c%c"
 #if defined(TARGET_CHERI_RISCV_V9) && !defined(TARGET_RISCV32)
                    "%c%c%c%c%c"
 #elif defined(TARGET_CHERI_RISCV_STD_093) && !defined(TARGET_RISCV32)
                    "%c%c"
+#endif
+                   "\n",
                    addr_canonical(va_bits, vaddr),
                    paddr, size,
                    attr & PTE_R ? 'r' : '-',
@@ -79,8 +81,8 @@ static void print_pte(Monitor *mon, int va_bits, target_ulong vaddr,
                    attr & PTE_U ? 'u' : '-',
                    attr & PTE_G ? 'g' : '-',
                    attr & PTE_A ? 'a' : '-',
-                   attr & PTE_D ? 'd' : '-');
                    attr & PTE_D ? 'd' : '-'
+#if defined(TARGET_CHERI) && !defined(TARGET_RISCV32)
                    ,
                    attr & PTE_CRG ? 'G' : '-',
 #if defined(TARGET_CHERI_RISCV_V9)
@@ -89,13 +91,15 @@ static void print_pte(Monitor *mon, int va_bits, target_ulong vaddr,
                    attr & PTE_CR  ? 'R' : '-',
 #endif
                    attr & PTE_CW  ? 'W' : '-'
+#endif
+        );
 }
 
 static void walk_pte(Monitor *mon, AddressSpace *as,
                      hwaddr base, target_ulong start,
                      int level, int ptidxbits, int ptesize, int va_bits,
                      target_ulong *vbase, hwaddr *pbase, hwaddr *last_paddr,
-                     target_ulong *last_size, int *last_attr)
+                     target_ulong *last_size, target_ulong *last_attr)
 {
     const MemTxAttrs attrs = MEMTXATTRS_UNSPECIFIED;
     hwaddr pte_addr;
@@ -104,7 +108,7 @@ static void walk_pte(Monitor *mon, AddressSpace *as,
     target_ulong pgsize;
     target_ulong pte;
     int ptshift;
-    int attr;
+    target_ulong attr;
     int idx;
 
     if (level < 0) {
@@ -123,7 +127,9 @@ static void walk_pte(Monitor *mon, AddressSpace *as,
         attr = pte & (PTE_CR | PTE_CW | PTE_CD | PTE_CRM | PTE_CRG | 0xff);
 #elif defined(TARGET_CHERI_RISCV_STD_093) && !defined(TARGET_RISCV32)
         attr = pte & (PTE_CW | PTE_CRG | 0xff);
+#else
         attr = pte & 0xff;
+#endif
 
         /* PTE has to be valid */
         if (attr & PTE_V) {
@@ -172,7 +178,7 @@ static void mem_info_svxx(Monitor *mon, CPUArchState *env)
     hwaddr pbase;
     hwaddr last_paddr;
     target_ulong last_size;
-    int last_attr;
+    target_ulong last_attr;
 
     if (riscv_cpu_mxl(env) == MXL_RV32) {
         base = (hwaddr)get_field(env->satp, SATP32_PPN) << PGSHIFT;

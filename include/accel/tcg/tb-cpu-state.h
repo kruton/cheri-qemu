@@ -13,6 +13,10 @@ typedef struct TCGTBCPUState {
     uint32_t flags;
     uint32_t cflags;
     uint64_t cs_base;
+    /* CHERI */
+    vaddr pcc_base;
+    vaddr pcc_top;
+    uint32_t cheri_flags;
 } TCGTBCPUState;
 
 #endif

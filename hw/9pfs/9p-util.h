@@ -21,7 +21,7 @@
 #define O_PATH_9P_UTIL 0
 #endif
 
-#ifdef CONFIG_FREEBSD
+#if defined(CONFIG_BSD) || defined(CONFIG_FREEBSD)
 /*
  * FreeBSD does not have these flags, so we can only emulate their intended
  * behaviour (racily).
@@ -73,7 +73,7 @@ static inline uint64_t host_dev_to_dotl_dev(dev_t dev)
 static inline int errno_to_dotl(int err) {
 #if defined(CONFIG_LINUX)
     /* nothing to translate (Linux -> Linux) */
-#elif defined(CONFIG_DARWIN) || defined(CONFIG_FREEBSD)
+#elif defined(CONFIG_DARWIN) || defined(CONFIG_BSD) || defined(CONFIG_FREEBSD)
     /*
      * translation mandatory for non-Linux hosts
      *
@@ -98,6 +98,7 @@ static inline int errno_to_dotl(int err) {
 #endif
     return err;
 }
+
 
 #ifdef CONFIG_DARWIN
 #define qemu_fgetxattr(...) fgetxattr(__VA_ARGS__, 0, 0)
@@ -164,13 +165,13 @@ static inline int openat_file(int dirfd, const char *name, int flags,
 {
     int fd, serrno, ret;
 
-#if !defined(CONFIG_DARWIN) && !defined(CONFIG_FREEBSD)
+#if !defined(CONFIG_DARWIN) && !defined(CONFIG_BSD) && !defined(CONFIG_FREEBSD)
 again:
 #endif
     fd = qemu_openat(dirfd, name, flags | O_NOFOLLOW | O_NOCTTY | O_NONBLOCK,
                      mode);
     if (fd == -1) {
-#if !defined(CONFIG_DARWIN) && !defined(CONFIG_FREEBSD)
+#if !defined(CONFIG_DARWIN) && !defined(CONFIG_BSD) && !defined(CONFIG_FREEBSD)
         if (errno == EPERM && (flags & O_NOATIME)) {
             /*
              * The client passed O_NOATIME but we lack permissions to honor it.
@@ -211,7 +212,7 @@ again:
     return fd;
 }
 
-#ifdef CONFIG_FREEBSD
+#if defined(CONFIG_BSD) || defined(CONFIG_FREEBSD)
 ssize_t fgetxattr(int dirfd, const char *name, void *value, size_t size);
 #endif
 ssize_t fgetxattrat_nofollow(int dirfd, const char *path, const char *name,
@@ -285,7 +286,5 @@ int qemu_mknodat(int dirfd, const char *filename, mode_t mode, dev_t dev);
  * for debugging (tracing) purposes only.
  */
 char *qemu_open_flags_tostr(int flags);
-
-int qemu_mknodat(int dirfd, const char *filename, mode_t mode, dev_t dev);
 
 #endif

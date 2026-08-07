@@ -13,8 +13,8 @@
  * Get LENGTH bytes from info's buffer, at host address memaddr.
  * Transfer them to myaddr.
  */
-static int host_read_memory(bfd_vma memaddr, bfd_byte *myaddr, int length,
-                            struct disassemble_info *info)
+int host_read_memory(bfd_vma memaddr, bfd_byte *myaddr, int length,
+                     struct disassemble_info *info)
 {
     if (memaddr < info->buffer_vma
         || memaddr + length > info->buffer_vma + info->buffer_length) {

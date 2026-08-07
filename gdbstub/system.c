@@ -509,6 +509,62 @@ void gdb_handle_set_qemu_phy_mem_mode(GArray *params, void *ctx)
     gdb_put_packet("OK");
 }
 
+void gdb_handle_query_xfer_capa_read(GArray *params, void *ctx)
+{
+    CPUState *cpu = gdbserver_state.g_cpu;
+    CPUClass *cc = CPU_GET_CLASS(cpu);
+    int cap_size = cc->cheri_cap_size;
+
+    if (cap_size == 0 || !cc->memory_readcap_debug) {
+        gdb_put_packet("E22");
+        return;
+    }
+
+    uint8_t capbuf[32 + 1];
+    uint64_t addr;
+    unsigned long len, offset;
+
+    if (params->len != 3) {
+        gdb_put_packet("E22");
+        return;
+    }
+
+    addr = gdb_get_cmd_param(params, 0)->val_ull;
+    if (addr % cap_size != 0) {
+        gdb_put_packet("E22");
+        return;
+    }
+
+    offset = gdb_get_cmd_param(params, 1)->val_ul;
+    if (offset > cap_size + 1) {
+        gdb_put_packet("E22");
+        return;
+    }
+    if (offset == cap_size + 1) {
+        gdb_put_packet("l");
+        return;
+    }
+
+    if (cc->memory_readcap_debug(cpu, addr, capbuf, cap_size)) {
+        gdb_put_packet("E14");
+        return;
+    }
+
+    len = gdb_get_cmd_param(params, 2)->val_ul;
+    if (len > cap_size + 1 - offset) {
+        len = cap_size + 1 - offset;
+    }
+    if (offset + len < cap_size + 1) {
+        g_string_assign(gdbserver_state.str_buf, "m");
+    } else {
+        g_string_assign(gdbserver_state.str_buf, "l");
+    }
+    gdb_memtox(gdbserver_state.str_buf, (char *)(capbuf + offset), len);
+
+    gdb_put_packet_binary(gdbserver_state.str_buf->str,
+                          gdbserver_state.str_buf->len, true);
+}
+
 void gdb_handle_query_rcmd(GArray *params, void *ctx)
 {
     const guint8 zero = 0;

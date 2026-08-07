@@ -81,6 +81,13 @@ static bool trans_lpad(DisasContext *ctx, arg_lpad *a)
 
 static bool trans_auipc(DisasContext *ctx, arg_auipc *a)
 {
+#ifdef TARGET_CHERI
+    if (ctx->capmode) {
+        gen_helper_auipcc(tcg_env, tcg_constant_i32(a->rd),
+                          tcg_constant_tl(a->imm + ctx->base.pc_next));
+        return true;
+    }
+#endif
     TCGv target_pc = dest_gpr(ctx, a->rd);
     gen_pc_plus_diff(target_pc, ctx, a->imm);
     gen_set_gpr(ctx, a->rd, target_pc);
@@ -89,108 +96,25 @@ static bool trans_auipc(DisasContext *ctx, arg_auipc *a)
 
 static bool trans_jal(DisasContext *ctx, arg_jal *a)
 {
+#ifdef TARGET_CHERI
+    if (ctx->capmode) {
+        gen_cjal(ctx, a->rd, a->imm);
+        return true;
+    }
+#endif
     gen_jal(ctx, a->rd, a->imm);
     return true;
 }
 
-#ifndef CONFIG_USER_ONLY
-/*
- * Indirect calls
- * - jalr x1, rs where rs != x5;
- * - jalr x5, rs where rs != x1;
- * - c.jalr rs1 where rs1 != x5;
- *
- * Indirect jumps
- * - jalr x0, rs where rs != x1 and rs != x5;
- * - c.jr rs1 where rs1 != x1 and rs1 != x5.
- *
- * Returns
- * - jalr rd, rs where (rs == x1 or rs == x5) and rd != x1 and rd != x5;
- * - c.jr rs1 where rs1 == x1 or rs1 == x5.
- *
- * Co-routine swap
- * - jalr x1, x5;
- * - jalr x5, x1;
- * - c.jalr x5.
- *
- * Other indirect jumps
- * - jalr rd, rs where rs != x1, rs != x5, rd != x0, rd != x1 and rd != x5.
- */
-static void gen_ctr_jalr(DisasContext *ctx, arg_jalr *a, TCGv dest)
-{
-    TCGv src = tcg_temp_new();
-    TCGv type;
-
-    if ((a->rd == 1 && a->rs1 != 5) || (a->rd == 5 && a->rs1 != 1)) {
-        type = tcg_constant_tl(CTRDATA_TYPE_INDIRECT_CALL);
-    } else if (a->rd == 0 && a->rs1 != 1 && a->rs1 != 5) {
-        type = tcg_constant_tl(CTRDATA_TYPE_INDIRECT_JUMP);
-    } else if ((a->rs1 == 1 || a->rs1 == 5) && (a->rd != 1 && a->rd != 5)) {
-        type = tcg_constant_tl(CTRDATA_TYPE_RETURN);
-    } else if ((a->rs1 == 1 && a->rd == 5) || (a->rs1 == 5 && a->rd == 1)) {
-        type = tcg_constant_tl(CTRDATA_TYPE_CO_ROUTINE_SWAP);
-    } else {
-        type = tcg_constant_tl(CTRDATA_TYPE_OTHER_INDIRECT_JUMP);
-    }
-
-    gen_pc_plus_diff(src, ctx, 0);
-    gen_helper_ctr_add_entry(tcg_env, src, dest, type);
-}
-#endif
-
 static bool trans_jalr(DisasContext *ctx, arg_jalr *a)
 {
-    TCGLabel *misaligned = NULL;
-    TCGv target_pc = tcg_temp_new();
-    TCGv succ_pc = dest_gpr(ctx, a->rd);
-
-    tcg_gen_addi_tl(target_pc, get_gpr(ctx, a->rs1, EXT_NONE), a->imm);
-    tcg_gen_andi_tl(target_pc, target_pc, (target_ulong)-2);
-
-    if (get_xl(ctx) == MXL_RV32) {
-        tcg_gen_ext32s_tl(target_pc, target_pc);
-    }
-
-    if (!riscv_cpu_allow_16bit_insn(ctx->cfg_ptr,
-                                    ctx->priv_ver,
-                                    ctx->misa_ext)) {
-        TCGv t0 = tcg_temp_new();
-
-        misaligned = gen_new_label();
-        tcg_gen_andi_tl(t0, target_pc, 0x2);
-        tcg_gen_brcondi_tl(TCG_COND_NE, t0, 0x0, misaligned);
-    }
-
-    gen_pc_plus_diff(succ_pc, ctx, ctx->cur_insn_len);
-    gen_set_gpr(ctx, a->rd, succ_pc);
-
-#ifndef CONFIG_USER_ONLY
-    if (ctx->cfg_ptr->ext_smctr || ctx->cfg_ptr->ext_ssctr) {
-        gen_ctr_jalr(ctx, a, target_pc);
+#ifdef TARGET_CHERI
+    if (ctx->capmode) {
+        gen_cjalr(ctx, a->rd, a->rs1, a->imm);
+        return true;
     }
 #endif
-
-    tcg_gen_mov_tl(cpu_pc, target_pc);
-    if (ctx->fcfi_enabled) {
-        /*
-         * return from functions (i.e. rs1 == xRA || rs1 == xT0) are not
-         * tracked. zicfilp introduces sw guarded branch as well. sw guarded
-         * branch are not tracked. rs1 == xT2 is a sw guarded branch.
-         */
-        if (a->rs1 != xRA && a->rs1 != xT0 && a->rs1 != xT2) {
-            tcg_gen_st8_tl(tcg_constant_tl(1),
-                          tcg_env, offsetof(CPURISCVState, elp));
-        }
-    }
-
-    lookup_and_goto_ptr(ctx);
-
-    if (misaligned) {
-        gen_set_label(misaligned);
-        gen_exception_inst_addr_mis(ctx, target_pc);
-    }
-    ctx->base.is_jmp = DISAS_NORETURN;
-
+    gen_jalr(ctx, a->rd, a->rs1, a->imm);
     return true;
 }
 
@@ -274,6 +198,9 @@ static bool gen_branch(DisasContext *ctx, arg_b *a, TCGCond cond)
     target_ulong orig_pc_save = ctx->pc_save;
 
     if (get_xl(ctx) == MXL_RV128) {
+#ifdef TARGET_CHERI
+        return false;
+#else
         TCGv src1h = get_gprh(ctx, a->rs1);
         TCGv src2h = get_gprh(ctx, a->rs2);
         TCGv tmp = tcg_temp_new();
@@ -281,10 +208,10 @@ static bool gen_branch(DisasContext *ctx, arg_b *a, TCGCond cond)
         cond = gen_compare_i128(a->rs2 == 0,
                                 tmp, src1, src1h, src2, src2h, cond);
         tcg_gen_brcondi_tl(cond, tmp, 0, l);
+#endif
     } else {
         tcg_gen_brcond_tl(cond, src1, src2, l);
     }
-
 #ifndef CONFIG_USER_ONLY
     if (ctx->cfg_ptr->ext_smctr || ctx->cfg_ptr->ext_ssctr) {
         TCGv type = tcg_constant_tl(CTRDATA_TYPE_NONTAKEN_BRANCH);
@@ -297,7 +224,8 @@ static bool gen_branch(DisasContext *ctx, arg_b *a, TCGCond cond)
     }
 #endif
 
-    gen_goto_tb(ctx, 1, ctx->cur_insn_len);
+    /* Branch not taken, CHERI PCC bounds check done on next ifetch. */
+    gen_goto_tb(ctx, 1, ctx->cur_insn_len, /*bounds_check=*/false);
     ctx->pc_save = orig_pc_save;
 
     gen_set_label(l); /* branch taken */
@@ -322,7 +250,8 @@ static bool gen_branch(DisasContext *ctx, arg_b *a, TCGCond cond)
             gen_helper_ctr_add_entry(tcg_env, src, dest, type);
         }
 #endif
-        gen_goto_tb(ctx, 0, a->imm);
+        /* Branch taken -> check if PCC bounds allow for this jump. */
+        gen_goto_tb(ctx, 0, a->imm, /*bounds_check=*/true);
     }
     ctx->pc_save = -1;
     ctx->base.is_jmp = DISAS_NORETURN;
@@ -362,10 +291,17 @@ static bool trans_bgeu(DisasContext *ctx, arg_bgeu *a)
 
 static bool gen_load_tl(DisasContext *ctx, arg_lb *a, MemOp memop)
 {
+#ifdef TARGET_CHERI
+    if (ctx->capmode) {
+        // TODO: LD is LC for RV32
+        return gen_cap_load(ctx, a->rd, a->rs1, a->imm, memop);
+    }
+#endif
     TCGv dest = dest_gpr(ctx, a->rd);
     TCGv addr = get_address(ctx, a->rs1, a->imm);
 
-    tcg_gen_qemu_ld_tl(dest, addr, ctx->mem_idx, memop);
+    gen_ddc_interposed_ld_tl(ctx, dest, /* Update addr in-place */ NULL, addr,
+                             ctx->mem_idx, memop);
     gen_set_gpr(ctx, a->rd, dest);
     return true;
 }
@@ -373,6 +309,9 @@ static bool gen_load_tl(DisasContext *ctx, arg_lb *a, MemOp memop)
 /* Compute only 64-bit addresses to use the address translation mechanism */
 static bool gen_load_i128(DisasContext *ctx, arg_lb *a, MemOp memop)
 {
+#ifdef TARGET_CHERI
+    return false;
+#else
     TCGv src1l = get_gpr(ctx, a->rs1, EXT_NONE);
     TCGv destl = dest_gpr(ctx, a->rd);
     TCGv desth = dest_gprh(ctx, a->rd);
@@ -396,6 +335,7 @@ static bool gen_load_i128(DisasContext *ctx, arg_lb *a, MemOp memop)
 
     gen_set_gpr128(ctx, a->rd, destl, desth);
     return true;
+#endif
 }
 
 static bool gen_load(DisasContext *ctx, arg_lb *a, MemOp memop)
@@ -463,14 +403,23 @@ static bool trans_lwu(DisasContext *ctx, arg_lwu *a)
     return gen_load(ctx, a, MO_UL);
 }
 
+#ifndef TARGET_CHERI
 static bool trans_ldu(DisasContext *ctx, arg_ldu *a)
 {
     REQUIRE_128BIT(ctx);
     return gen_load(ctx, a, MO_UQ);
 }
+#endif
 
 static bool gen_store_tl(DisasContext *ctx, arg_sb *a, MemOp memop)
 {
+#ifdef TARGET_CHERI
+    if (ctx->capmode) {
+        // TODO: SD is SC for RV32
+        return gen_cap_store(ctx, a->rs1, a->rs2, a->imm, memop);
+    }
+#endif
+
     TCGv addr = get_address(ctx, a->rs1, a->imm);
     TCGv data = get_gpr(ctx, a->rs2, EXT_NONE);
 
@@ -478,12 +427,16 @@ static bool gen_store_tl(DisasContext *ctx, arg_sb *a, MemOp memop)
         tcg_gen_mb(TCG_MO_ALL | TCG_BAR_STRL);
     }
 
-    tcg_gen_qemu_st_tl(data, addr, ctx->mem_idx, memop);
+    gen_ddc_interposed_st_tl(ctx, data, /* Update addr in-place */ NULL, addr,
+                             ctx->mem_idx, memop);
     return true;
 }
 
 static bool gen_store_i128(DisasContext *ctx, arg_sb *a, MemOp memop)
 {
+#ifdef TARGET_CHERI
+    return false;
+#else
     TCGv src1l = get_gpr(ctx, a->rs1, EXT_NONE);
     TCGv src2l = get_gpr(ctx, a->rs2, EXT_NONE);
     TCGv src2h = get_gprh(ctx, a->rs2);
@@ -500,6 +453,7 @@ static bool gen_store_i128(DisasContext *ctx, arg_sb *a, MemOp memop)
         tcg_gen_qemu_st_tl(src2h, addrl, ctx->mem_idx, MO_TEUQ);
     }
     return true;
+#endif
 }
 
 static bool gen_store(DisasContext *ctx, arg_sb *a, MemOp memop)
@@ -537,6 +491,7 @@ static bool trans_sd(DisasContext *ctx, arg_sd *a)
     return gen_store(ctx, a, MO_UQ);
 }
 
+#ifndef TARGET_CHERI
 static bool trans_sq(DisasContext *ctx, arg_sq *a)
 {
     REQUIRE_128BIT(ctx);
@@ -563,6 +518,7 @@ static bool trans_subd(DisasContext *ctx, arg_subd *a)
     ctx->ol = MXL_RV64;
     return gen_arith(ctx, a, EXT_NONE, tcg_gen_sub_tl, NULL);
 }
+#endif /* !TARGET_CHERI */
 
 static void gen_addi2_i128(TCGv retl, TCGv reth,
                            TCGv srcl, TCGv srch, target_long imm)
@@ -601,6 +557,50 @@ static void gen_sltu_i128(TCGv retl, TCGv reth,
 
 static bool trans_slti(DisasContext *ctx, arg_slti *a)
 {
+#ifdef CONFIG_TCG_LOG_INSTR
+    /*
+     * If instruction tracing is enabled, we use slti zero, zero, <magic>
+     * to perform magic-nop tracing control operations.
+     * These will trigger a flush of the TCG buffer, so prepare to resume
+     * from next instruction.
+     */
+    if (unlikely(a->rd == 0)) {
+        TCGv tpc = tcg_constant_tl(ctx->base.pc_next);
+        TCGv_i32 ttmp;
+
+        switch (a->imm) {
+        case 0x01: case 0x02:
+            ttmp = tcg_constant_i32(a->imm == 0x01);
+            gen_helper_qemu_log_instr_buffered_mode(tcg_env, ttmp);
+            break;
+        case 0x03:
+            gen_helper_qemu_log_instr_buffer_flush(tcg_env);
+            break;
+        case 0x1b:
+            gen_helper_qemu_log_instr_start(tcg_env, tpc);
+            ctx->base.is_jmp = DISAS_NORETURN;
+            break;
+        case 0x1e:
+            gen_helper_qemu_log_instr_stop(tcg_env, tpc);
+            ctx->base.is_jmp = DISAS_NORETURN;
+            break;
+        case 0x2b:
+            gen_helper_qemu_log_instr_user_start(tcg_env, tpc);
+            ctx->base.is_jmp = DISAS_NORETURN;
+            break;
+        case 0x2e:
+            gen_helper_qemu_log_instr_stop(tcg_env, tpc);
+            ctx->base.is_jmp = DISAS_NORETURN;
+            break;
+        }
+
+        if (ctx->base.is_jmp != DISAS_NEXT) {
+            gen_set_pc_imm(ctx, ctx->pc_succ_insn);
+            tcg_gen_exit_tb(NULL, 0);
+            return true;
+        }
+    }
+#endif
     return gen_arith_imm_tl(ctx, a, EXT_SIGN, gen_slt, gen_slt_i128);
 }
 
@@ -850,6 +850,7 @@ static bool trans_sraiw(DisasContext *ctx, arg_sraiw *a)
     return gen_shift_imm_fn(ctx, a, EXT_NONE, gen_sraiw, NULL);
 }
 
+#ifndef TARGET_CHERI
 static bool trans_sllid(DisasContext *ctx, arg_sllid *a)
 {
     REQUIRE_128BIT(ctx);
@@ -870,6 +871,7 @@ static bool trans_sraid(DisasContext *ctx, arg_sraid *a)
     ctx->ol = MXL_RV64;
     return gen_shift_imm_fn(ctx, a, EXT_NONE, tcg_gen_sari_tl,  NULL);
 }
+#endif
 
 static bool trans_addw(DisasContext *ctx, arg_addw *a)
 {
@@ -906,6 +908,7 @@ static bool trans_sraw(DisasContext *ctx, arg_sraw *a)
     return gen_shift(ctx, a, EXT_SIGN, tcg_gen_sar_tl, NULL);
 }
 
+#ifndef TARGET_CHERI
 static bool trans_slld(DisasContext *ctx, arg_slld *a)
 {
     REQUIRE_128BIT(ctx);
@@ -926,6 +929,7 @@ static bool trans_srad(DisasContext *ctx, arg_srad *a)
     ctx->ol = MXL_RV64;
     return gen_shift(ctx, a, EXT_SIGN, tcg_gen_sar_tl, NULL);
 }
+#endif
 
 static bool trans_pause(DisasContext *ctx, arg_pause *a)
 {
@@ -939,23 +943,6 @@ static bool trans_pause(DisasContext *ctx, arg_pause *a)
      */
     gen_update_pc(ctx, ctx->cur_insn_len);
     exit_tb(ctx);
-    ctx->base.is_jmp = DISAS_NORETURN;
-
-    return true;
-}
-
-static bool trans_pause(DisasContext *ctx, arg_pause *a)
-{
-    if (!ctx->cfg_ptr->ext_zihintpause) {
-        return false;
-    }
-
-    /*
-     * PAUSE is a no-op in QEMU,
-     * end the TB and return to main loop
-     */
-    gen_set_pc_imm(ctx, ctx->pc_succ_insn);
-    tcg_gen_exit_tb(NULL, 0);
     ctx->base.is_jmp = DISAS_NORETURN;
 
     return true;
@@ -992,6 +979,7 @@ static inline bool is_cap_csr(uint32_t csrno)
     return false;
 #endif
 }
+
 static bool do_csr_post(DisasContext *ctx)
 {
     /* The helper may raise ILLEGAL_INSN -- record binv for unwind. */
@@ -1037,6 +1025,7 @@ static bool do_csrrw(DisasContext *ctx, int rd, int rc, TCGv src, TCGv mask)
     return do_csr_post(ctx);
 }
 
+#ifndef TARGET_CHERI
 static bool do_csrr_i128(DisasContext *ctx, int rd, int rc)
 {
     TCGv destl = dest_gpr(ctx, rd);
@@ -1085,8 +1074,8 @@ static bool trans_csrrw(DisasContext *ctx, arg_csrrw *a)
                                  tcg_constant_i32(a->rs1));
             return true;
         }
+#endif
         TCGv src = get_gpr(ctx, a->rs1, EXT_NONE);
-
         /*
          * If rd == 0, the insn shall not read the csr, nor cause any of the
          * side effects that might occur on a csr read.
@@ -1099,6 +1088,9 @@ static bool trans_csrrw(DisasContext *ctx, arg_csrrw *a)
                                                      (target_ulong)-1);
         return do_csrrw(ctx, a->rd, a->csr, src, mask);
     } else {
+#ifdef TARGET_CHERI
+        return false;
+#else
         TCGv srcl = get_gpr(ctx, a->rs1, EXT_NONE);
         TCGv srch = get_gprh(ctx, a->rs1);
 
@@ -1124,6 +1116,7 @@ static bool trans_csrrs(DisasContext *ctx, arg_csrrs *a)
                              tcg_constant_i32(a->rd), tcg_constant_i32(a->rs1));
         return true;
     }
+#endif
     /*
      * If rs1 == 0, the insn shall not write to the csr at all, nor
      * cause any of the side effects that might occur on a csr write.
@@ -1140,6 +1133,9 @@ static bool trans_csrrs(DisasContext *ctx, arg_csrrs *a)
         TCGv mask = get_gpr(ctx, a->rs1, EXT_ZERO);
         return do_csrrw(ctx, a->rd, a->csr, ones, mask);
     } else {
+#ifdef TARGET_CHERI
+        return false;
+#else
         if (a->rs1 == 0) {
             return do_csrr_i128(ctx, a->rd, a->csr);
         }
@@ -1160,6 +1156,7 @@ static bool trans_csrrc(DisasContext *ctx, arg_csrrc *a)
                              tcg_constant_i32(a->rd), tcg_constant_i32(a->rs1));
         return true;
     }
+#endif
     /*
      * If rs1 == 0, the insn shall not write to the csr at all, nor
      * cause any of the side effects that might occur on a csr write.
@@ -1175,6 +1172,9 @@ static bool trans_csrrc(DisasContext *ctx, arg_csrrc *a)
         TCGv mask = get_gpr(ctx, a->rs1, EXT_ZERO);
         return do_csrrw(ctx, a->rd, a->csr, ctx->zero, mask);
     } else {
+#ifdef TARGET_CHERI
+        return false;
+#else
         if (a->rs1 == 0) {
             return do_csrr_i128(ctx, a->rd, a->csr);
         }
@@ -1183,6 +1183,7 @@ static bool trans_csrrc(DisasContext *ctx, arg_csrrc *a)
         TCGv maskh = get_gprh(ctx, a->rs1);
         return do_csrrw_i128(ctx, a->rd, a->csr,
                              ctx->zero, ctx->zero, maskl, maskh);
+#endif
     }
 }
 
@@ -1193,6 +1194,8 @@ static bool trans_csrrwi(DisasContext *ctx, arg_csrrwi *a)
 #ifdef TARGET_CHERI
         if (is_cap_csr(a->csr)) {
             gen_helper_csrrwi_cap(tcg_env, tcg_constant_i32(a->csr),
+                                  tcg_constant_i32(a->rd),
+                                  tcg_constant_i32(a->rs1));
             return true;
         }
 #endif
@@ -1210,6 +1213,9 @@ static bool trans_csrrwi(DisasContext *ctx, arg_csrrwi *a)
                                                      (target_ulong)-1);
         return do_csrrw(ctx, a->rd, a->csr, src, mask);
     } else {
+#ifdef TARGET_CHERI
+        return false;
+#else
         TCGv src = tcg_constant_tl(a->rs1);
 
         /*
@@ -1235,6 +1241,7 @@ static bool trans_csrrsi(DisasContext *ctx, arg_csrrsi *a)
                               tcg_constant_i32(a->rs1));
         return true;
     }
+#endif
     /*
      * If rs1 == 0, the insn shall not write to the csr at all, nor
      * cause any of the side effects that might occur on a csr write.
@@ -1251,6 +1258,9 @@ static bool trans_csrrsi(DisasContext *ctx, arg_csrrsi *a)
         TCGv mask = tcg_constant_tl(a->rs1);
         return do_csrrw(ctx, a->rd, a->csr, ones, mask);
     } else {
+#ifdef TARGET_CHERI
+        return false;
+#else
         if (a->rs1 == 0) {
             return do_csrr_i128(ctx, a->rd, a->csr);
         }
@@ -1271,6 +1281,7 @@ static bool trans_csrrci(DisasContext *ctx, arg_csrrci * a)
                               tcg_constant_i32(a->rs1));
         return true;
     }
+#endif
     /*
      * If rs1 == 0, the insn shall not write to the csr at all, nor
      * cause any of the side effects that might occur on a csr write.
@@ -1286,6 +1297,9 @@ static bool trans_csrrci(DisasContext *ctx, arg_csrrci * a)
         TCGv mask = tcg_constant_tl(a->rs1);
         return do_csrrw(ctx, a->rd, a->csr, ctx->zero, mask);
     } else {
+#ifdef TARGET_CHERI
+        return false;
+#else
         if (a->rs1 == 0) {
             return do_csrr_i128(ctx, a->rd, a->csr);
         }
@@ -1293,5 +1307,6 @@ static bool trans_csrrci(DisasContext *ctx, arg_csrrci * a)
         TCGv mask = tcg_constant_tl(a->rs1);
         return do_csrrw_i128(ctx, a->rd, a->csr,
                              ctx->zero, ctx->zero, mask, ctx->zero);
+#endif
     }
 }

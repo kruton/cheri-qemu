@@ -21,7 +21,10 @@
 # define TARGET_VIRT_ADDR_SPACE_BITS  32
 #endif
 #define TARGET_PAGE_BITS 12
-
 #define TARGET_INSN_START_EXTRA_WORDS 1
+
+#ifdef CONFIG_TCG_LOG_INSTR
+#define TARGET_MAX_INSN_SIZE 16
+#endif
 
 #endif

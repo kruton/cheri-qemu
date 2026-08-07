@@ -5,15 +5,8 @@ endif
 tcg_ss = ss.source_set()
 
 tcg_ss.add(files(
-  'cpu-exec.c',
   'cpu-exec-common.c',
-  'tcg-runtime.c',
   'tcg-runtime-gvec.c',
-  'tb-maint.c',
-  'tcg-all.c',
-  'tcg-stats.c',
-  'translate-all.c',
-  'translator.c',
 ))
 if get_option('plugins')
   tcg_ss.add(files('plugin-gen.c'))
@@ -22,13 +15,29 @@ endif
 user_ss.add_all(tcg_ss)
 system_ss.add_all(tcg_ss)
 
+tcg_specific_ss = ss.source_set()
+tcg_specific_ss.add(files(
+  'tcg-all.c',
+  'cpu-exec.c',
+  'tcg-runtime.c',
+  'tcg-stats.c',
+  'tb-maint.c',
+  'translate-all.c',
+  'translator.c',
+  '../../tcg/tcg-op-ldst.c',
+))
+tcg_specific_ss.add(when: 'CONFIG_USER_ONLY', if_true: files('user-exec.c'))
+specific_ss.add_all(when: 'CONFIG_TCG', if_true: tcg_specific_ss)
+
+specific_ss.add(when: ['CONFIG_SYSTEM_ONLY', 'CONFIG_TCG'], if_true: files(
+  'cputlb.c',
+))
+
 user_ss.add(files(
-  'user-exec.c',
   'user-exec-stub.c',
 ))
 
 system_ss.add(files(
-  'cputlb.c',
   'icount-common.c',
   'monitor.c',
   'tcg-accel-ops.c',
@@ -37,3 +46,4 @@ system_ss.add(files(
   'tcg-accel-ops-rr.c',
   'watchpoint.c',
 ))
+specific_ss.add(when: ['CONFIG_TCG_LOG_INSTR', 'CONFIG_TCG'], if_true: files('log_instr.c'))

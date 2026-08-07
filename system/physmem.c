@@ -16,6 +16,7 @@
  * You should have received a copy of the GNU Lesser General Public
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
+#include CONFIG_TARGET
 
 #include "qemu/osdep.h"
 #include "exec/page-vary.h"
@@ -62,6 +63,10 @@
 
 #ifdef CONFIG_FALLOCATE_PUNCH_HOLE
 #include <linux/falloc.h>
+#endif
+
+#if defined(TARGET_CHERI)
+#include "cheri_tagmem.h"
 #endif
 
 #include "qemu/rcu_queue.h"
@@ -841,6 +846,14 @@ AddressSpace *cpu_get_address_space(CPUState *cpu, int asidx)
     return cpu->cpu_ases[asidx].as;
 }
 
+/* Set a breakcount. */
+int cpu_breakcount(CPUState *cpu, uint64_t count)
+{
+
+    cpu->breakcount = count;
+
+    return 0;
+}
 /* Called from RCU critical section */
 static RAMBlock *qemu_get_ram_block(ram_addr_t addr)
 {
@@ -3131,6 +3144,9 @@ static void invalidate_and_set_dirty(MemoryRegion *mr, hwaddr addr,
                                      hwaddr length)
 {
     uint8_t dirty_log_mask = memory_region_get_dirty_log_mask(mr);
+#if defined(TARGET_CHERI)
+    ram_addr_t ram_offset = addr;
+#endif
     ram_addr_t ramaddr = memory_region_get_ram_addr(mr);
 
     /* We know we're only called for RAM MemoryRegions */
@@ -3151,6 +3167,14 @@ static void invalidate_and_set_dirty(MemoryRegion *mr, hwaddr addr,
         dirty_log_mask &= ~(1 << DIRTY_MEMORY_CODE);
     }
     physical_memory_set_dirty_range(addr, length, dirty_log_mask);
+
+#if defined(TARGET_CHERI)
+    /* Invalidate the CHERI memory tags. */
+    if (mr->ram_block) {
+        cheri_tag_phys_invalidate(NULL, mr->ram_block, ram_offset, length,
+                                  NULL);
+    }
+#endif
 }
 
 void memory_region_flush_rom_device(MemoryRegion *mr, hwaddr addr, hwaddr size)
@@ -3405,6 +3429,57 @@ MemTxResult flatview_read_continue(FlatView *fv, hwaddr addr,
     return result;
 }
 
+#ifdef TARGET_CHERI
+static MemTxResult flatview_readcap_continue(FlatView *fv, hwaddr addr,
+                                             MemTxAttrs attrs, void *ptr,
+                                             hwaddr len, hwaddr addr1, hwaddr l,
+                                             MemoryRegion *mr)
+{
+    uint8_t *ram_ptr;
+    MemTxResult result = MEMTX_OK;
+    uint8_t *buf = ptr;
+    ram_addr_t ram_offset;
+
+    for (;;) {
+        if (!memory_access_is_direct(mr, false, attrs)) {
+            /* I/O case */
+            result = MEMTX_ERROR;
+            break;
+        } else {
+            /* RAM case */
+            fuzz_dma_read_cb(addr, len, mr);
+            ram_ptr = qemu_ram_ptr_length(mr->ram_block, addr1, &l, false, false);
+            if (l % CHERI_CAP_SIZE != 0) {
+                result = MEMTX_ERROR;
+                break;
+            }
+            ram_offset = qemu_ram_block_host_offset(mr->ram_block, ram_ptr);
+            while (l > 0) {
+                buf[0] = cheri_tag_get_debug(mr->ram_block, ram_offset);
+                memcpy(buf + 1, ram_ptr, CHERI_CAP_SIZE);
+
+                l -= CHERI_CAP_SIZE;
+                ram_offset += CHERI_CAP_SIZE;
+                ram_ptr += CHERI_CAP_SIZE;
+
+                len -= CHERI_CAP_SIZE;
+                buf += CHERI_CAP_SIZE + 1;
+                addr += CHERI_CAP_SIZE;
+            }
+        }
+
+        if (!len) {
+            break;
+        }
+
+        l = len;
+        mr = flatview_translate(fv, addr, &addr1, &l, false, attrs);
+    }
+
+    return result;
+}
+#endif
+
 /* Called from RCU critical section.  */
 static MemTxResult flatview_read(FlatView *fv, hwaddr addr,
                                  MemTxAttrs attrs, void *buf, hwaddr len)
@@ -3422,6 +3497,21 @@ static MemTxResult flatview_read(FlatView *fv, hwaddr addr,
                                   mr_addr, l, mr);
 }
 
+#ifdef TARGET_CHERI
+static MemTxResult flatview_readcap(FlatView *fv, hwaddr addr,
+                                    MemTxAttrs attrs, void *buf, hwaddr len)
+{
+    hwaddr l;
+    hwaddr addr1;
+    MemoryRegion *mr;
+
+    l = len;
+    mr = flatview_translate(fv, addr, &addr1, &l, false, attrs);
+    return flatview_readcap_continue(fv, addr, attrs, buf, len,
+                                     addr1, l, mr);
+}
+#endif
+
 MemTxResult address_space_read_full(AddressSpace *as, hwaddr addr,
                                     MemTxAttrs attrs, void *buf, hwaddr len)
 {
@@ -3436,6 +3526,24 @@ MemTxResult address_space_read_full(AddressSpace *as, hwaddr addr,
 
     return result;
 }
+
+#ifdef TARGET_CHERI
+static MemTxResult address_space_readcap(AddressSpace *as, hwaddr addr,
+                                         MemTxAttrs attrs, void *buf,
+                                         hwaddr len)
+{
+    MemTxResult result = MEMTX_OK;
+    FlatView *fv;
+
+    if (len > 0) {
+        RCU_READ_LOCK_GUARD();
+        fv = address_space_to_flatview(as);
+        result = flatview_readcap(fv, addr, attrs, buf, len);
+    }
+
+    return result;
+}
+#endif
 
 MemTxResult address_space_write(AddressSpace *as, hwaddr addr,
                                 MemTxAttrs attrs,
@@ -4068,6 +4176,47 @@ int cpu_memory_rw_debug(CPUState *cpu, vaddr addr,
     return 0;
 }
 
+#ifdef TARGET_CHERI
+int cpu_memory_readcap_debug(CPUState *cpu, vaddr addr, void *ptr,
+                             size_t len)
+{
+    hwaddr phys_addr;
+    vaddr l, page, tagged_l;
+    uint8_t *buf = ptr;
+
+    cpu_synchronize_state(cpu);
+    while (len > 0) {
+        int asidx;
+        MemTxAttrs attrs;
+        MemTxResult res;
+
+        page = addr & TARGET_PAGE_MASK;
+        phys_addr = cpu_get_phys_page_attrs_debug(cpu, page, &attrs);
+        asidx = cpu_asidx_from_attrs(cpu, attrs);
+        /* if no physical page mapped, return an error */
+        if (phys_addr == -1) {
+            return -1;
+        }
+        l = (page + TARGET_PAGE_SIZE) - addr;
+        if (l > len) {
+            l = len;
+        }
+        phys_addr += (addr & ~TARGET_PAGE_MASK);
+        res = address_space_readcap(cpu->cpu_ases[asidx].as, phys_addr,
+                                    attrs, buf, l);
+        if (res != MEMTX_OK) {
+            return -1;
+        }
+        /* extra byte for each tag */
+        tagged_l = l + l / CHERI_CAP_SIZE;
+
+        len -= l;
+        buf += tagged_l;
+        addr += l;
+    }
+    return 0;
+}
+#endif
 int qemu_ram_foreach_block(RAMBlockIterFunc func, void *opaque)
 {
     RAMBlock *block;

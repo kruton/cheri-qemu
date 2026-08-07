@@ -25,7 +25,12 @@
 #include "qapi/error.h"
 #include "cpu.h"
 #include "internal.h"
+#ifdef TARGET_CHERI
+#include "cheri_utils.h"
+#include "qemu/timer.h"
+#endif
 #include "kvm_mips.h"
+#include "qemu/error-report.h"
 #include "qemu/module.h"
 #include "system/kvm.h"
 #include "system/qtest.h"
@@ -88,7 +93,7 @@ static void mips_cpu_dump_state(CPUState *cs, FILE *f, int flags)
     qemu_fprintf(f, "pc=0x" TARGET_FMT_lx " HI=0x" TARGET_FMT_lx
                  " LO=0x" TARGET_FMT_lx " ds %04x "
                  TARGET_FMT_lx " " TARGET_FMT_ld "\n",
-                 env->active_tc.PC, env->active_tc.HI[0], env->active_tc.LO[0],
+                 PC_ADDR(env), env->active_tc.HI[0], env->active_tc.LO[0],
                  env->hflags, env->btarget, env->bcond);
     for (i = 0; i < 32; i++) {
         if ((i & 3) == 0) {
@@ -103,7 +108,7 @@ static void mips_cpu_dump_state(CPUState *cs, FILE *f, int flags)
 
     qemu_fprintf(f, "CP0 Status  0x%08x Cause   0x%08x EPC    0x"
                  TARGET_FMT_lx "\n",
-                 env->CP0_Status, env->CP0_Cause, env->CP0_EPC);
+                 env->CP0_Status, env->CP0_Cause, get_CP0_EPC(env));
     qemu_fprintf(f, "    Config0 0x%08x Config1 0x%08x LLAddr 0x%016"
                  PRIx64 "\n",
                  env->CP0_Config0, env->CP0_Config1, env->CP0_LLAddr);
@@ -122,11 +127,38 @@ void cpu_set_exception_base(int vp_index, target_ulong address)
     vp->env.exception_base = address;
 }
 
+#ifdef TARGET_CHERI
+const char cheri_gp_regnames[32][4] = {
+    {"C00"}, {"C01"}, {"C02"}, {"C03"}, {"C04"}, {"C05"}, {"C06"}, {"C07"},
+    {"C08"}, {"C09"}, {"C10"}, {"C11"}, {"C12"}, {"C13"}, {"C14"}, {"C15"},
+    {"C16"}, {"C17"}, {"C18"}, {"C19"}, {"C20"}, {"C21"}, {"C22"}, {"C23"},
+    {"C24"}, {"C25"}, {"C26"}, {"C27"}, {"C28"}, {"C29"}, {"C30"}, {"C31"},
+};
+
+const char mips_cheri_hw_regnames[32][10] = {
+    {"DDC"},       {"UserTLS"}, {0},      {0},
+    {0},           {0},         {0},      {0},
+    {"PrivTLS"},   {0},         {0},      {0},
+    {0},           {0},         {0},      {0},
+    {0},           {0},         {0},      {0},
+    {0},           {0},         {"KR1C"}, {"KR2C"},
+    {0},           {0},         {0},      {0},
+    {"ErrorEPCC"}, {"KCC"},     {"KDC"},  {"EPCC"},
+};
+
 void print_cheri_mips_version(void);
 void print_cheri_mips_version(void)
 {
     printf("Compiled for MIPS64 (with CHERI)\n");
 }
+#endif
+
+#ifdef CONFIG_TCG_LOG_INSTR
+const char * const mips_cpu_mode_names[QEMU_LOG_INSTR_CPU_MODE_MAX] = {
+    "User", "Kernel", "<invalid>", "Debug", "Supervisor",
+};
+#endif
+
 static void mips_cpu_set_pc(CPUState *cs, vaddr value)
 {
     mips_env_set_pc(cpu_env(cs), value);
@@ -136,7 +168,7 @@ static vaddr mips_cpu_get_pc(CPUState *cs)
 {
     MIPSCPU *cpu = MIPS_CPU(cs);
 
-    return cpu->env.active_tc.PC;
+    return cpu_get_recent_pc(&cpu->env);
 }
 
 #if !defined(CONFIG_USER_ONLY)
@@ -201,7 +233,8 @@ static void mips_cpu_reset_hold(Object *obj, ResetType type)
     }
 
     memset(env, 0, offsetof(CPUMIPSState, end_reset_fields));
-
+#ifdef CONFIG_DEBUG_TCG
+    env->active_tc._pc_is_current = true;
 #endif
     /* Reset registers to their default values */
     env->CP0_PRid = env->cpu_model->CP0_PRid;
@@ -256,6 +289,40 @@ static void mips_cpu_reset_hold(Object *obj, ResetType type)
     env->msair = env->cpu_model->MSAIR;
     env->insn_flags = env->cpu_model->insn_flags;
 
+#if defined(TARGET_CHERI)
+    /*
+     * See section "4.5 CPU Reset" of Cheri Architecture Manual.
+     * Only PCC, DDC, and KCC are initialized to capabilities that have
+     * sufficient privilege to run MIPS code at base address 0 unchanged.
+     * All other capability registers are initialized to be the NULL capability.
+     * For PCC,DDC,KCC registers:
+     * Tag bits are set.  Seal bit is unset. Base and otype are
+     * set to zero. length is set to (2^64 - 1). Offset (or cursor)
+     * is set to zero (or boot vector address for PCC).
+     */
+    reset_capregs(env);
+    set_max_perms_capability(env, &env->active_tc.PCC, env->exception_base);
+    // TODO: make DDC and KCC unconditionally only be in the special reg file
+    set_max_perms_capability(env, &env->active_tc.CHWR.DDC, 0);
+    // TODO: should kdc be NULL or full priv?
+    env->active_tc.CHWR.UserTlsCap = make_null_capability(env);
+    env->active_tc.CHWR.PrivTlsCap = make_null_capability(env);
+    env->active_tc.CHWR.KR1C = make_null_capability(env);
+    env->active_tc.CHWR.KR2C = make_null_capability(env);
+    set_max_perms_capability(env, &env->active_tc.CHWR.KCC, 0);
+    env->active_tc.CHWR.KDC = make_null_capability(env); // KDC can be NULL
+    // Note: EPCC also needs to be set to be a full address-space capability
+    // so that a MIPS eret without a prior trap works as expected:
+    set_max_perms_capability(env, &env->active_tc.CHWR.EPCC, 0);
+    // Same for ErrorEPCC since it is needed if Status.ERL is set
+    set_max_perms_capability(env, &env->active_tc.CHWR.ErrorEPCC, 0);
+
+    // Fake capability register to allow cjr branch delay slots to work
+    env->active_tc.CapBranchTarget = make_null_capability(env);
+
+    // env->CP0_Status |= (1 << CP0St_CU2);
+#endif /* TARGET_CHERI */
+
 #if defined(CONFIG_USER_ONLY)
     env->CP0_Status = (MIPS_HFLAG_UM << CP0St_KSU);
 # ifdef TARGET_MIPS64
@@ -290,12 +357,14 @@ static void mips_cpu_reset_hold(Object *obj, ResetType type)
          * If the exception was raised from a delay slot,
          * come back to the jump.
          */
-        env->CP0_ErrorEPC = (env->active_tc.PC
-                             - (env->hflags & MIPS_HFLAG_B16 ? 2 : 4));
+        set_CP0_ErrorEPC(env, PC_ADDR(env) - (env->hflags & MIPS_HFLAG_B16 ? 2 : 4));
     } else {
-        env->CP0_ErrorEPC = env->active_tc.PC;
+        set_CP0_ErrorEPC(env, PC_ADDR(env));
     }
-    env->active_tc.PC = env->exception_base;
+    mips_update_pc(env, env->exception_base, /*can_be_unrepresentable=*/false);
+#ifdef CONFIG_DEBUG_TCG
+    env->active_tc._pc_is_current = true;
+#endif
     env->CP0_Random = env->tlb->nb_tlb - 1;
     env->tlb->tlb_in_use = env->tlb->nb_tlb;
     env->CP0_Wired = 0;
@@ -306,13 +375,18 @@ static void mips_cpu_reset_hold(Object *obj, ResetType type)
     }
     env->CP0_EntryHi_ASID_mask = (env->CP0_Config5 & (1 << CP0C5_MI)) ?
             0x0 : (env->CP0_Config4 & (1 << CP0C4_AE)) ? 0x3ff : 0xff;
+#ifdef TARGET_CHERI
+    // XXX This may be wrong but it seems that CHERI doesn't
+    // set the ERL status bit on a CPU reset.
+    env->CP0_Status = (1 << CP0St_BEV);
+#else
     env->CP0_Status = (1 << CP0St_BEV) | (1 << CP0St_ERL);
+#endif
     if (env->insn_flags & INSN_LOONGSON2F) {
         /* Loongson-2F has those bits hardcoded to 1 */
         env->CP0_Status |= (1 << CP0St_KX) | (1 << CP0St_SX) |
                             (1 << CP0St_UX);
     }
-
     /*
      * Vectored interrupts not implemented, timer on int 7,
      * no performance counters.
@@ -416,12 +490,22 @@ static void mips_cpu_reset_hold(Object *obj, ResetType type)
 
     compute_hflags(env);
     restore_pamask(env);
+#ifdef TARGET_CHERI
+    if (strcmp(env->cpu_model->name, "BERI") == 0) {
+        assert(env->PABITS == 40 && "BERI should support 40 PABITS");
+        assert(env->PAMask == (1ULL << 40) - 1 && "BERI should support 40 PABITS");
+    }
+#endif
     cs->exception_index = EXCP_NONE;
 
 #ifndef CONFIG_USER_ONLY
     if (semihosting_get_argc()) {
         /* UHI interface can be used to obtain argc and argv */
         env->active_tc.gpr[4] = -1;
+    }
+    if (is_beri_or_cheri(env)) {
+        // enable KX bit on startup
+        env->CP0_Status |= (1 << CP0St_KX);
     }
     if (kvm_enabled()) {
         kvm_mips_reset_vcpu(cpu);
@@ -440,6 +524,12 @@ static void mips_cpu_disas_set_info(CPUState *s, disassemble_info *info)
         info->print_insn = print_insn_nanomips;
         info->endian = BFD_ENDIAN_LITTLE;
     }
+#ifdef TARGET_MIPS64
+    // See disas/mips.c
+#define bfd_mach_mipsisa64r2           65
+    info->mach = bfd_mach_mipsisa64r2;
+#endif
+
 }
 
 /*
@@ -485,12 +575,26 @@ static void mips_cpu_realizefn(DeviceState *dev, Error **errp)
     }
 
 #ifdef TARGET_MIPS64
+    gdb_register_coprocessor(cs, NULL, NULL,
+                             gdb_find_static_feature("mips64-cp0.xml"), 0);
+    gdb_register_coprocessor(cs, NULL, NULL,
+                             gdb_find_static_feature("mips64-fpu.xml"), 0);
     gdb_register_coprocessor(cs, mips_gdb_get_sys_reg, mips_gdb_set_sys_reg,
+                             gdb_find_static_feature("mips64-sys.xml"), 0);
 #if defined(TARGET_CHERI)
     gdb_register_coprocessor(cs, mips_gdb_get_cheri_reg,
                              mips_gdb_set_cheri_reg,
+                             gdb_find_static_feature("mips64-cheri-c128.xml"), 0);
 #endif
 #else
+    gdb_register_coprocessor(cs, NULL, NULL,
+                             gdb_find_static_feature("mips-cp0.xml"), 0);
+    gdb_register_coprocessor(cs, NULL, NULL,
+                             gdb_find_static_feature("mips-fpu.xml"), 0);
+    gdb_register_coprocessor(cs, mips_gdb_get_sys_reg, mips_gdb_set_sys_reg,
+                             gdb_find_static_feature("mips-sys.xml"), 0);
+#endif
+
     env->exception_base = (int32_t)0xBFC00000;
 
 #if defined(CONFIG_TCG) && !defined(CONFIG_USER_ONLY)
@@ -561,10 +665,20 @@ static void dump_cpu_ips_on_exit(void) {
                     (uintmax_t)env->statcounters_icount_kernel, duration_s,
                     (double)(inst_total / duration_s) / 1000.0);
     }
+}
 #if defined(DO_CHERI_STATISTICS)
+static void dump_stats_on_exit(void)
+{
     if (qemu_log_enabled() && qemu_loglevel_mask(CPU_LOG_INSTR | CPU_LOG_CHERI_BOUNDS)) {
+        FILE *logf = qemu_log_trylock();
         cheri_cpu_dump_statistics_f(NULL, logf, 0);
+        qemu_log_unlock(logf);
+    } else
         cheri_cpu_dump_statistics_f(NULL, stderr, 0);
+}
+#endif
+#endif
+
 #ifndef CONFIG_USER_ONLY
 #include "hw/core/sysemu-cpu-ops.h"
 
@@ -590,12 +704,17 @@ static int mips_cpu_mmu_index(CPUState *cs, bool ifunc)
 static TCGTBCPUState mips_get_tb_cpu_state(CPUState *cs)
 {
     CPUMIPSState *env = cpu_env(cs);
-
-    return (TCGTBCPUState){
-        .pc = env->active_tc.PC,
+    TCGTBCPUState s = {
+        .pc = PC_ADDR(env),
         .flags = env->hflags & (MIPS_HFLAG_TMASK | MIPS_HFLAG_BMASK |
                                 MIPS_HFLAG_HWRENA_ULR),
     };
+#ifdef TARGET_CHERI
+    cheri_cpu_get_tb_cpu_state(env, &env->active_tc.PCC,
+                               &env->active_tc.CHWR.DDC, &s.pcc_base,
+                               &s.pcc_top, &s.cheri_flags);
+#endif
+    return s;
 }
 
 #ifndef CONFIG_USER_ONLY
@@ -664,8 +783,13 @@ static void mips_cpu_class_init(ObjectClass *c, const void *data)
 #ifdef CONFIG_TCG
     cc->tcg_ops = &mips_tcg_ops;
 #endif /* CONFIG_TCG */
+#if defined(TARGET_CHERI)
     start_ns = get_clock();
     atexit(dump_cpu_ips_on_exit);
+#if defined(DO_CHERI_STATISTICS)
+    atexit(dump_stats_on_exit);
+#endif
+#endif
 }
 
 static const TypeInfo mips_cpu_type_info = {
@@ -709,6 +833,48 @@ static void mips_cpu_register_types(void)
     }
 }
 
+#ifdef TARGET_CHERI
+static inline void set_epc_or_error_epc(CPUMIPSState *env, cap_register_t* epc_or_error_epc, target_ulong new_cursor)
+{
+
+    // Setting EPC should clear EPCC.tag if EPCC is sealed or becomes unrepresentable.
+    // This will cause exception on instruction fetch following subsequent eret
+    if (!cap_is_unsealed(epc_or_error_epc)) {
+        error_report("Attempting to modify sealed EPCC/ErrorEPCC: " PRINT_CAP_FMTSTR
+                     "\r", PRINT_CAP_ARGS(epc_or_error_epc));
+        qemu_maybe_log_instr_extra(env,
+            "Attempting to modify sealed EPCC/ErrorEPCC: "
+            PRINT_CAP_FMTSTR "\r", PRINT_CAP_ARGS(epc_or_error_epc));
+        // Clear the tag bit and update the cursor:
+        cap_mark_unrepresentable(new_cursor, epc_or_error_epc);
+    } else if (!is_representable_cap_with_addr(epc_or_error_epc, new_cursor)) {
+        error_report("Attempting to set unrepresentable cursor(0x" TARGET_FMT_lx
+                    ") on EPCC/ErrorEPCC: " PRINT_CAP_FMTSTR "\r", new_cursor,
+                     PRINT_CAP_ARGS(epc_or_error_epc));
+        cap_mark_unrepresentable(new_cursor, epc_or_error_epc);
+    } else {
+        epc_or_error_epc->_cr_cursor = new_cursor;
+    }
+}
+#endif
+
+void set_CP0_EPC(CPUMIPSState *env, target_ulong arg)
+{
+#ifdef TARGET_CHERI
+    set_epc_or_error_epc(env, &env->active_tc.CHWR.EPCC, arg);
+#else
+    env->CP0_EPC = arg;
+#endif
+}
+void set_CP0_ErrorEPC(CPUMIPSState *env, target_ulong arg)
+{
+#ifdef TARGET_CHERI
+    set_epc_or_error_epc(env, &env->active_tc.CHWR.ErrorEPCC, arg);
+#else
+    env->CP0_ErrorEPC = arg;
+#endif
+}
+
 type_init(mips_cpu_register_types)
 
 /* Could be used by generic CPU object */
@@ -722,6 +888,7 @@ MIPSCPU *mips_cpu_create_with_clock(const char *cpu_type, Clock *cpu_refclk,
     object_property_set_bool(OBJECT(cpu), "big-endian", is_big_endian,
                              &error_abort);
     qdev_realize(cpu, NULL, &error_abort);
+
     return MIPS_CPU(cpu);
 }
 

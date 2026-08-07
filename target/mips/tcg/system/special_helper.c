@@ -44,48 +44,71 @@ target_ulong helper_ei(CPUMIPSState *env)
 
 static void debug_pre_eret(CPUMIPSState *env)
 {
-    if (qemu_loglevel_mask(CPU_LOG_EXEC)) {
-        qemu_log("ERET: PC " TARGET_FMT_lx " EPC " TARGET_FMT_lx,
-                env->active_tc.PC, env->CP0_EPC);
-        if (env->CP0_Status & (1 << CP0St_ERL)) {
-            qemu_log(" ErrorEPC " TARGET_FMT_lx, env->CP0_ErrorEPC);
+    if (qemu_log_instr_or_mask_enabled(env, CPU_LOG_EXEC)) {
+        qemu_log_instr_or_mask_msg(env, CPU_LOG_EXEC,
+            "ERET: PC " TARGET_FMT_lx " EPC " TARGET_FMT_lx,
+             PC_ADDR(env), get_CP0_EPC(env));
+        if (should_use_error_epc(env)) {
+            qemu_log_instr_or_mask_msg(env, CPU_LOG_EXEC,
+                " ErrorEPC " TARGET_FMT_lx, get_CP0_ErrorEPC(env));
         }
         if (env->hflags & MIPS_HFLAG_DM) {
-            qemu_log(" DEPC " TARGET_FMT_lx, env->CP0_DEPC);
+            qemu_log_instr_or_mask_msg(env, CPU_LOG_EXEC,
+                " DEPC " TARGET_FMT_lx, env->CP0_DEPC);
         }
-        qemu_log("\n");
+        qemu_log_instr_or_mask_msg(env, CPU_LOG_EXEC, "\n");
     }
+
+#if defined(CONFIG_TCG_LOG_INSTR) && defined(TARGET_CHERI)
+    if (qemu_log_instr_enabled(env)) {
+        // Print the new PCC value for debugging traces (compare to null
+        // so that we always print it)
+        qemu_log_instr_cap(env, "PCC", &env->active_tc.PCC, 14, LRI_CSR_ACCESS);
+        qemu_log_instr_cap(env, "EPCC", &env->active_tc.CHWR.EPCC, 14,
+                           LRI_CSR_ACCESS);
+        qemu_log_instr_cap(env, "ErrorEPCC", &env->active_tc.CHWR.ErrorEPCC, 30,
+                           LRI_CSR_ACCESS);
+    }
+#endif /* defined(CONFIG_TCG_LOG_INSTR) && defined(TARGET_CHERI) */
 }
 
 static void debug_post_eret(CPUMIPSState *env)
 {
-    if (qemu_loglevel_mask(CPU_LOG_EXEC)) {
-        qemu_log("  =>  PC " TARGET_FMT_lx " EPC " TARGET_FMT_lx,
-                env->active_tc.PC, env->CP0_EPC);
-        if (env->CP0_Status & (1 << CP0St_ERL)) {
-            qemu_log(" ErrorEPC " TARGET_FMT_lx, env->CP0_ErrorEPC);
     const char *flag;
+
+#ifdef CONFIG_TCG_LOG_INSTR
+    mips_log_instr_mode_changed(env, cpu_get_recent_pc(env));
+#endif
+    if (qemu_log_instr_or_mask_enabled(env, CPU_LOG_EXEC)) {
+        qemu_log_instr_or_mask_msg(env, CPU_LOG_EXEC,
+            "  =>  PC " TARGET_FMT_lx " EPC " TARGET_FMT_lx,
+            PC_ADDR(env), get_CP0_EPC(env));
+        if (should_use_error_epc(env)) {
+            qemu_log_instr_or_mask_msg(env, CPU_LOG_EXEC,
+                " ErrorEPC " TARGET_FMT_lx, get_CP0_ErrorEPC(env));
         }
         if (env->hflags & MIPS_HFLAG_DM) {
-            qemu_log(" DEPC " TARGET_FMT_lx, env->CP0_DEPC);
+            qemu_log_instr_or_mask_msg(env, CPU_LOG_EXEC,
+                " DEPC " TARGET_FMT_lx, env->CP0_DEPC);
         }
         switch (mips_env_mmu_index(env)) {
         case 3:
-            qemu_log(", ERL\n");
+            flag = ", ERL\n";
             break;
         case MIPS_HFLAG_UM:
-            qemu_log(", UM\n");
+            flag = ", UM\n";
             break;
         case MIPS_HFLAG_SM:
-            qemu_log(", SM\n");
+            flag = ", SM\n";
             break;
         case MIPS_HFLAG_KM:
-            qemu_log("\n");
+            flag = "\n";
             break;
         default:
             cpu_abort(env_cpu(env), "Invalid MMU mode!\n");
             break;
         }
+        qemu_log_instr_or_mask_msg(env, CPU_LOG_EXEC, "%s", flag);
     }
 }
 
@@ -94,22 +117,56 @@ bool mips_io_recompile_replay_branch(CPUState *cs, const TranslationBlock *tb)
     CPUMIPSState *env = cpu_env(cs);
 
     if ((env->hflags & MIPS_HFLAG_BMASK) != 0
-        && !tcg_cflags_has(cs, CF_PCREL) && env->active_tc.PC != tb->pc) {
-        env->active_tc.PC -= (env->hflags & MIPS_HFLAG_B16 ? 2 : 4);
+        && !tcg_cflags_has(cs, CF_PCREL) && PC_ADDR(env) != tb->pc) {
+        mips_update_pc(env, PC_ADDR(env) - (env->hflags & MIPS_HFLAG_B16 ? 2 : 4),
+                       /*can_be_unrepresentable=*/false);
         env->hflags &= ~MIPS_HFLAG_BMASK;
         return true;
     }
     return false;
 }
 
+#ifdef TARGET_CHERI
+static void set_pc_for_eret(CPUMIPSState *env, cap_register_t *error_pcc)
+#else
+static void set_pc_for_eret(CPUMIPSState *env, target_ulong error_pc)
+#endif
+{
+#ifdef TARGET_CHERI
+    target_ulong error_pc = cap_get_cursor(error_pcc);
+    cheri_update_pcc_for_exc_return(&env->active_tc.PCC, error_pcc,
+                                    error_pc & ~(target_ulong)1);
+#else
+    mips_update_pc(env, error_pc & ~(target_ulong)1, /*can_be_unrepresentable=*/true);
+#endif
+    if (error_pc & 1) {
+#if defined(TARGET_CHERI)
+        warn_report("Got target pc with low bit set, but QEMU-CHERI does not"
+                    " support microMIPS: 0x%" PRIx64, error_pc);
+#else
+        env->hflags |= MIPS_HFLAG_M16;
+#endif
+    } else {
+        env->hflags &= ~(MIPS_HFLAG_M16);
+    }
+}
+
 static inline void exception_return(CPUMIPSState *env)
 {
     debug_pre_eret(env);
     if (env->CP0_Status & (1 << CP0St_ERL)) {
-        mips_env_set_pc(env, env->CP0_ErrorEPC);
+#ifdef TARGET_CHERI
+        set_pc_for_eret(env, &env->active_tc.CHWR.ErrorEPCC);
+#else
+        set_pc_for_eret(env, env->CP0_ErrorEPC);
+#endif
         env->CP0_Status &= ~(1 << CP0St_ERL);
     } else {
-        mips_env_set_pc(env, env->CP0_EPC);
+#ifdef TARGET_CHERI
+        set_pc_for_eret(env, &env->active_tc.CHWR.EPCC);
+#else
+        set_pc_for_eret(env, env->CP0_EPC);
+#endif
         env->CP0_Status &= ~(1 << CP0St_EXL);
     }
     compute_hflags(env);
@@ -125,11 +182,17 @@ void helper_eret(CPUMIPSState *env)
 
 void helper_eretnc(CPUMIPSState *env)
 {
+#ifdef TARGET_CHERI
+    do_raise_exception(env, EXCP_RI, GETPC()); /* This does not unset LL reservation? */
+#endif
     exception_return(env);
 }
 
 void helper_deret(CPUMIPSState *env)
 {
+#ifdef TARGET_CHERI
+    do_raise_exception(env, EXCP_RI, GETPC()); /* This ignores EPCC */
+#else
     debug_pre_eret(env);
 
     env->hflags &= ~MIPS_HFLAG_DM;
@@ -138,6 +201,7 @@ void helper_deret(CPUMIPSState *env)
     mips_env_set_pc(env, env->CP0_DEPC);
 
     debug_post_eret(env);
+#endif
 }
 
 void helper_cache(CPUMIPSState *env, target_ulong addr, uint32_t op)

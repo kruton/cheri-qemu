@@ -21,6 +21,7 @@
 #include "cpu.h"
 #include "exec/helper-proto.h"
 
+#ifndef TARGET_CHERI
 target_ulong HELPER(divu_i128)(CPURISCVState *env,
                                target_ulong ul, target_ulong uh,
                                target_ulong vl, target_ulong vh)
@@ -105,3 +106,5 @@ target_ulong HELPER(rems_i128)(CPURISCVState *env,
     env->retxh = rh;
     return rl;
 }
+
+#endif /* TARGET_CHERI */

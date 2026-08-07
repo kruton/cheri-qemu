@@ -36,8 +36,12 @@ bool qemu_log_separate(void);
 #define LOG_STRACE         (1u << 19)
 #define LOG_PER_THREAD     (1u << 20)
 #define CPU_LOG_TB_VPU     (1u << 21)
-#define LOG_TB_OP_PLUGIN   (1u << 22)
-#define LOG_INVALID_MEM    (1u << 23)
+#define CPU_LOG_INSTR      (1u << 22)
+#define CPU_LOG_INSTR_U    (1u << 23)
+#define CPU_LOG_CHERI_BOUNDS (1u << 24)
+#define CPU_LOG_GUEST_DEBUG_MSG (1u << 25)
+#define LOG_TB_OP_PLUGIN   (1u << 26)
+#define LOG_INVALID_MEM    (1u << 27)
 
 /* Lock/unlock output. */
 
@@ -87,6 +91,8 @@ extern const QEMULogItem qemu_log_items[];
 ssize_t rust_fwrite(const void *ptr, size_t size, size_t nmemb, FILE *stream);
 
 bool qemu_set_log(int log_flags, Error **errp);
+bool qemu_set_log_internal(const char *filename, bool changed_name,
+                           int log_flags, Error **errp);
 bool qemu_set_log_filename(const char *filename, Error **errp);
 bool qemu_set_log_filename_flags(const char *name, int flags, Error **errp);
 void qemu_set_dfilter_ranges(const char *ranges, Error **errp);

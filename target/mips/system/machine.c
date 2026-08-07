@@ -84,7 +84,11 @@ static const VMStateField vmstate_tc_fields[] = {
 #if defined(TARGET_MIPS64)
     VMSTATE_UINT64_ARRAY(gpr_hi, TCState, 32),
 #endif /* TARGET_MIPS64 */
+#ifdef TARGET_CHERI
+    VMSTATE_UINTTL(PCC._cr_cursor, TCState),
+#else
     VMSTATE_UINTTL(PC, TCState),
+#endif
     VMSTATE_UINTTL_ARRAY(HI, TCState, MIPS_DSP_ACC),
     VMSTATE_UINTTL_ARRAY(LO, TCState, MIPS_DSP_ACC),
     VMSTATE_UINTTL_ARRAY(ACX, TCState, MIPS_DSP_ACC),
@@ -152,10 +156,17 @@ static int get_tlb(QEMUFile *f, void *pv, size_t size,
     v->D0 = (flags >> 1) & 1;
     v->D1 = (flags >> 0) & 1;
     v->EHINV = (flags >> 15) & 1;
+#if defined(TARGET_CHERI)
+    v->S1 = (flags >> 14) & 1;
+    v->S0 = (flags >> 13) & 1;
+    v->L1 = (flags >> 12) & 1;
+    v->L0 = (flags >> 11) & 1;
+#else
     v->RI1 = (flags >> 14) & 1;
     v->RI0 = (flags >> 13) & 1;
     v->XI1 = (flags >> 12) & 1;
     v->XI0 = (flags >> 11) & 1;
+#endif /* TARGET_CHERI */
     qemu_get_be64s(f, &v->PFN[0]);
     qemu_get_be64s(f, &v->PFN[1]);
 
@@ -170,10 +181,17 @@ static int put_tlb(QEMUFile *f, void *pv, size_t size,
     uint16_t asid = v->ASID;
     uint32_t mmid = v->MMID;
     uint16_t flags = ((v->EHINV << 15) |
+#if defined(TARGET_CHERI)
+                      (v->S1 << 14) |
+                      (v->S0 << 13) |
+                      (v->L1 << 12) |
+                      (v->L0 << 11) |
+#else
                       (v->RI1 << 14) |
                       (v->RI0 << 13) |
                       (v->XI1 << 12) |
                       (v->XI0 << 11) |
+#endif /* TARGET_CHERI */
                       (v->G << 10) |
                       (v->C0 << 7) |
                       (v->C1 << 4) |
@@ -293,7 +311,10 @@ const VMStateDescription vmstate_mips_cpu = {
         VMSTATE_INT32(env.CP0_SRSCtl, MIPSCPU),
         VMSTATE_INT32(env.CP0_SRSMap, MIPSCPU),
         VMSTATE_INT32(env.CP0_Cause, MIPSCPU),
+#ifndef TARGET_CHERI
+        // FIXME: would be nice to print for CHERI but needs direct field access
         VMSTATE_UINTTL(env.CP0_EPC, MIPSCPU),
+#endif
         VMSTATE_INT32(env.CP0_PRid, MIPSCPU),
         VMSTATE_UINTTL(env.CP0_EBase, MIPSCPU),
         VMSTATE_UINTTL(env.CP0_CMGCRBase, MIPSCPU),
@@ -321,7 +342,10 @@ const VMStateDescription vmstate_mips_cpu = {
         VMSTATE_INT32(env.CP0_DataLo, MIPSCPU),
         VMSTATE_INT32(env.CP0_TagHi, MIPSCPU),
         VMSTATE_INT32(env.CP0_DataHi, MIPSCPU),
+#ifndef TARGET_CHERI
+        // FIXME: would be nice to print for CHERI but needs direct field access
         VMSTATE_UINTTL(env.CP0_ErrorEPC, MIPSCPU),
+#endif
         VMSTATE_INT32(env.CP0_DESAVE, MIPSCPU),
         VMSTATE_UINTTL_ARRAY(env.CP0_KScratch, MIPSCPU, MIPS_KSCRATCH_NUM),
 

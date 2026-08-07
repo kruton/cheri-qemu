@@ -97,6 +97,7 @@
 #ifdef TARGET_CHERI
 #include "cheri_tagmem.h"
 #endif
+
 static GlobalProperty arm_virt_compat[] = {
     { TYPE_VIRTIO_IOMMU_PCI, "aw-bits", "48" },
 };
@@ -253,6 +254,7 @@ static const int a15irqmap[] = {
     [VIRT_SMMU] = 74,    /* ...to 74 + NUM_SMMU_IRQS - 1 */
     [VIRT_PLATFORM_BUS] = 112, /* ...to 112 + PLATFORM_BUS_NUM_IRQS -1 */
 };
+
 
 static void create_randomness(MachineState *ms, const char *node)
 {
@@ -1766,9 +1768,11 @@ static void create_secure_ram(VirtMachineState *vms,
 
     memory_region_init_ram(secram, NULL, "virt.secure-ram", size,
                            &error_fatal);
+
 #ifdef TARGET_CHERI
     cheri_tag_init(secram, size);
 #endif
+
     memory_region_add_subregion(secure_sysmem, base, secram);
 
     nodename = g_strdup_printf("/secram@%" PRIx64, base);
@@ -2443,6 +2447,7 @@ static void machvirt_init(MachineState *machine)
         }
 
         qdev_realize(DEVICE(cpuobj), NULL, &error_fatal);
+
         object_unref(cpuobj);
     }
 
@@ -3259,9 +3264,12 @@ static int virt_hvf_get_physical_address_range(MachineState *ms)
 
 static const char *virt_get_default_cpu_type(const MachineState *ms)
 {
+#ifdef TARGET_CHERI
     return ARM_CPU_TYPE_NAME("morello");
+#else
     return tcg_enabled() ? ARM_CPU_TYPE_NAME("cortex-a15")
                          : ARM_CPU_TYPE_NAME("max");
+#endif
 }
 
 static GPtrArray *virt_get_valid_cpu_types(const MachineState *ms)
@@ -3277,6 +3285,7 @@ static GPtrArray *virt_get_valid_cpu_types(const MachineState *ms)
         g_ptr_array_add(vct, g_strdup(ARM_CPU_TYPE_NAME("cortex-a55")));
         g_ptr_array_add(vct, g_strdup(ARM_CPU_TYPE_NAME("cortex-a72")));
         g_ptr_array_add(vct, g_strdup(ARM_CPU_TYPE_NAME("cortex-a76")));
+        g_ptr_array_add(vct, g_strdup(ARM_CPU_TYPE_NAME("morello")));
         g_ptr_array_add(vct, g_strdup(ARM_CPU_TYPE_NAME("cortex-a710")));
         g_ptr_array_add(vct, g_strdup(ARM_CPU_TYPE_NAME("a64fx")));
         g_ptr_array_add(vct, g_strdup(ARM_CPU_TYPE_NAME("neoverse-n1")));

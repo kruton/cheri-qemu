@@ -17,7 +17,7 @@ uint64_t common_semi_arg(CPUState *cs, int argno)
     ARMCPU *cpu = ARM_CPU(cs);
     CPUARMState *env = &cpu->env;
     if (is_a64(env)) {
-        return env->xregs[argno];
+        return arm_get_a64_reg(env, argno);
     } else {
         return env->regs[argno];
     }
@@ -28,7 +28,7 @@ void common_semi_set_ret(CPUState *cs, uint64_t ret)
     ARMCPU *cpu = ARM_CPU(cs);
     CPUARMState *env = &cpu->env;
     if (is_a64(env)) {
-        env->xregs[0] = ret;
+        arm_set_a64_reg(env, 0, ret);
     } else {
         env->regs[0] = ret;
     }
@@ -48,11 +48,12 @@ uint64_t common_semi_stack_bottom(CPUState *cs)
 {
     ARMCPU *cpu = ARM_CPU(cs);
     CPUARMState *env = &cpu->env;
-    return is_a64(env) ? env->xregs[31] : env->regs[13];
+    return is_a64(env) ? arm_get_a64_reg(env, 31) : env->regs[13];
 }
 
 bool common_semi_has_synccache(CPUArchState *env)
 {
-    /* Ok for A64, invalid for A32/T32 */
+    /* Ok for A64, invalid for A32/T32. */
     return is_a64(env);
 }
+

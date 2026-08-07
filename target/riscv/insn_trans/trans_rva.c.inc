@@ -30,20 +30,19 @@
     }                                                     \
 } while (0)
 
-static bool gen_lr(DisasContext *ctx, arg_atomic *a, MemOp mop)
+static inline bool gen_lr_impl(DisasContext *ctx, TCGv_cap_checked_ptr addr,
+                               arg_atomic *a, MemOp mop)
 {
-    TCGv src1;
-
     mop |= MO_ALIGN;
     mop |= mo_endian(ctx);
 
     decode_save_opc(ctx, 0);
-    src1 = get_address(ctx, a->rs1, 0);
+    /* Put addr in load_res, data in load_val.  */
     if (a->rl) {
         tcg_gen_mb(TCG_MO_ALL | TCG_BAR_STRL);
     }
-    tcg_gen_qemu_ld_tl(load_val, src1, ctx->mem_idx, mop);
     cheri_debug_assert((mop & MO_ALIGN) && "load-reserved must be aligned");
+    tcg_gen_qemu_ld_tl_with_checked_addr(load_val, addr, ctx->mem_idx, mop);
     /*
      * TSO defines AMOs as acquire+release-RCsc, but does not define LR/SC as
      * AMOs.  Instead treat them like loads.
@@ -51,15 +50,26 @@ static bool gen_lr(DisasContext *ctx, arg_atomic *a, MemOp mop)
     if (a->aq || ctx->ztso) {
         tcg_gen_mb(TCG_MO_ALL | TCG_BAR_LDAQ);
     }
-
-    /* Put addr in load_res, data in load_val.  */
-    tcg_gen_mov_tl(load_res, src1);
+#ifdef TARGET_CHERI
+    tcg_gen_mov_cap_checked(load_res, addr);
+#else
+    tcg_gen_mov_tl(load_res, addr);
+#endif
     gen_set_gpr(ctx, a->rd, load_val);
 
     return true;
 }
 
-static bool gen_sc(DisasContext *ctx, arg_atomic *a, MemOp mop)
+static inline bool gen_lr(DisasContext *ctx, arg_atomic *a, MemOp mop)
+{
+    TCGv_cap_checked_ptr addr =
+        get_capmode_dependent_load_addr(ctx, a->rs1, 0, mop);
+    bool result = gen_lr_impl(ctx, addr, a, mop);
+    return result;
+}
+
+static inline bool gen_sc_impl(DisasContext *ctx, TCGv_cap_checked_ptr addr,
+                               arg_atomic *a, MemOp mop)
 {
     TCGv dest, src1, src2;
     TCGLabel *l1 = gen_new_label();
@@ -69,9 +79,15 @@ static bool gen_sc(DisasContext *ctx, arg_atomic *a, MemOp mop)
     mop |= mo_endian(ctx);
 
     decode_save_opc(ctx, 0);
-    src1 = get_address(ctx, a->rs1, 0);
-    tcg_gen_brcond_tl(TCG_COND_NE, load_res, src1, l1);
     /*
+     * Alignment must always be checked (even on reservation address mismatch):
+     * "If the address is not naturally aligned, an address-misaligned
+     * exception or an access-fault exception will be generated".
+     * We have to do the alignment check unconditionally (instead of only in the
+     * mismatch case) since the implicit alignment check as part of
+     * tcg_gen_atomic_cmpxchg_tl_with_checked_addr() can result in a load being
+     * emitted before a store in which case we would end up with a load fault
+     * rather than an AMO fault.
      */
     cheri_debug_assert((mop & MO_ALIGN) && "store-conditional must be aligned");
     if (memop_size(mop) > 1) {
@@ -79,21 +95,28 @@ static bool gen_sc(DisasContext *ctx, arg_atomic *a, MemOp mop)
         TCGv_i32 tcode = tcg_constant_i32(RISCV_EXCP_STORE_AMO_ADDR_MIS);
         gen_helper_check_alignment(tcg_env, (TCGv)addr, tmop, tcode);
     }
+ 
+#ifdef TARGET_CHERI
+    tcg_gen_brcond_cap_checked(TCG_COND_NE, load_res, addr, l1);
+#else
+    tcg_gen_brcond_tl(TCG_COND_NE, load_res, addr, l1);
+#endif
 
     /*
      * Note that the TCG atomic primitives are SC,
      * so we can ignore AQ/RL along this path.
      */
     dest = dest_gpr(ctx, a->rd);
+    src1 = tcg_temp_new();
     src2 = get_gpr(ctx, a->rs2, EXT_NONE);
-    tcg_gen_atomic_cmpxchg_tl(dest, load_res, load_val, src2,
-                              ctx->mem_idx, mop);
-    tcg_gen_setcond_tl(TCG_COND_NE, dest, dest, load_val);
+    tcg_gen_atomic_cmpxchg_tl_with_checked_addr(src1, load_res, load_val, src2,
+                                                ctx->mem_idx, mop);
     /*
      * cmpxchg will perform a read and therefore update mem_rmask, but to match
      * sail we should report that this was just a store.
      */
     gen_rvfi_dii_set_field_const_i32(MEM, mem_rmask, 0);
+    tcg_gen_setcond_tl(TCG_COND_NE, dest, src1, load_val);
     gen_set_gpr(ctx, a->rd, dest);
     tcg_gen_br(l2);
 
@@ -111,12 +134,19 @@ static bool gen_sc(DisasContext *ctx, arg_atomic *a, MemOp mop)
      * Clear the load reservation, since an SC must fail if there is
      * an SC to any address, in between an LR and SC pair.
      */
-    tcg_gen_movi_tl(load_res, -1);
+    tcg_gen_movi_tl((TCGv)load_res, -1);
 
     return true;
 }
 
+static inline bool gen_sc(DisasContext *ctx, arg_atomic *a, MemOp mop)
+{
+    TCGv_cap_checked_ptr addr =
+        get_capmode_dependent_load_addr(ctx, a->rs1, 0, mop);
     cheri_debug_assert((mop & MO_ALIGN) && "store-conditional must be aligned");
+    bool result = gen_sc_impl(ctx, addr, a, mop);
+    return result;
+}
 static bool trans_lr_w(DisasContext *ctx, arg_lr_w *a)
 {
     REQUIRE_A_OR_ZALRSC(ctx);
@@ -127,6 +157,31 @@ static bool trans_sc_w(DisasContext *ctx, arg_sc_w *a)
 {
     REQUIRE_A_OR_ZALRSC(ctx);
     return gen_sc(ctx, a, MO_SL);
+}
+
+/// Note: LR/SC.{B,H} is a CHERI extension but we allow them everywhere
+static bool trans_lr_h(DisasContext *ctx, arg_lr_w *a)
+{
+    REQUIRE_EXT(ctx, RVA);
+    return gen_lr(ctx, a, MO_SW);
+}
+
+static bool trans_sc_h(DisasContext *ctx, arg_sc_w *a)
+{
+    REQUIRE_EXT(ctx, RVA);
+    return gen_sc(ctx, a, MO_SW);
+}
+
+static bool trans_lr_b(DisasContext *ctx, arg_lr_w *a)
+{
+    REQUIRE_EXT(ctx, RVA);
+    return gen_lr(ctx, a, MO_SB);
+}
+
+static bool trans_sc_b(DisasContext *ctx, arg_sc_w *a)
+{
+    REQUIRE_EXT(ctx, RVA);
+    return gen_sc(ctx, a, MO_SB);
 }
 
 static bool trans_amoswap_w(DisasContext *ctx, arg_amoswap_w *a)

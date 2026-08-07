@@ -29,6 +29,35 @@
 #include "exec/helper-proto.h"
 #include "exec/target_page.h"
 
+#ifdef TARGET_CHERI
+// This doesnt have to work - only compile. All 64-bit loads and stores are in
+// translate-a64.
+#define tcg_gen_qemu_ld_i64(result, addr, index, opc)                          \
+    (void)result;                                                              \
+    (void)addr;                                                                \
+    (void)index;                                                               \
+    (void)opc;                                                                 \
+    assert(0 && "unreachable")
+#define tcg_gen_qemu_ld_i32(result, addr, index, opc)                          \
+    (void)result;                                                              \
+    (void)addr;                                                                \
+    (void)index;                                                               \
+    (void)opc;                                                                 \
+    assert(0 && "unreachable")
+#define tcg_gen_qemu_st_i64(result, addr, index, opc)                          \
+    (void)result;                                                              \
+    (void)addr;                                                                \
+    (void)index;                                                               \
+    (void)opc;                                                                 \
+    assert(0 && "unreachable")
+#define tcg_gen_qemu_st_i32(result, addr, index, opc)                          \
+    (void)result;                                                              \
+    (void)addr;                                                                \
+    (void)index;                                                               \
+    (void)opc;                                                                 \
+    assert(0 && "unreachable")
+#endif
+
 #define HELPER_H "helper.h"
 #include "exec/helper-info.c.inc"
 #undef  HELPER_H
@@ -46,11 +75,14 @@
 
 /* These are TCG globals which alias CPUARMState fields */
 static TCGv_i32 cpu_R[16];
+// NF stores and VF have N and V as their highest bit.
+// ZF is zero if Z bit should be set.
+// CF has the lowest bit set if C is set.
 TCGv_i32 cpu_CF, cpu_NF, cpu_VF, cpu_ZF;
 TCGv_i64 cpu_exclusive_addr;
 TCGv_i64 cpu_exclusive_val;
 
-static const char * const regnames[] =
+const char * const arm32_regnames[16] =
     { "r0", "r1", "r2", "r3", "r4", "r5", "r6", "r7",
       "r8", "r9", "r10", "r11", "r12", "r13", "r14", "pc" };
 
@@ -63,7 +95,7 @@ void arm_translate_init(void)
     for (i = 0; i < 16; i++) {
         cpu_R[i] = tcg_global_mem_new_i32(tcg_env,
                                           offsetof(CPUARMState, regs[i]),
-                                          regnames[i]);
+                                          arm32_regnames[i]);
     }
     cpu_CF = tcg_global_mem_new_i32(tcg_env, offsetof(CPUARMState, CF), "CF");
     cpu_NF = tcg_global_mem_new_i32(tcg_env, offsetof(CPUARMState, NF), "NF");
@@ -320,6 +352,16 @@ void store_reg(DisasContext *s, int reg, TCGv_i32 var)
         mask = 3;
     }
     tcg_gen_andi_i32(cpu_R[reg], var, ~mask);
+#ifdef CONFIG_TCG_LOG_INSTR
+    if (qemu_ctx_logging_enabled(s)) {
+        TCGv_ptr name = tcg_constant_ptr(arm32_regnames[reg]);
+        TCGv new_val = tcg_temp_new();
+        tcg_gen_extu_i32_tl(new_val, cpu_R[reg]);
+        gen_helper_qemu_log_instr_reg(tcg_env, name, new_val,
+                                      tcg_constant_i32(reg),
+                                      tcg_constant_i32(LRI_GPR_ACCESS));
+    }
+#endif
 }
 
 /*
@@ -2104,15 +2146,21 @@ static void gen_store_exclusive(DisasContext *s, int rd, int rt, int rt2,
             tcg_gen_concat_i32_i64(n64, t1, t2);
         }
 
+        ASSERT_IF_CHERI();
+#ifndef TARGET_CHERI
         tcg_gen_atomic_cmpxchg_i64(o64, taddr, cpu_exclusive_val, n64,
                                    get_mem_index(s), opc);
+#endif
 
         tcg_gen_setcond_i64(TCG_COND_NE, o64, o64, cpu_exclusive_val);
         tcg_gen_extrl_i64_i32(t0, o64);
     } else {
         t2 = tcg_temp_new_i32();
         tcg_gen_extrl_i64_i32(t2, cpu_exclusive_val);
+        ASSERT_IF_CHERI();
+#ifndef TARGET_CHERI
         tcg_gen_atomic_cmpxchg_i32(t0, taddr, t2, t1, get_mem_index(s), opc);
+#endif
         tcg_gen_setcond_i32(TCG_COND_NE, t0, t0, t2);
     }
     tcg_gen_mov_i32(cpu_R[rd], t0);
@@ -3536,7 +3584,9 @@ static bool trans_ERET(DisasContext *s, arg_ERET *a)
     }
     if (s->current_el == 2) {
         /* ERET from Hyp uses ELR_Hyp, not LR */
-        tmp = load_cpu_field_low32(elr_el[2]);
+        tmp = tcg_temp_new_i32();
+        tcg_gen_ld_i32(tmp, tcg_env, offsetof(CPUARMState, elr_el[2]) +
+                       (HOST_BIG_ENDIAN ? 4 : 0));
     } else {
         tmp = load_reg(s, 14);
     }
@@ -4057,7 +4107,10 @@ static bool op_swp(DisasContext *s, arg_SWP *a, MemOp opc)
     taddr = gen_aa32_addr(s, addr, opc);
 
     tmp = load_reg(s, a->rt2);
+    ASSERT_IF_CHERI();
+#ifndef TARGET_CHERI
     tcg_gen_atomic_xchg_i32(tmp, taddr, tmp, get_mem_index(s), opc);
+#endif
 
     store_reg(s, a->rt, tmp);
     return true;
@@ -6533,6 +6586,13 @@ static void arm_tr_translate_insn(DisasContextBase *dcbase, CPUState *cpu)
     insn = arm_ldl_code(env, &dc->base, pc, dc->sctlr_b);
     dc->insn = insn;
     dc->base.pc_next = pc + 4;
+
+#if defined(CONFIG_TCG_LOG_INSTR)
+    if (unlikely(dcbase->log_instr_enabled)) {
+        gen_helper_arm_log_instr(tcg_env, tcg_constant_i64(dc->pc_curr),
+                                 tcg_constant_i32(insn), tcg_constant_i32(4));
+    }
+#endif
     disas_arm_insn(dc, insn);
 
     arm_post_translate_insn(dc);
@@ -6617,6 +6677,16 @@ static void thumb_tr_translate_insn(DisasContextBase *dcbase, CPUState *cpu)
     }
     dc->base.pc_next = pc;
     dc->insn = insn;
+
+#if defined(CONFIG_TCG_LOG_INSTR)
+    if (unlikely(dcbase->log_instr_enabled)) {
+        /* For Thumb we have to undo the 16-bit swap above for disassembly. */
+        gen_helper_arm_log_instr(
+            tcg_env, tcg_constant_i64(dc->pc_curr),
+            tcg_constant_i32(is_16bit ? insn : rol32(insn, 16)),
+            tcg_constant_i32(is_16bit ? 2 : 4));
+    }
+#endif
 
     if (dc->pstate_il) {
         /*
@@ -6838,6 +6908,7 @@ static void arm_tr_tb_stop(DisasContextBase *dcbase, CPUState *cpu)
     emit_delayed_exceptions(dc);
 }
 
+
 static const TranslatorOps arm_translator_ops = {
     .init_disas_context = arm_tr_init_disas_context,
     .tb_start           = arm_tr_tb_start,
@@ -6868,6 +6939,11 @@ void arm_translate_code(CPUState *cpu, TranslationBlock *tb,
     if (EX_TBFLAG_ANY(tb_flags, AARCH64_STATE)) {
         ops = &aarch64_translator_ops;
     }
+#ifdef TARGET_CHERI
+    // THUMB has not been cheri-fied
+    else
+        assert(0);
+#endif
 #endif
 
     translator_loop(cpu, tb, max_insns, pc, host_pc, ops, &dc.base);

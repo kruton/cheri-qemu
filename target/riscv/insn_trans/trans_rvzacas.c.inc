@@ -22,6 +22,7 @@
     }                                     \
 } while (0)
 
+
 static bool trans_amocas_w(DisasContext *ctx, arg_amocas_w *a)
 {
     REQUIRE_ZACAS(ctx);
@@ -39,7 +40,7 @@ static TCGv_i64 get_gpr_pair(DisasContext *ctx, int reg_num)
     }
 
     t = tcg_temp_new_i64();
-    tcg_gen_concat_tl_i64(t, cpu_gpr[reg_num], cpu_gpr[reg_num + 1]);
+    tcg_gen_concat_tl_i64(t, get_gpr(ctx, reg_num, EXT_NONE), get_gpr(ctx, reg_num + 1, EXT_NONE));
     return t;
 }
 
@@ -49,16 +50,19 @@ static void gen_set_gpr_pair(DisasContext *ctx, int reg_num, TCGv_i64 t)
 
     if (reg_num != 0) {
 #ifdef TARGET_RISCV32
-        tcg_gen_extr_i64_i32(cpu_gpr[reg_num], cpu_gpr[reg_num + 1], t);
+        TCGv_i32 rl = tcg_temp_new_i32();
+        TCGv_i32 rh = tcg_temp_new_i32();
+        tcg_gen_extr_i64_i32(rl, rh, t);
+        gen_set_gpr(ctx, reg_num, rl);
+        gen_set_gpr(ctx, reg_num + 1, rh);
 #else
-        tcg_gen_ext32s_i64(cpu_gpr[reg_num], t);
-        tcg_gen_sari_i64(cpu_gpr[reg_num + 1], t, 32);
+        TCGv low = tcg_temp_new();
+        TCGv high = tcg_temp_new();
+        tcg_gen_ext32s_tl(low, t);
+        tcg_gen_sari_tl(high, t, 32);
+        gen_set_gpr(ctx, reg_num, low);
+        gen_set_gpr(ctx, reg_num + 1, high);
 #endif
-
-        if (get_xl_max(ctx) == MXL_RV128) {
-            tcg_gen_sari_tl(cpu_gprh[reg_num], cpu_gpr[reg_num], 63);
-            tcg_gen_sari_tl(cpu_gprh[reg_num + 1], cpu_gpr[reg_num + 1], 63);
-        }
     }
 }
 
@@ -73,7 +77,7 @@ static bool gen_cmpxchg64(DisasContext *ctx, arg_atomic *a, MemOp mop)
     }
 
     TCGv_i64 dest = get_gpr_pair(ctx, a->rd);
-    TCGv src1 = get_address(ctx, a->rs1, 0);
+    TCGv_cap_checked_ptr src1 = get_capmode_dependent_rmw_addr(ctx, a->rs1, 0, mop);
     TCGv_i64 src2 = get_gpr_pair(ctx, a->rs2);
 
     mop |= mo_endian(ctx);
@@ -113,7 +117,7 @@ static bool trans_amocas_q(DisasContext *ctx, arg_amocas_q *a)
 
 #ifdef TARGET_RISCV64
     TCGv_i128 dest = tcg_temp_new_i128();
-    TCGv src1 = get_address(ctx, a->rs1, 0);
+    TCGv_cap_checked_ptr src1 = get_capmode_dependent_rmw_addr(ctx, a->rs1, 0, MO_ALIGN | MO_TEUO);
     TCGv_i128 src2 = tcg_temp_new_i128();
     TCGv_i64 src2l = get_gpr(ctx, a->rs2, EXT_NONE);
     TCGv_i64 src2h = get_gpr(ctx, a->rs2 == 0 ? 0 : a->rs2 + 1, EXT_NONE);

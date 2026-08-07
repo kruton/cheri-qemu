@@ -324,6 +324,13 @@ cpu_stq_le_data_ra(CPUArchState *env, abi_ptr addr, uint64_t val, uintptr_t ra)
     cpu_stq_le_mmuidx_ra(env, addr, val, mmu_index, ra);
 }
 
+#ifdef TARGET_CHERI
+target_ulong cpu_ld_cap_word_ra(CPUArchState *env, abi_ptr ptr,
+                                uintptr_t retaddr);
+void cpu_st_cap_word_ra(CPUArchState *env, abi_ptr ptr,
+                        target_ulong val, uintptr_t retaddr);
+#endif
+
 /*--------------------------*/
 
 static inline uint32_t

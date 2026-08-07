@@ -224,11 +224,41 @@ static ARMMMUIdx ptw_idx_for_stage_2(CPUARMState *env, ARMMMUIdx stage2idx)
     }
 }
 
-static bool regime_translation_big_endian(CPUARMState *env, ARMMMUIdx mmu_idx)
+static inline bool regime_translation_big_endian(CPUARMState *env,
+                                                 ARMMMUIdx mmu_idx)
 {
+#ifdef TARGET_CHERI
+    return false;
+#else
     return (regime_sctlr(env, mmu_idx) & SCTLR_EE) != 0;
-    if (!params->hpd && !regime_is_stage2(mmu_idx))
+#endif
 }
+#ifdef TARGET_CHERI
+static inline uint64_t regime_cctlr(CPUARMState *env, ARMMMUIdx mmu_idx)
+{
+    // Note: vttbr_el2 really does not correspond to CCTLR_el2. But these bits
+    // will get masked out anyway.
+    return env
+        ->CCTLR_el[mmu_idx == ARMMMUIdx_Stage2 ? 2 : regime_el(mmu_idx)];
+}
+
+static inline uint32_t aa64_effective_hwu(CPUARMState *env, ARMMMUIdx mmu_idx,
+                                          ARMVAParameters *params, uint64_t tcr)
+{
+    if (!params->hpd && !regime_is_stage2(mmu_idx))
+        return 0;
+
+    uint32_t ndx;
+
+    if (regime_has_2_ranges(mmu_idx)) {
+        ndx = params->select ? 47 : 43;
+    } else {
+        ndx = 25;
+    }
+
+    return extract64(tcr, ndx, 4);
+}
+#endif
 
 /* Return the TTBR associated with this translation regime */
 static uint64_t regime_ttbr(CPUARMState *env, ARMMMUIdx mmu_idx, int ttbrn)
@@ -680,8 +710,8 @@ static bool S1_ptw_translate(CPUARMState *env, S1Translate *ptw,
 #endif
     }
 
-    if (regime_is_stage2(s2_mmu_idx)) {
     if (regime_is_stage2(s2_mmu_idx) &&
+        !regime_translation_disabled(env, s2_mmu_idx, ptw->in_space)) {
         uint64_t hcr = arm_hcr_el2_eff_secstate(env, ptw->cur_space);
 
         if ((hcr & HCR_PTW) && S2_attrs_are_device(hcr, pte_attrs)) {
@@ -1832,16 +1862,17 @@ static bool lpae_block_desc_valid(ARMCPU *cpu, bool ds,
 /**
  * get_phys_addr_lpae: perform one stage of page table walk, LPAE format
  *
- * Returns false if the translation was successful. Otherwise, phys_ptr,
- * attrs, prot and page_size may not be filled in, and the populated fsr
- * value provides information on why the translation aborted, in the format
- * of a long-format DFSR/IFSR fault register, with the following caveat:
- * the WnR bit is never set (the caller must do this).
+ * Returns false if the translation was successful. Otherwise, phys_ptr, attrs,
+ * prot and page_size may not be filled in, and the populated fsr value provides
+ * information on why the translation aborted, in the format of a long-format
+ * DFSR/IFSR fault register, with the following caveats:
+ *  * the WnR bit is never set (the caller must do this).
  *
  * @env: CPUARMState
  * @ptw: Current and next stage parameters for the walk.
  * @address: virtual address to get physical address for
- * @access_type: MMU_DATA_LOAD, MMU_DATA_STORE or MMU_INST_FETCH
+ * @access_type: MMU_DATA_LOAD, MMU_DATA_STORE or MMU_INST_FETCH (or
+ *               MMU_DATA_CAP_LOAD, MMU_DATA_CAP_STORE on CHERI)
  * @memop: memory operation feeding this access, or 0 for none
  * @result: set on translation success,
  * @fi: set to fault info if the translation fails
@@ -1951,8 +1982,7 @@ static bool get_phys_addr_lpae(CPUARMState *env, S1Translate *ptw,
 
     stride = arm_granule_bits(param.gran) - 3;
 
-    /*
-     * Note that QEMU ignores shareability and cacheability attributes,
+    /* Note that QEMU ignores shareability and cacheability attributes,
      * so we don't need to do anything with the SH, ORGN, IRGN fields
      * in the TTBCR.  Similarly, TTBCR:A1 selects whether we get the
      * ASID from TTBR0 or TTBR1, but QEMU's TLB doesn't currently
@@ -1961,14 +1991,12 @@ static bool get_phys_addr_lpae(CPUARMState *env, S1Translate *ptw,
      */
     ttbr = regime_ttbr(env, mmu_idx, param.select);
 
-    /*
-     * Here we should have set up all the parameters for the translation:
+    /* Here we should have set up all the parameters for the translation:
      * inputsize, ttbr, epd, stride, tbi
      */
 
     if (param.epd) {
-        /*
-         * Translation table walk disabled => Translation fault on TLB miss
+        /* Translation table walk disabled => Translation fault on TLB miss
          * Note: This is always 0 on 64-bit EL2 and EL3.
          */
         goto do_translation_fault;
@@ -2364,12 +2392,66 @@ static bool get_phys_addr_lpae(CPUARMState *env, S1Translate *ptw,
         result->f.tlb_fill_flags = 0;
     }
 
-    if (ptw->in_prot_check & ~prot) {
+    MMUAccessType base_access_type = access_type;
+
+#ifdef TARGET_CHERI
+    if (base_access_type == MMU_DATA_CAP_STORE) {
+        base_access_type = MMU_DATA_STORE;
+    } else if (base_access_type == MMU_DATA_CAP_LOAD) {
+        base_access_type = MMU_DATA_LOAD;
+    }
+#endif
+    uint8_t prot_check = ptw->in_prot_check;
+#ifdef TARGET_CHERI
+    if (prot_check == (1 << MMU_DATA_CAP_STORE)) {
+        prot_check = PAGE_WRITE;
+    } else if (prot_check == (1 << MMU_DATA_CAP_LOAD)) {
+        prot_check = PAGE_READ;
+    }
+#endif
+    if (prot_check & ~prot) {
         fi->type = ARMFault_Permission;
         goto do_fault;
     }
 
+#ifdef TARGET_CHERI
+    fi->type = ARMFault_CapPagePerm;
+
+    uint32_t hwu = aa64_effective_hwu(env, mmu_idx, &param, tcr);
     hwu &= (attrs >> 59);
+
+    int lc = extract32(hwu, 2, 2);
+    int sc = extract32(hwu, 1, 1);
+
+    /*
+     * Cap stores can fault here as only tagged stores specify
+     * MMU_DATA_CAP_STORE.  QEMU lacks FEAT_HAFDBS support, so we trap on based
+     * on SC alone.  Morello hardware interprets CDBM -- extract32(hwu, 0, 1) --
+     * and a set CDBM will cause it to set SC via CAS in the PTW on cap store.
+     */
+    if (!sc) {
+        result->f.prot |= PAGE_SC_TRAP;
+        if (access_type == MMU_DATA_CAP_STORE) {
+            access_type = base_access_type;
+            goto do_fault;
+        }
+    }
+
+    // Cap loads just need normal load permission at this point, because traps /
+    // clears require the tag
+    uint64_t cctlr = regime_cctlr(env, mmu_idx);
+    bool tgeny = param.select ? !!(cctlr & 2) : (cctlr & 1);
+    // (faults/clears indicated by prot)
+    if (lc == 0) {
+        result->f.prot |= PAGE_LC_CLEAR;
+    } else if (!regime_is_stage2(mmu_idx) &&
+               ((lc & 2) && (tgeny ^ (lc & 1)))) {
+        result->f.prot |= PAGE_LC_TRAP;
+    }
+
+    access_type = base_access_type;
+#endif
+
     /* S1PIE and S2PIE both have a bit for software dirty page tracking. */
     if (access_type == MMU_DATA_STORE && param.pie) {
         /*
@@ -2418,6 +2500,18 @@ static bool get_phys_addr_lpae(CPUARMState *env, S1Translate *ptw,
     } else {
         result->cacheattrs.shareability = extract32(attrs, 8, 2);
     }
+
+#ifdef TARGET_CHERI
+    // TODO: I wonder if this needs doing in the caller. If one stage marks the
+    // location as device, and the other as trapping loads, this should still
+    // happen?
+
+    // RQDKBL: If a location is marked as Device and as faulting loads
+    // of valid capabilities, a load of a capability from that location
+    // causes a Capability access fault, and the location is not read.
+    if ((result->f.prot & PAGE_LC_TRAP) && ((result->cacheattrs.attrs & 0xf0) == 0))
+        result->f.prot |= PAGE_LC_TRAP_ANY;
+#endif
 
     result->f.phys_addr = descaddr;
     result->f.lg_page_size = ctz64(page_size);
@@ -3572,14 +3666,15 @@ static bool get_phys_addr_twostage(CPUARMState *env, S1Translate *ptw,
     s1_lgpgsz = result->f.lg_page_size;
     s1_guarded = result->f.extra.arm.guarded;
     cacheattrs1 = result->cacheattrs;
-    memset(result, 0, sizeof(*result));
 
     ret = get_phys_addr_nogpc(env, ptw, ipa, access_type,
                               memop, result, fi);
     fi->s2addr = ipa;
 
     /* Combine the S1 and S2 perms.  */
-    result->f.prot = s1_prot & result->s2prot;
+    // LC_CLEAR and LC_TRAP are sadly inverted as they DISALLOW behavior
+    result->f.prot =
+        ((result->s2prot ^ PAGE_C_BITS) & (s1_prot ^ PAGE_C_BITS)) ^ PAGE_C_BITS;
 
     /* If S2 fails, return early.  */
     if (ret) {
@@ -3718,8 +3813,7 @@ static bool get_phys_addr_nogpc(CPUARMState *env, S1Translate *ptw,
 
     result->f.attrs.user = regime_is_user(mmu_idx);
 
-    /*
-     * Fast Context Switch Extension. This doesn't exist at all in v8.
+    /* Fast Context Switch Extension. This doesn't exist at all in v8.
      * In v7 and earlier it affects all stage 1 translations.
      */
     if (address < 0x02000000 && mmu_idx != ARMMMUIdx_Stage2
@@ -3902,7 +3996,6 @@ bool get_phys_addr(CPUARMState *env, vaddr address,
         .in_space = arm_mmu_idx_to_security_space(env, mmu_idx),
         .in_prot_check = 1 << access_type,
     };
-
     return get_phys_addr_gpc(env, &ptw, address, access_type,
                              memop, result, fi);
 }

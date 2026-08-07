@@ -201,6 +201,14 @@ int get_physical_address(CPUMIPSState *env, hwaddr *physical,
             ret = TLBRET_BADADDR;
         }
 #endif
+    /*
+     * XXXAR: I am not entirely sure deleting the previous code using  is the correct way to make commit
+     * a78cda6e0212ccb16711d0dd30c2bb3480b36415 (40 bits for CHERI) to work with
+     * the new get_segctl_physical_address added in commit
+     * 480e79aedd322fcfac17052caff21626ea7c78e2. As far as I can see from the
+     * BERI hardware reference we should still be using 0x1FFFFFFF as the mask
+     * for kseg0 and kseg1
+     */
     } else if (address < KSEG1_BASE) {
         /* kseg0 */
         ret = get_segctl_physical_address(env, physical, prot, real_address,

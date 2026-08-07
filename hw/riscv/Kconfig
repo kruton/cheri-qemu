@@ -7,6 +7,9 @@ config RISCV_NUMA
 config IBEX
     bool
 
+config CMU
+    bool
+
 # RISC-V machines in alphabetical order
 
 config MICROCHIP_PFSOC
@@ -124,6 +127,7 @@ config HOBGOBLIN
     bool
     select RISCV_ACLINT
     select SIFIVE_PLIC
+    select CODASIP_TIMER
     select CODASIP_TRNG
     select XILINX
     select XILINX_SPI
@@ -133,8 +137,10 @@ config HOBGOBLIN
     select VIRTIO_MMIO
     select SERIAL
     select SSI_SD
+    select CMU
     select HOBGOBLIN_NVEMU
     select PCI_EXPRESS_XILINX
+
 config XIANGSHAN_KUNMINGHU
     bool
     default y

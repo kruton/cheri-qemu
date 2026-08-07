@@ -932,7 +932,8 @@ void riscv_cpu_debug_excp_handler(CPUState *cs)
             do_trigger_action(env, DBG_ACTION_BP);
         }
     } else {
-        if (cpu_breakpoint_test(cs, env->pc, BP_CPU)) {
+        if (cpu_breakpoint_test(cs, GET_SPECIAL_REG_ADDR(env, pc, pcc),
+                                BP_CPU)) {
             do_trigger_action(env, DBG_ACTION_BP);
         }
     }

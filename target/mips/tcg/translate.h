@@ -134,10 +134,10 @@ enum {
     gen_helper_##name(tcg_env, arg1, arg2, tcg_constant_i32(arg3));\
     } while (0)
 
-void generate_exception_break(DisasContext *ctx, int code);
 void generate_exception(DisasContext *ctx, MipsExcp excp);
 void generate_exception_err(DisasContext *ctx, MipsExcp excp, int err);
 void generate_exception_end(DisasContext *ctx, MipsExcp excp);
+void generate_exception_break(DisasContext *ctx, MipsExcp code);
 void gen_reserved_instruction(DisasContext *ctx);
 
 void check_insn(DisasContext *ctx, uint64_t flags);
@@ -158,7 +158,13 @@ void gen_base_index_addr(DisasContext *ctx, TCGv addr, int base, int index);
 void gen_move_low32(TCGv ret, TCGv_i64 arg);
 void gen_move_high32(TCGv ret, TCGv_i64 arg);
 void gen_load_gpr(TCGv t, int reg);
-void gen_store_gpr(TCGv t, int reg);
+/*
+ * Hack to forward extra arguments to _gen_store_gpr without changing
+ * existing calls. This assumes that the DisasContext ctx argument is
+ * present at call sites.
+ */
+#define gen_store_gpr(t, reg) _gen_store_gpr(ctx, t, reg)
+void _gen_store_gpr(DisasContext *ctx, TCGv t, int reg);
 #if defined(TARGET_MIPS64)
 void gen_load_gpr_hi(TCGv_i64 t, int reg);
 void gen_store_gpr_hi(TCGv_i64 t, int reg);
@@ -214,9 +220,70 @@ extern TCGv bcond;
         }                                                                     \
     } while (0)
 
+#ifdef CONFIG_TCG_LOG_INSTR
+/*
+ * Generate helper to log general purpose register update by the
+ * instruction.
+ */
+static inline void gen_log_instr_gpr_update(DisasContext *ctx, int reg)
+{
+    if (unlikely(ctx->base.log_instr_enabled)) {
+        TCGv_i32 regnum = tcg_constant_i32(reg);
+        gen_helper_mips_log_instr_gpr(tcg_env, regnum, cpu_gpr[reg]);
+    }
+}
+
+/*
+ * Generate helper to log Cop0 register updates.
+ * This handles updates that do not go through helpers.
+ */
+static inline void gen_log_instr_cop0_update(DisasContext *ctx, int reg,
+                                             int sel, target_ulong offset)
+{
+    if (unlikely(ctx->base.log_instr_enabled)) {
+        TCGv_i32 treg = tcg_constant_i32(reg);
+        TCGv_i32 tsel = tcg_constant_i32(sel);
+        TCGv tv = tcg_temp_new();
+        tcg_gen_ld_tl(tv, tcg_env, offset);
+        gen_helper_mips_log_instr_cop0(tcg_env, treg, tsel, tv);
+    }
+}
+
+/*
+ * Generate helper to log HI/LO register updates.
+ */
+static inline void gen_log_instr_hilo_update(DisasContext *ctx, int hiLO,
+                                             int index, int reg)
+{
+    if (likely(!ctx->base.log_instr_enabled))
+        return;
+
+    TCGv_i32 thilo = tcg_constant_i32(hiLO);
+    TCGv_i32 tindex = tcg_constant_i32(index);
+    if (reg == 0) {
+        //  cpu_gpr[0] is NULL and should not be used.
+        TCGv tzero = tcg_constant_tl(0);
+        gen_helper_mips_log_instr_hilo(tcg_env, thilo, tindex, tzero);
+    } else {
+        gen_helper_mips_log_instr_hilo(tcg_env, thilo, tindex, cpu_gpr[reg]);
+    }
+}
+
+ATTRIBUTE_UNUSED static inline void _debug_value(TCGv value, const char* msg) {
+    TCGv_ptr dbg_msg = tcg_constant_ptr(msg);
     TCGv_i64 tmp = tcg_temp_new_i64();
     tcg_gen_ext_tl_i64(tmp, value);
     gen_helper_log_value(tcg_env, dbg_msg, tmp);
+}
+#define DEBUG_VALUE(value) _debug_value(value, #value)
+
+#else
+#define DEBUG_VALUE(value) ((void)0)
+#define gen_log_instr_gpr_update(ctx, reg) ((void)0)
+#define gen_log_instr_cop0_update(ctx, reg, sel, off) ((void)0)
+#define gen_log_instr_hilo_update(ctx, hiLO, index, reg) ((void)0)
+#endif
+
 /* MSA */
 void msa_translate_init(void);
 

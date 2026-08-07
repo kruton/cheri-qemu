@@ -34,6 +34,7 @@
 #include "exec/mmu-access-type.h"
 #include "exec/tlb-common.h"
 #include "exec/vaddr.h"
+#include "exec/abi_ptr.h"
 #include "tcg/tcg.h"
 #include "qemu/error-report.h"
 #include "exec/log.h"
@@ -43,6 +44,7 @@
 #include "qemu/atomic128.h"
 #include "tb-internal.h"
 #include "trace.h"
+#include "cheri_tagmem.h"
 #include "tb-hash.h"
 #include "tb-internal.h"
 #include "tlb-bounds.h"
@@ -112,6 +114,14 @@ static inline uint64_t tlb_read_idx(const CPUTLBEntry *entry,
                       MMU_DATA_STORE * sizeof(uintptr_t));
     QEMU_BUILD_BUG_ON(offsetof(CPUTLBEntry, addr_code) !=
                       MMU_INST_FETCH * sizeof(uintptr_t));
+
+#ifdef TARGET_CHERI
+    if (access_type == MMU_DATA_CAP_LOAD) {
+        access_type = MMU_DATA_LOAD;
+    } else if (access_type == MMU_DATA_CAP_STORE) {
+        access_type = MMU_DATA_STORE;
+    }
+#endif
 
     const uintptr_t *ptr = &entry->addr_idx[access_type];
     /* ofs might correspond to .addr_write, so use qatomic_read */
@@ -1055,6 +1065,17 @@ void tlb_set_page_full(CPUState *cpu, int mmu_idx,
               " prot=%x idx=%d\n",
               addr, full->phys_addr, prot, mmu_idx);
 
+#ifdef TARGET_CHERI
+    bool tag_setting = full->attrs.tag_setting != 0;
+    /*
+     * Getting tagmem can cause an invalidation, so best to do this before
+     * any other entries are modified.
+     */
+    uintptr_t tagmem = (uintptr_t)cheri_tagmem_for_addr(
+        cpu_env(cpu), addr, section->mr->ram_block, xlat, sz, &prot, tag_setting);
+    assert((tagmem & TLBENTRYCAP_MASK) == 0);
+#endif
+
     read_flags = full->tlb_fill_flags;
     if (full->lg_page_size < TARGET_PAGE_BITS) {
         /* Repeat the MMU check and TLB fill on every access.  */
@@ -1155,6 +1176,31 @@ void tlb_set_page_full(CPUState *cpu, int mmu_idx,
     full = &desc->fulltlb[index];
     full->xlat_section = iotlb - addr_page;
     full->phys_addr = paddr_page;
+
+#ifdef TARGET_CHERI
+    /*
+     * Cache the CHERI tag block. This massively speeds up running QEMU: before
+     * we added this optimization 10-25% of total runtime could be spent
+     * looking up tag blocks for a given virtual address.
+     */
+    desc->fulltlb[index].tagmem_write = desc->fulltlb[index].tagmem_read = tagmem;
+
+    if (prot & PAGE_LC_CLEAR) {
+        desc->fulltlb[index].tagmem_read |= TLBENTRYCAP_FLAG_CLEAR;
+    }
+    if (prot & PAGE_LC_TRAP) {
+        desc->fulltlb[index].tagmem_read |= TLBENTRYCAP_FLAG_TRAP;
+    }
+    if (prot & PAGE_LC_TRAP_ANY) {
+        desc->fulltlb[index].tagmem_read |= TLBENTRYCAP_FLAG_TRAP_ANY;
+    }
+    if (prot & PAGE_SC_CLEAR) {
+        desc->fulltlb[index].tagmem_write |= TLBENTRYCAP_FLAG_CLEAR;
+    }
+    if (prot & PAGE_SC_TRAP) {
+        desc->fulltlb[index].tagmem_write |= TLBENTRYCAP_FLAG_TRAP;
+    }
+#endif
 
     /* Now calculate the new entry */
     tn.addend = addend - addr_page;
@@ -1303,7 +1349,7 @@ static void io_failed(CPUState *cpu, CPUTLBEntryFull *full, vaddr addr,
 /* Return true if ADDR is present in the victim tlb, and has been copied
    back to the main tlb.  */
 static bool victim_tlb_hit(CPUState *cpu, size_t mmu_idx, size_t index,
-                           MMUAccessType access_type, vaddr page)
+                           MMUAccessType access_type, vaddr page, bool cap_write)
 {
     size_t vidx;
 
@@ -1311,6 +1357,14 @@ static bool victim_tlb_hit(CPUState *cpu, size_t mmu_idx, size_t index,
     for (vidx = 0; vidx < CPU_VTLB_SIZE; ++vidx) {
         CPUTLBEntry *vtlb = &cpu->neg.tlb.d[mmu_idx].vtable[vidx];
         uint64_t cmp = tlb_read_idx(vtlb, access_type);
+
+#ifdef TARGET_CHERI
+        if (cap_write && ((cpu->neg.tlb.d[mmu_idx].vfulltlb[vidx].tagmem_write &
+                           TLBENTRYCAP_INVALID_WRITE_MASK) ==
+                          TLBENTRYCAP_INVALID_WRITE_VALUE)) {
+            continue;
+        }
+#endif
 
         if (cmp == page) {
             /* Found entry in victim tlb, swap tlb and iotlb.  */
@@ -1331,6 +1385,7 @@ static bool victim_tlb_hit(CPUState *cpu, size_t mmu_idx, size_t index,
     }
     return false;
 }
+
 
 static void notdirty_write(CPUState *cpu, vaddr mem_vaddr, unsigned size,
                            CPUTLBEntryFull *full, uintptr_t retaddr)
@@ -1356,11 +1411,11 @@ static void notdirty_write(CPUState *cpu, vaddr mem_vaddr, unsigned size,
     }
 }
 
-static int probe_access_internal(CPUState *cpu, vaddr addr,
-                                 int fault_size, MMUAccessType access_type,
-                                 int mmu_idx, bool nonfault,
-                                 void **phost, CPUTLBEntryFull **pfull,
-                                 uintptr_t retaddr, bool check_mem_cbs)
+static inline QEMU_ALWAYS_INLINE int
+probe_access_internal(CPUState *cpu, vaddr addr, int fault_size,
+                      MMUAccessType access_type, int mmu_idx, bool nonfault,
+                      void **phost, CPUTLBEntryFull **pfull, uintptr_t retaddr,
+                      bool check_mem_cbs)
 {
     uintptr_t index = tlb_index(cpu, mmu_idx, addr);
     CPUTLBEntry *entry = tlb_entry(cpu, mmu_idx, addr);
@@ -1370,8 +1425,18 @@ static int probe_access_internal(CPUState *cpu, vaddr addr,
     bool force_mmio = check_mem_cbs && cpu_plugin_mem_cbs_enabled(cpu);
     CPUTLBEntryFull *full;
 
-    if (!tlb_hit_page(tlb_addr, page_addr)) {
-        if (!victim_tlb_hit(cpu, mmu_idx, index, access_type, page_addr)) {
+    bool tag_write_invalid = false;
+
+#ifdef TARGET_CHERI
+    if (access_type == MMU_DATA_CAP_STORE &&
+        ((cpu->neg.tlb.d[mmu_idx].fulltlb[tlb_index(cpu, mmu_idx, addr)].tagmem_write &
+          TLBENTRYCAP_INVALID_WRITE_MASK) == TLBENTRYCAP_INVALID_WRITE_VALUE))
+        tag_write_invalid = true;
+#endif
+
+    if (!tlb_hit_page(tlb_addr, page_addr) || tag_write_invalid) {
+        if (!victim_tlb_hit(cpu, mmu_idx, index, access_type, page_addr,
+                            access_type == MMU_DATA_CAP_STORE)) {
             if (!tlb_fill_align(cpu, addr, access_type, mmu_idx,
                                 0, fault_size, nonfault, retaddr)) {
                 /* Non-faulting page table read failed.  */
@@ -1476,8 +1541,9 @@ int probe_access_flags(CPUArchState *env, vaddr addr, int size,
     return flags;
 }
 
-void *probe_access(CPUArchState *env, vaddr addr, int size,
-                   MMUAccessType access_type, int mmu_idx, uintptr_t retaddr)
+static inline QEMU_ALWAYS_INLINE void *
+probe_access_inlined(CPUArchState *env, vaddr addr, int size,
+                     MMUAccessType access_type, int mmu_idx, uintptr_t retaddr)
 {
     CPUTLBEntryFull *full;
     void *host;
@@ -1515,6 +1581,8 @@ void *probe_access(CPUArchState *env, vaddr addr, int size,
 
     return host;
 }
+
+#include "probe-access.inc.c"
 
 void *tlb_vaddr_to_host(CPUArchState *env, vaddr addr,
                         MMUAccessType access_type, int mmu_idx)
@@ -1656,7 +1724,7 @@ static bool mmu_lookup1(CPUState *cpu, MMULookupPageData *data, MemOp memop,
     /* If the TLB entry is for a different page, reload and try again.  */
     if (!tlb_hit(tlb_addr, addr)) {
         if (!victim_tlb_hit(cpu, mmu_idx, index, access_type,
-                            addr & TARGET_PAGE_MASK)) {
+                            addr & TARGET_PAGE_MASK, access_type == MMU_DATA_CAP_STORE)) {
             tlb_fill_align(cpu, addr, access_type, mmu_idx,
                            memop, data->size, false, ra);
             maybe_resized = true;
@@ -1825,7 +1893,7 @@ static void *atomic_mmu_lookup(CPUState *cpu, vaddr addr, MemOpIdx oi,
     tlb_addr = tlb_addr_write(tlbe);
     if (!tlb_hit(tlb_addr, addr)) {
         if (!victim_tlb_hit(cpu, mmu_idx, index, MMU_DATA_STORE,
-                            addr & TARGET_PAGE_MASK)) {
+                            addr & TARGET_PAGE_MASK, false)) {
             tlb_fill_align(cpu, addr, MMU_DATA_STORE, mmu_idx,
                            mop, size, false, retaddr);
             did_tlb_fill = true;
@@ -1915,6 +1983,47 @@ static void *atomic_mmu_lookup(CPUState *cpu, vaddr addr, MemOpIdx oi,
  * called by the translation loop and in some helpers where the code
  * is disassembled. It shouldn't be called directly by guest code.
  *
+ * For the benefit of TCG generated code, we want to avoid the
+ * complication of ABI-specific return type promotion and always
+ * return a value extended to the register size of the host. This is
+ * tcg_target_long, except in the case of a 32-bit host and 64-bit
+ * data, and for that we always have uint64_t.
+ *
+ * We don't bother with this widened value for SOFTMMU_CODE_ACCESS.
+ */
+
+#ifdef TARGET_CHERI
+#include "cheri-helper-utils.h"
+
+static void check_address_space_wrap(CPUArchState *env, target_ulong addr,
+                                     target_ulong size,
+                                     MMUAccessType access_type,
+                                     uintptr_t retaddr)
+{
+    if (access_type == MMU_INST_FETCH) {
+        return;
+    }
+    /*
+     * Check if access wraps around the address space, and was not prevented
+     * by earlier checks. This can only happen if we have a full address
+     * space DDC, since in all other cases bounds checks will be performed.
+     * Ideally we would emit the TCG checks unconditionally (which would
+     * allow not performing the check here), but omitting TGG bounds checks
+     * for full-AS DDC results in a major speedup when booting a
+     * non-CHERI/hybrid OS kernel.
+     */
+    target_ulong end_addr = 0;
+    if (unlikely(__builtin_add_overflow(addr, size, &end_addr) &&
+                 end_addr > 0)) {
+        assert(cap_get_top_full(cheri_get_ddc(env)) == CAP_MAX_TOP &&
+               cap_get_base(cheri_get_ddc(env)) == 0);
+        check_cap(env, cheri_get_ddc(env), 0, addr, CHERI_EXC_REGNUM_DDC, size,
+                  /*instavail=*/true, retaddr);
+    }
+}
+#endif
+
+/*
  * For the benefit of TCG generated code, we want to avoid the
  * complication of ABI-specific return type promotion and always
  * return a value extended to the register size of the host. This is
@@ -2345,6 +2454,9 @@ static uint16_t do_ld2_mmu(CPUState *cpu, vaddr addr, MemOpIdx oi,
     if (likely(!crosspage)) {
         return do_ld_2(cpu, &l.page[0], l.mmu_idx, access_type, l.memop, ra);
     }
+#ifdef TARGET_CHERI
+    check_address_space_wrap(cpu_env(cpu), addr, 2, access_type, ra);
+#endif
 
     a = do_ld_1(cpu, &l.page[0], l.mmu_idx, access_type, ra);
     b = do_ld_1(cpu, &l.page[1], l.mmu_idx, access_type, ra);
@@ -2369,6 +2481,9 @@ static uint32_t do_ld4_mmu(CPUState *cpu, vaddr addr, MemOpIdx oi,
     if (likely(!crosspage)) {
         return do_ld_4(cpu, &l.page[0], l.mmu_idx, access_type, l.memop, ra);
     }
+#ifdef TARGET_CHERI
+    check_address_space_wrap(cpu_env(cpu), addr, 4, access_type, ra);
+#endif
 
     ret = do_ld_beN(cpu, &l.page[0], 0, l.mmu_idx, access_type, l.memop, ra);
     ret = do_ld_beN(cpu, &l.page[1], ret, l.mmu_idx, access_type, l.memop, ra);
@@ -2390,6 +2505,9 @@ static uint64_t do_ld8_mmu(CPUState *cpu, vaddr addr, MemOpIdx oi,
     if (likely(!crosspage)) {
         return do_ld_8(cpu, &l.page[0], l.mmu_idx, access_type, l.memop, ra);
     }
+#ifdef TARGET_CHERI
+    check_address_space_wrap(cpu_env(cpu), addr, 8, access_type, ra);
+#endif
 
     ret = do_ld_beN(cpu, &l.page[0], 0, l.mmu_idx, access_type, l.memop, ra);
     ret = do_ld_beN(cpu, &l.page[1], ret, l.mmu_idx, access_type, l.memop, ra);
@@ -2460,9 +2578,11 @@ static Int128 do_ld16_mmu(CPUState *cpu, vaddr addr,
     return ret;
 }
 
+
 /*
  * Store Helpers
  */
+
 
 /**
  * do_st_mmio_leN:
@@ -2756,6 +2876,9 @@ static void do_st2_mmu(CPUState *cpu, vaddr addr, uint16_t val,
         do_st_2(cpu, &l.page[0], val, l.mmu_idx, l.memop, ra);
         return;
     }
+#ifdef TARGET_CHERI
+    check_address_space_wrap(cpu_env(cpu), addr, 2, MMU_DATA_STORE, ra);
+#endif
 
     if ((l.memop & MO_BSWAP) == MO_LE) {
         a = val, b = val >> 8;
@@ -2778,6 +2901,9 @@ static void do_st4_mmu(CPUState *cpu, vaddr addr, uint32_t val,
         do_st_4(cpu, &l.page[0], val, l.mmu_idx, l.memop, ra);
         return;
     }
+#ifdef TARGET_CHERI
+    check_address_space_wrap(cpu_env(cpu), addr, 4, MMU_DATA_STORE, ra);
+#endif
 
     /* Swap to little endian for simplicity, then store by bytes. */
     if ((l.memop & MO_BSWAP) != MO_LE) {
@@ -2799,6 +2925,9 @@ static void do_st8_mmu(CPUState *cpu, vaddr addr, uint64_t val,
         do_st_8(cpu, &l.page[0], val, l.mmu_idx, l.memop, ra);
         return;
     }
+#ifdef TARGET_CHERI
+    check_address_space_wrap(cpu_env(cpu), addr, 8, MMU_DATA_STORE, ra);
+#endif
 
     /* Swap to little endian for simplicity, then store by bytes. */
     if ((l.memop & MO_BSWAP) != MO_LE) {
@@ -2865,6 +2994,7 @@ static void do_st16_mmu(CPUState *cpu, vaddr addr, Int128 val,
         do_st_leN(cpu, &l.page[1], b, l.mmu_idx, l.memop, ra);
     }
 }
+
 
 #include "ldst_common.c.inc"
 
@@ -2943,3 +3073,43 @@ vaddr cpu_pointer_wrap_uint32(CPUState *cs, int idx, vaddr res, vaddr base)
 {
     return (uint32_t)res;
 }
+
+#ifdef TARGET_CHERI
+/*
+ * Hack to avoid logging memory accesses that load capability
+ * components as normal memory accesses. The caller is responsible for logging.
+ */
+target_ulong cpu_ld_cap_word_ra(CPUArchState *env, abi_ptr ptr,
+                                uintptr_t retaddr)
+{
+    MemOpIdx oi;
+#if TARGET_LONG_BITS == 32
+    oi = make_memop_idx(MO_TEUW, cpu_mmu_index(env_cpu(env), false));
+    return helper_lduw_mmu(env, ptr, oi, retaddr);
+#elif TARGET_LONG_BITS == 64
+    oi = make_memop_idx(MO_TEUQ, cpu_mmu_index(env_cpu(env), false));
+    return helper_ldq_mmu(env, ptr, oi, retaddr);
+#else
+#error "Unhandled target long width"
+#endif
+}
+
+/*
+ * Hack to avoid logging memory accesses that store capability
+ * components as normal memory accesses. The caller is responsible for logging.
+ */
+void cpu_st_cap_word_ra(CPUArchState *env, abi_ptr ptr,
+                        target_ulong val, uintptr_t retaddr)
+{
+    MemOpIdx oi;
+#if TARGET_LONG_BITS == 32
+    oi = make_memop_idx(MO_TEUW, cpu_mmu_index(env_cpu(env), false));
+    helper_stw_mmu(env, ptr, val, oi, retaddr);
+#elif TARGET_LONG_BITS == 64
+    oi = make_memop_idx(MO_TEUQ, cpu_mmu_index(env_cpu(env), false));
+    helper_stq_mmu(env, ptr, val, oi, retaddr);
+#else
+#error "Unhandled target long width"
+#endif
+}
+#endif

@@ -14,9 +14,12 @@
 #include "accel/tcg/cpu-ldst-common.h"
 #include "accel/tcg/cpu-mmu-index.h"
 #include "exec/target_page.h"
+#include "exec/log_instr.h"
 #include "exec/translator.h"
 #include "exec/plugin-gen.h"
 #include "tcg/tcg-op-common.h"
+#ifdef TARGET_CHERI
+#include "exec/helper-gen.h"
 #endif
 #include "internal-common.h"
 #include "disas/disas.h"
@@ -104,11 +107,12 @@ static void gen_tb_end(const TranslationBlock *tb, uint32_t cflags,
     }
 }
 
+#include "cheri-translate-utils-base.h"
+
 bool translator_is_same_page(const DisasContextBase *db, vaddr addr)
 {
     return ((addr ^ db->pc_first) & TARGET_PAGE_MASK) == 0;
 }
-
 bool translator_use_goto_tb(DisasContextBase *db, vaddr dest)
 {
     /* Suppress goto_tb if requested. */
@@ -144,6 +148,17 @@ void translator_loop(CPUState *cpu, TranslationBlock *tb, int *max_insns,
     db->is_jmp = DISAS_NEXT;
     db->num_insns = 0;
     db->max_insns = *max_insns;
+#ifdef TARGET_CHERI
+    db->pcc_base = tb->pcc_base;
+    db->pcc_top = tb->pcc_top;
+    cheri_debug_assert(db->pcc_base ==
+                       cap_get_base(cheri_get_recent_pcc(cpu_env(cpu))));
+    cheri_debug_assert(db->pcc_top ==
+                       cap_get_top(cheri_get_recent_pcc(cpu_env(cpu))));
+    db->cheri_flags = tb->cheri_flags;
+    disas_capreg_reset_all(db);
+    // TODO: verify cheri_flags are correct?
+#endif
     db->insn_start = NULL;
     db->fake_insn = false;
     db->host_addr[0] = host_pc;
@@ -155,18 +170,40 @@ void translator_loop(CPUState *cpu, TranslationBlock *tb, int *max_insns,
     ops->init_disas_context(db, cpu);
     tcg_debug_assert(db->is_jmp == DISAS_NEXT);  /* no early exit */
 #ifdef CONFIG_TCG_LOG_INSTR
+    /*
      * Propagate cached log enabled check to disas context.
+     * This assumes that the TCG buffer will be flushed on instruction
+     * log level changes.
+     */
     db->log_instr_enabled = log_instr_enabled;
+#endif /* CONFIG_TCG_LOG_INSTR */
 
     /* Start translating.  */
     icount_start_insn = gen_tb_start(db, cflags);
+#ifdef CONFIG_DEBUG_TCG
+    // On TB entry pc is up-to-date.
+    if (_pc_is_current) {
+        tcg_gen_movi_tl(_pc_is_current, 1);
     }
 #endif
     ops->tb_start(db, cpu);
+#ifdef CONFIG_TCG_LOG_INSTR
     /* Commit previous instruction */
     if (unlikely(log_instr_enabled)) {
         qemu_log_gen_printf_flush(db, true, true);
         gen_helper_qemu_log_instr_commit(tcg_env);
+    }
+#endif
+#ifdef TARGET_CHERI
+    // Check PCC permissions and tag once on TB entry.
+    // Each target must reserve one bit in tb->flags as the "PCC valid" flag.
+    if (unlikely((tb->cheri_flags & TB_FLAG_CHERI_PCC_EXECUTABLE) !=
+                 TB_FLAG_CHERI_PCC_EXECUTABLE)) {
+        gen_helper_raise_exception_pcc_perms(tcg_env);
+    } else if (unlikely(!in_pcc_bounds(db, db->pc_next))) {
+        gen_raise_pcc_violation(db, db->pc_next, 0);
+    }
+#endif
     tcg_debug_assert(db->is_jmp == DISAS_NEXT);  /* no early exit */
 
     plugin_enabled = plugin_gen_tb_start(cpu, db);
@@ -174,8 +211,11 @@ void translator_loop(CPUState *cpu, TranslationBlock *tb, int *max_insns,
 
     while (true) {
         *max_insns = ++db->num_insns;
+#ifdef CONFIG_DEBUG_TCG
         /* Mark the current PCC.cursor as outdated after first instruction. */
         if (_pc_is_current && db->num_insns > 1) {
+            tcg_gen_movi_tl(_pc_is_current, 0);
+        }
 #endif
         ops->insn_start(db, cpu);
         db->insn_start = tcg_last_op();
@@ -220,6 +260,7 @@ void translator_loop(CPUState *cpu, TranslationBlock *tb, int *max_insns,
             db->is_jmp = DISAS_TOO_MANY;
             break;
         }
+
 #ifdef CONFIG_TCG_LOG_INSTR
         /* Commit this instruction */
         if (unlikely(log_instr_enabled)) {
@@ -233,9 +274,16 @@ void translator_loop(CPUState *cpu, TranslationBlock *tb, int *max_insns,
 #endif
     }
 
+#ifdef CONFIG_TCG_LOG_INSTR
     /*
+     * Flush buffers for last instruction. Committing itself is done in the
+     * next TB in order to capture results of exception handling.
      */
     if (unlikely(log_instr_enabled)) {
+        qemu_log_gen_printf_flush(db, true, false);
+    }
+#endif
+
     /* Emit code to exit the TB, as indicated by db->is_jmp.  */
     ops->tb_stop(db, cpu);
     gen_tb_end(tb, cflags, icount_start_insn, db->num_insns);

@@ -26,13 +26,16 @@ mips_ss.add(files(
   'vr54xx_helper.c',
   'vr54xx_translate.c',
 ))
+
+tx79_ss = ss.source_set()
+tx79_ss.add(when: 'TARGET_CHERI', if_false: files('tx79_translate.c'))
+
+mips_ss.add(when: 'TARGET_MIPS64', if_false: files('mxu_translate.c'))
+mips_ss.add_all(when: 'TARGET_MIPS64', if_true: [tx79_ss])
 mips_ss.add(when: 'TARGET_MIPS64', if_true: files(
-  'tx79_translate.c',
   'octeon_translate.c',
   'lcsr_translate.c',
   'loong_translate.c',
-), if_false: files(
-  'mxu_translate.c',
 ))
 
 if have_system

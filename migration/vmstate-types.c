@@ -347,6 +347,8 @@ const VMStateInfo vmstate_info_fd = {
     .put  = put_fd,
 };
 
+/*
+ * 64/128-bit compressed capability
  *
  * NB: The size assertions aren't strict to allow for ccX_aligned_cap_t arrays
  * where field->size will be greater than an individual capability to ensure
@@ -356,11 +358,16 @@ const VMStateInfo vmstate_info_fd = {
  * contrib) we shouldn't be pulling in cheri_defs.h where the aligned versions
  * are defined since that's a layering violation and vmstate is part of a
  * target-independent library that gets reused for each target.
+ *
  * TODO: We probably shouldn't be serialising cr_extra, since that's not
  * architectural state, and should instead always be creating fully
  * decompressed capabilities, but using knowledge of the lazy capregs
  * implementation would be a layering violation if the states aren't factored
  * out to somewhere else.
+ */
+
+#include "../target/cheri-common/cheri-compressed-cap/cheri_compressed_cap.h"
+
 /* Macro to define get/put functions and VMStateInfo for capability registers */
 #define DEFINE_CAP_VMSTATE(suffix, int_bits)                                   \
     static int get_cap##suffix##_register(QEMUFile *f, void *pv, size_t size,  \
@@ -378,32 +385,46 @@ const VMStateInfo vmstate_info_fd = {
         qemu_get_be##int_bits##s(f, &pesbt);                                   \
         qemu_get_8s(f, &extra);                                                \
         qemu_get_8s(f, &tag);                                                  \
+                                                                               \
         cc##suffix##_decompress_mem(pesbt, cursor, tag, v);                    \
         v->cr_extra = extra;                                                   \
+                                                                               \
         return 0;                                                              \
     }                                                                          \
+                                                                               \
     static int put_cap##suffix##_register(QEMUFile *f, void *pv, size_t size,  \
                                           const VMStateField *field,           \
                                           JSONWriter *vmdesc)                  \
+    {                                                                          \
+        typedef cc##suffix##_cap_t cap_type;                                   \
+        assert(field->size >= sizeof(cap_type));                               \
+        cap_type *v = pv;                                                      \
         uint##int_bits##_t cursor = v->_cr_cursor;                             \
         uint##int_bits##_t pesbt = cc##suffix##_compress_mem(v);               \
         uint8_t extra = v->cr_extra;                                           \
         uint8_t tag = v->cr_tag;                                               \
+                                                                               \
         qemu_put_be##int_bits##s(f, &cursor);                                  \
         qemu_put_be##int_bits##s(f, &pesbt);                                   \
         qemu_put_8s(f, &extra);                                                \
         qemu_put_8s(f, &tag);                                                  \
+                                                                               \
+        return 0;                                                              \
+    }                                                                          \
+                                                                               \
     const VMStateInfo vmstate_info_cap##suffix##_register = {                  \
         .name = "cap" #suffix "_register",                                     \
         .get = get_cap##suffix##_register,                                     \
         .put = put_cap##suffix##_register,                                     \
     };
+
 /* Instantiate the macro for each capability type */
 DEFINE_CAP_VMSTATE(64, 32)
 DEFINE_CAP_VMSTATE(64r, 32)
 DEFINE_CAP_VMSTATE(128, 64)
 DEFINE_CAP_VMSTATE(128m, 64)
 DEFINE_CAP_VMSTATE(128r, 64)
+
 static int get_nullptr(QEMUFile *f, void *pv, size_t size,
                        const VMStateField *field)
 

@@ -21,7 +21,6 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-
 #include "qemu/osdep.h"
 #include "qemu/help-texts.h"
 #include "qemu/datadir.h"
@@ -78,6 +77,7 @@
 #include "chardev/char.h"
 #include "qemu/bitmap.h"
 #include "qemu/log.h"
+#include "qemu/log_instr.h"
 #include "system/blockdev.h"
 #include "hw/block/block.h"
 #include "hw/i386/x86.h"
@@ -192,6 +192,61 @@ static const char *log_file;
 static bool list_data_dirs;
 static const char *qtest_chrdev;
 static const char *qtest_log;
+
+bool cheri_c2e_on_unrepresentable = false;
+bool cheri_debugger_on_unrepresentable = false;
+bool cheri_debugger_on_trap = false;
+static uint64_t cl_breakpoint = 0L;
+static uint64_t cl_breakcount = 0L;
+
+#ifdef CONFIG_RVFI_DII
+int rvfi_client_fd = 0;
+bool rvfi_debug_output = false;
+static int rvfi_dii_port = 0;
+
+static int rvfi_dii_socket_init(uint16_t port) {
+    int rvfi_listen_fd = qemu_socket(AF_INET, SOCK_STREAM, 0);
+    if (rvfi_listen_fd == -1) {
+        error_report("RVFI-DII failed to create socket on port %d: %s (%d)\n", port, strerror(errno), errno);
+        exit(EXIT_FAILURE);
+    }
+    if (!g_unix_set_fd_nonblocking(rvfi_listen_fd, false, NULL)) {
+        error_report("RVFI-DII failed to set FD nonblocking: %s (%d)\n",
+                     strerror(errno), errno);
+        exit(EXIT_FAILURE);
+    }
+    int reuseaddr = 1;
+    if (setsockopt(rvfi_listen_fd, SOL_SOCKET, SO_REUSEADDR, &reuseaddr, sizeof(int)) == -1) {
+        error_report("RVFI-DII SO_REUSEADDR failed: %s (%d)\n", strerror(errno), errno);
+        exit(EXIT_FAILURE);
+    }
+
+    struct sockaddr_in addr;
+    memset(&addr, 0, sizeof(addr));
+    addr.sin_family = AF_INET;
+    addr.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
+    addr.sin_port = htons(port);
+
+    if (bind(rvfi_listen_fd, (struct sockaddr *)&addr, sizeof(addr)) == -1) {
+        error_report("RVFI-DII bind() failed: %s (%d)\n", strerror(errno), errno);
+        exit(EXIT_FAILURE);
+    }
+
+    if (listen(rvfi_listen_fd, 1) == -1) {
+        error_report("RVFI-DII listen() failed: %s (%d)\n", strerror(errno), errno);
+        exit(EXIT_FAILURE);
+    }
+
+    socklen_t addrlen = sizeof(addr);
+    if (getsockname(rvfi_listen_fd, (struct sockaddr *) &addr, &addrlen) == -1) {
+        error_report("RVFI-DII getsockname() failed: %s (%d)\n", strerror(errno), errno);
+        exit(EXIT_FAILURE);
+    }
+
+    info_report("Listening for remote rvfi_dii connection on port %d.\n", ntohs(addr.sin_port));
+    return rvfi_listen_fd;
+}
+#endif
 
 static int has_defaults = 1;
 static int default_audio = 1;
@@ -871,10 +926,21 @@ static MachineClass *find_default_machine(GSList *machines)
     return default_machineclass;
 }
 
+/* Add a weak hook for CHERI-MIPS version string (needed by cheritest) */
+__attribute__((weak)) void print_cheri_mips_version(void);
+__attribute__((weak)) void print_cheri_mips_version(void) {}
+
 static void version(void)
 {
     printf("QEMU emulator version " QEMU_FULL_VERSION "\n"
            QEMU_COPYRIGHT "\n");
+#ifdef CHERI_UNALIGNED
+    printf("Built with support for unaligned loads/stores\n");
+#endif
+    print_cheri_mips_version();
+#if defined(CONFIG_TCG_LOG_INSTR)
+    printf("Built with instruction logging enabled\n");
+#endif
 }
 
 static void help(int exitcode)
@@ -2821,7 +2887,41 @@ void qmp_x_exit_preconfig(Error **errp)
     if (replay_mode != REPLAY_MODE_NONE) {
         replay_vmstate_init();
     }
+#ifdef CONFIG_RVFI_DII
+    if (rvfi_dii_port) {
+        if (current_machine->maxram_size != 8 * MiB) {
+            error_report("RVFI-DII: maxram_size must be 8 MiB.");
+            exit(EXIT_FAILURE);
+        }
+        int rvfi_listen_fd = rvfi_dii_socket_init(rvfi_dii_port);
+        info_report("Waiting for incoming RVFI socket packets");
+        rvfi_client_fd = accept(rvfi_listen_fd, NULL, NULL);
+        autostart = true;
+        assert(!incoming);
+        object_property_set_bool(OBJECT(current_accel()), "one-insn-per-tb", true, &error_abort);
+    }
+#endif
 
+    if (cl_breakpoint) {
+        CPUState *cs;
+        CPU_FOREACH(cs) {
+            cpu_breakpoint_insert(cs, cl_breakpoint, BP_GDB, NULL);
+        }
+    }
+    if (cl_breakcount) {
+        CPUState *cs;
+        CPU_FOREACH(cs) {
+            cpu_breakcount(cs, cl_breakcount);
+        }
+    }
+#ifdef CONFIG_RVFI_DII
+    if (rvfi_client_fd) {
+        CPUState *cpu;
+        CPU_FOREACH(cpu) {
+            cpu_single_step(cpu, SSTEP_ENABLE | SSTEP_NOIRQ | SSTEP_NOTIMER);
+        }
+    }
+#endif
     if (incoming) {
         Error *local_err = NULL;
         if (strcmp(incoming, "defer") != 0) {
@@ -3537,6 +3637,66 @@ void qemu_init(int argc, char **argv)
                     exit(1);
                 }
                 break;
+            case QEMU_OPTION_breakpoint:
+                cl_breakpoint = strtoull(optarg, NULL, 0);
+                if (cl_breakpoint == 0 || cl_breakpoint == ULLONG_MAX) {
+                    error_report("Invalid breakpoint '%s'", optarg);
+                    exit(1);
+                }
+                break;
+            case QEMU_OPTION_breakcount:
+                cl_breakcount = strtoull(optarg, NULL, 0);
+                if (cl_breakcount == 0 || cl_breakcount == ULLONG_MAX) {
+                    error_report("Invalid break count '%s'", optarg);
+                    exit(1);
+                }
+                break;
+#if defined(CONFIG_TCG_LOG_INSTR)
+            case QEMU_OPTION_cheri_trace_format:
+                if (strcmp(optarg, "text") == 0) {
+                    qemu_log_instr_set_format(QLI_FMT_TEXT);
+                } else if (strcmp(optarg, "cvtrace") == 0) {
+                    qemu_log_instr_set_format(QLI_FMT_CVTRACE);
+                } else {
+                    printf("Invalid choice for cheri-trace-format: '%s'\n", optarg);
+                    exit(1);
+                }
+                break;
+            case QEMU_OPTION_cheri_trace_buffer_size:
+                qemu_log_instr_set_buffer_size(strtoul(optarg, NULL, 0));
+                break;
+#endif /* CONFIG_TCG_LOG_INSTR */
+            case QEMU_OPTION_cheri_c2e_on_unrepresentable:
+                cheri_c2e_on_unrepresentable = true;
+                break;
+            case QEMU_OPTION_cheri_debugger_on_unrepresentable:
+                cheri_debugger_on_unrepresentable = true;
+                break;
+            case QEMU_OPTION_cheri_debugger_on_trap:
+                cheri_debugger_on_trap = true;
+                break;
+#ifdef CONFIG_RVFI_DII
+            case QEMU_OPTION_rvfi_dii_debug:
+                rvfi_debug_output = true;
+                break;
+            case QEMU_OPTION_rvfi_dii_port:
+                rvfi_dii_port = strtoull(optarg, NULL, 0);
+                if (rvfi_dii_port == 0 || rvfi_dii_port > USHRT_MAX) {
+                    error_report("Invalid RVFI-DII port '%s'", optarg);
+                    exit(EXIT_FAILURE);
+                }
+                // Set -M virt and -m 8 Mib
+                opts = qemu_opts_parse_noisily(qemu_find_opts("machine"), "virt", true);
+                if (!opts) {
+                    exit(EXIT_FAILURE);
+                }
+                opts = qemu_opts_parse_noisily(qemu_find_opts("memory"), "8M", true);
+                if (!opts) {
+                    exit(EXIT_FAILURE);
+                }
+                autostart = false;
+                break;
+#endif
             case QEMU_OPTION_icount:
                 icount_opts = qemu_opts_parse_noisily(qemu_find_opts("icount"),
                                                       optarg, true);

@@ -102,12 +102,15 @@ static const VMStateDescription vmstate_hyper = {
         VMSTATE_UINT8_ARRAY(env.hviprio, RISCVCPU, 64),
 
         VMSTATE_UINT64(env.vsstatus, RISCVCPU),
-        VMSTATE_UINTTL(env.vstvec, RISCVCPU),
-        VMSTATE_UINTTL(env.vsepc, RISCVCPU),
         VMSTATE_UINTTL_OR_CAP(env.vstvec, env.vstvecc, RISCVCPU),
         VMSTATE_UINTTL_OR_CAP(env.vsscratch, env.vsscratchc, RISCVCPU),
+        VMSTATE_UINTTL_OR_CAP(env.vsepc, env.vsepcc, RISCVCPU),
         VMSTATE_UINTTL(env.vscause, RISCVCPU),
         VMSTATE_UINTTL(env.vstval, RISCVCPU),
+#ifdef TARGET_CHERI_RISCV_STD_093
+        VMSTATE_UINTTL(env.vstval2, RISCVCPU),
+        VMSTATE_UINTTL(env.stval2_hs, RISCVCPU),
+#endif
         VMSTATE_UINTTL(env.vsatp, RISCVCPU),
         VMSTATE_UINTTL(env.vsiselect, RISCVCPU),
         VMSTATE_UINT64(env.vsie, RISCVCPU),
@@ -169,6 +172,7 @@ static const VMStateDescription vmstate_pointermasking = {
     }
 };
 
+#ifndef TARGET_CHERI
 static bool rv128_needed(void *opaque)
 {
     RISCVCPUClass *mcc = RISCV_CPU_GET_CLASS(opaque);
@@ -188,11 +192,16 @@ static const VMStateDescription vmstate_rv128 = {
         VMSTATE_END_OF_LIST()
     }
 };
+#endif
+
 static bool stid_needed(void *opaque)
 {
     RISCVCPU *cpu = opaque;
     CPURISCVState *env = &cpu->env;
+
+    return riscv_has_stid(env);
 }
+
 static const VMStateDescription vmstate_threadid = {
     .name = "cpu/threadid",
     .version_id = 1,
@@ -204,8 +213,11 @@ static const VMStateDescription vmstate_threadid = {
         VMSTATE_UINTTL_OR_CAP(env.utid, env.utidc, RISCVCPU),
         VMSTATE_UINTTL_OR_CAP(env.vstid, env.vstidc, RISCVCPU),
         VMSTATE_UINTTL_OR_CAP(env.stid_hs, env.stidc_hs, RISCVCPU),
+
         VMSTATE_END_OF_LIST()
+    }
 };
+
 
 #ifdef CONFIG_KVM
 static bool kvmtimer_needed(void *opaque)
@@ -454,6 +466,7 @@ const VMStateDescription vmstate_riscv_cpu = {
         VMSTATE_ALIGN_CAP_ARRAY(env.gpcapregs.decompressed, RISCVCPU, 32),
 #else
         VMSTATE_UINTTL_ARRAY(env.gpr, RISCVCPU, 32),
+#endif
         VMSTATE_UINT64_ARRAY(env.fpr, RISCVCPU, 32),
         VMSTATE_UINT8_ARRAY(env.miprio, RISCVCPU, 64),
         VMSTATE_UINT8_ARRAY(env.siprio, RISCVCPU, 64),
@@ -506,6 +519,7 @@ const VMStateDescription vmstate_riscv_cpu = {
         VMSTATE_UINTTL_ARRAY(env.mhpmeventh_val, RISCVCPU, RV_MAX_MHPMEVENTS),
         VMSTATE_UINTTL_OR_CAP(env.sscratch, env.sscratchc, RISCVCPU),
         VMSTATE_UINTTL_OR_CAP(env.mscratch, env.mscratchc, RISCVCPU),
+        VMSTATE_UINT64(env.mfromhost, RISCVCPU),
         VMSTATE_UINT64(env.mtohost, RISCVCPU),
         VMSTATE_UINT64(env.stimecmp, RISCVCPU),
 
@@ -516,7 +530,9 @@ const VMStateDescription vmstate_riscv_cpu = {
         &vmstate_hyper,
         &vmstate_vector,
         &vmstate_pointermasking,
+#ifndef TARGET_CHERI
         &vmstate_rv128,
+#endif
 #ifdef CONFIG_KVM
         &vmstate_kvmtimer,
 #endif

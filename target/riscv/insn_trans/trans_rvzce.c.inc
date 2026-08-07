@@ -22,12 +22,12 @@
 } while (0)
 
 #define REQUIRE_ZCMP(ctx) do {   \
-    if (!ctx->cfg_ptr->ext_zcmp) \
+    if (!ctx->cfg_ptr->ext_zcmp || pred_capmode(ctx)) \
         return false;            \
 } while (0)
 
 #define REQUIRE_ZCMT(ctx) do {   \
-    if (!ctx->cfg_ptr->ext_zcmt) \
+    if (!ctx->cfg_ptr->ext_zcmt || pred_capmode(ctx)) \
         return false;            \
 } while (0)
 
@@ -168,6 +168,9 @@ static uint32_t decode_push_pop_list(DisasContext *ctx, target_ulong rlist)
 
 static bool gen_pop(DisasContext *ctx, arg_cmpp *a, bool ret, bool ret_val)
 {
+#ifdef TARGET_CHERI
+    return false;
+#else
     REQUIRE_ZCMP(ctx);
 
     uint32_t reg_bitmap = decode_push_pop_list(ctx, a->urlist);
@@ -218,10 +221,14 @@ static bool gen_pop(DisasContext *ctx, arg_cmpp *a, bool ret, bool ret_val)
     }
 
     return true;
+#endif
 }
 
 static bool trans_cm_push(DisasContext *ctx, arg_cm_push *a)
 {
+#ifdef TARGET_CHERI
+    return false;
+#else
     REQUIRE_ZCMP(ctx);
 
     uint32_t reg_bitmap = decode_push_pop_list(ctx, a->urlist);
@@ -252,6 +259,7 @@ static bool trans_cm_push(DisasContext *ctx, arg_cm_push *a)
     gen_set_gpr(ctx, xSP, sp);
 
     return true;
+#endif
 }
 
 static bool trans_cm_pop(DisasContext *ctx, arg_cm_pop *a)

@@ -552,6 +552,7 @@ class Pattern(General):
     def __init__(self, name, lineno, base, fixb, fixm, udfm, fldm, flds, w, p):
         super().__init__(name, lineno, base, fixb, fixm, udfm, fldm, flds, w)
         self.preds = p
+
     def output_decl(self):
         global translate_scope
         global translate_prefix
@@ -575,6 +576,7 @@ class Pattern(General):
             ind2 = str_indent(i + 4)
         else:
             ind2 = ind
+
         # We might have named references in the format that refer to fields
         # in the pattern, or named references in the pattern that refer
         # to fields in the format. This affects whether we extract the fields
@@ -596,17 +598,21 @@ class Pattern(General):
                                 'in pattern'))
         if fmt_refs:
             # pattern fields first
-            self.output_fields(ind, lambda n: 'u.f_' + arg + '.' + n)
+            self.output_fields(ind2, lambda n: 'u.f_' + arg + '.' + n)
             assert not extracted, "dangling fmt refs but it was already extracted"
+
         if not extracted:
-            output(ind, self.base.extract_name(),
+            output(ind2, self.base.extract_name(),
                    '(ctx, &u.f_', arg, ', insn);\n')
+
         if not fmt_refs:
             # pattern fields last
-            self.output_fields(ind, lambda n: 'u.f_' + arg + '.' + n)
+            self.output_fields(ind2, lambda n: 'u.f_' + arg + '.' + n)
 
-        output(ind, 'if (', translate_prefix, '_', self.name,
+        output(ind2, 'if (', translate_prefix, '_', self.name,
                '(ctx, &u.f_', arg, ')) return true;\n')
+        if self.preds:
+            output(ind, '}\n')
 
     # Normal patterns do not have children.
     def build_tree(self):
@@ -1124,6 +1130,7 @@ def parse_generic(lineno, parent_pat, name, toks):
             tt = t[1:]
             preds.append(tt)
             continue
+
         # Pattern of 0s, 1s, dots and dashes indicate required zeros,
         # required ones, or dont-cares.
         if re.fullmatch('[01.-]+', t):

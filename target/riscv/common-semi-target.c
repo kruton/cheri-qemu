@@ -10,20 +10,21 @@
 
 #include "qemu/osdep.h"
 #include "cpu.h"
+#include "helper_utils.h"
 #include "semihosting/common-semi.h"
 
 uint64_t common_semi_arg(CPUState *cs, int argno)
 {
     RISCVCPU *cpu = RISCV_CPU(cs);
     CPURISCVState *env = &cpu->env;
-    return env->gpr[xA0 + argno];
+    return gpr_int_value(env, xA0 + argno);
 }
 
 void common_semi_set_ret(CPUState *cs, uint64_t ret)
 {
     RISCVCPU *cpu = RISCV_CPU(cs);
     CPURISCVState *env = &cpu->env;
-    env->gpr[xA0] = ret;
+    gpr_set_int_value(env, xA0, ret);
 }
 
 bool is_64bit_semihosting(CPUArchState *env)
@@ -40,7 +41,7 @@ uint64_t common_semi_stack_bottom(CPUState *cs)
 {
     RISCVCPU *cpu = RISCV_CPU(cs);
     CPURISCVState *env = &cpu->env;
-    return env->gpr[xSP];
+    return gpr_int_value(env, xSP);
 }
 
 bool common_semi_has_synccache(CPUArchState *env)

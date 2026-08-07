@@ -50,6 +50,24 @@ static inline bool sme_smza_enabled_check(DisasContext *s)
 }
 
 TCGv_i64 clean_data_tbi(DisasContext *s, TCGv_i64 addr);
+TCGv_cap_checked_ptr clean_data_tbi_and_cheri(DisasContext *s, TCGv_i64 addr,
+                                              bool is_load, bool is_store,
+                                              int size, int base_reg,
+                                              bool alternate_base,
+                                              bool ddc_base);
+
+TCGv_cap_checked_ptr gen_mte_and_cheri_check1(DisasContext *s, TCGv_i64 addr,
+                                              bool is_read, bool is_write,
+                                              bool tag_checked, MemOp memop,
+                                              int base_reg, bool alternate_base,
+                                              bool ddc_base);
+TCGv_cap_checked_ptr gen_mte_and_cheri_checkN(DisasContext *s, TCGv_i64 addr,
+                                              bool is_read, bool is_write,
+                                              bool tag_checked, int total_size,
+                                              MemOp single_mop,
+                                              int base_reg, bool alternate_base,
+                                              bool ddc_base);
+
 TCGv_i64 gen_mte_check1(DisasContext *s, TCGv_i64 addr, bool is_write,
                         bool tag_checked, MemOp memop);
 TCGv_i64 gen_mte_checkN(DisasContext *s, TCGv_i64 addr, bool is_write,

@@ -38,41 +38,19 @@
 #include "qemu/log.h"
 #include "cpu.h"
 #include "qemu/main-loop.h"
-#include "exec/exec-all.h"
+#include "exec/cputlb.h"
+#include "exec/translation-block.h"
+#include "exec/page-protection.h"
+#include "exec/tb-flush.h"
 #include "exec/log.h"
 #include "exec/helper-proto.h"
+#include "system/tcg.h"
+
 #include "cheri-helper-utils.h"
 #include "cheri_tagmem.h"
 #ifndef TARGET_CHERI
 #error TARGET_CHERI must be set
 #endif
-
-
-    }
-}
-{
-}
-
-
-
-
-                            .w = true,
-
-};
-
-{
-
-{
-
-
-
-    }
-}
-
-{
-    }
-}
-{
 
 /* Raises an exception if the CSR access is not permitted. */
 static void check_csr_cap_permissions(CPURISCVState *env, uint32_t csrno,
@@ -80,7 +58,7 @@ static void check_csr_cap_permissions(CPURISCVState *env, uint32_t csrno,
                                       riscv_csr_cap_ops *csr_cap_info,
                                       uintptr_t hostpc)
 {
-    RISCVException exc = riscv_csr_accessible(env, csrno, write_access);
+    RISCVException exc = riscv_csrrw_check(env, csrno, write_access);
     if (exc != RISCV_EXCP_NONE && (csr_cap_info->flags & CSR_OP_REQUIRE_CRE) &&
         !riscv_cpu_mode_cre(env)) {
         exc = RISCV_EXCP_ILLEGAL_INST;
@@ -247,98 +225,34 @@ static uint32_t csr_for_cspecialrw(enum CheriSCR scr)
         return CSR_MTIDC;
     }
     assert(false);
+}
+
 void HELPER(cspecialrw)(CPUArchState *env, uint32_t cd, uint32_t cs,
                         uint32_t index)
 {
     uintptr_t _host_return_address = GETPC();
-    // Ensure that env->PCC.cursor is correct:
+    // Ensure that env->pcc.cursor is correct:
     cpu_restore_state(env_cpu(env), _host_return_address);
 
     assert(index <= 31 && "Bug in translator?");
-    enum SCRAccessMode mode = scr_info[index].access;
-    if (mode == SCR_Invalid || (cs != 0 && !scr_info[index].w)) {
-        riscv_raise_exception(env, RISCV_EXCP_ILLEGAL_INST,
-                              _host_return_address);
-    }
-    bool can_access_sysregs = cheri_have_access_sysregs(env);
-    if (scr_needs_asr(mode) && !can_access_sysregs) {
-        raise_cheri_exception(env, CapEx_AccessSystemRegsViolation, 32 + index);
-    }
-    if (scr_min_priv(mode) > env->priv) {
-        raise_cheri_exception(env, CapEx_AccessSystemRegsViolation, 32 + index);
-    }
-    cap_register_t *scr = get_scr(env, index);
+    uint32_t csrno = csr_for_cspecialrw(index);
+    riscv_csr_cap_ops *ops = get_csr_cap_info(csrno);
+    assert(ops != NULL);
+    bool is_write = cs != 0;
+    bool is_read = cd != 0;
+    check_csr_cap_permissions(env, csrno, is_write, ops, GETPC());
+
     // Make a copy of the write value in case cd == cs
     cap_register_t new_val = *get_readonly_capreg(env, cs);
-    if (cd != 0) {
-        assert(scr_info[index].r && "Bug? Should be readable");
-        // For xEPCC we clear the low address bit(s) when reading to match xEPC.
-        // See helper_sret/helper_mret for more context.
-        switch(index) {
-        case CheriSCR_UEPCC:
-        case CheriSCR_SEPCC:
-        case CheriSCR_MEPCC: {
-            cap_register_t legalized = *scr;
-            target_ulong addr = cap_get_cursor(&legalized);
-            addr &= ~(target_ulong)(riscv_has_ext(env, RVC) ? 1 : 3);
-            if (addr != cap_get_cursor(scr)) {
-                warn_report("Clearing low bit(s) of %s (contained an unaligned "
-                            "capability): " PRINT_CAP_FMTSTR,
-                            scr_info[index].name, PRINT_CAP_ARGS(scr));
-                legalized._cr_cursor = addr;
-                if (!cap_is_unsealed(scr)) {
-                    warn_report("Invalidating sealed %s (contained an unaligned "
-                                "capability): " PRINT_CAP_FMTSTR,
-                                scr_info[index].name, PRINT_CAP_ARGS(scr));
-                    legalized.cr_tag = false;
-                }
-            }
-            update_capreg(env, cd, &legalized);
-            break;
-        }
-        default:
-            update_capreg(env, cd, scr);
-            break;
-        }
+    if (is_read) {
+        cap_register_t csr_cap = ops->read(env, ops);
+        writeback_csrrw(env, csr_cap, cd, ops);
     }
-    if (cs != 0) {
-        assert(scr_info[index].w && "Bug? Should be writable");
-#ifdef CONFIG_TCG_LOG_INSTR
-        if (qemu_log_instr_enabled(env)) {
-            qemu_log_instr_extra(env, "  %s <- " PRINT_CAP_FMTSTR "\n",
-                scr_info[index].name, PRINT_CAP_ARGS(&new_val));
-        }
-#endif
-        switch (index) {
-        case CheriSCR_UTCC:
-        case CheriSCR_STCC:
-        case CheriSCR_MTCC: {
-            target_ulong new_tvec = SCR_TO_PROGRAM_COUNTER(env, &new_val);
-            target_ulong new_mode = new_tvec & 3;
-            /* The low two bits encode the mode, but only 0 and 1 are valid. */
-            if (new_mode > 1) {
-                /* Invalid mode, keep the old one. */
-                new_tvec &= ~(target_ulong)3;
-                new_tvec |= SCR_TO_PROGRAM_COUNTER(env, scr) & 3;
-            }
-            *scr = new_val;
-            SCR_SET_PROGRAM_COUNTER(env, scr, scr_info[index].name, new_tvec);
-            break;
-        }
-        case CheriSCR_DDC:
-            if (!new_val.cr_tag) {
-                qemu_log_instr_or_mask_msg(
-                    env, CPU_LOG_INT,
-                    "Note: Installed untagged DDC at " TARGET_FMT_lx "\n",
-                    cpu_get_recent_pc(env));
-            }
-            /* fallthrough */
-        default:
-            *scr = new_val;
-            cheri_log_instr_changed_capreg(env, scr_info[index].name, scr);
-        }
+    if (is_write) {
+        ops->write(env, ops, new_val, cap_get_cursor(&new_val), /*clen=*/true);
     }
 }
+#endif /* TARGET_CHERI_RISCV_V9 */
 
 #ifdef DO_CHERI_STATISTICS
 static DEFINE_CHERI_STAT(auipcc);
@@ -398,7 +312,6 @@ void HELPER(amoswap_cap)(CPUArchState *env, uint32_t dest_reg,
 #endif
     }
 
-    uint64_t addr = (uint64_t)(cap_get_cursor(cbp) + (target_long)offset);
     if (!cap_is_in_bounds(cbp, addr, CHERI_CAP_SIZE)) {
         qemu_log_instr_or_mask_msg(
             env, CPU_LOG_INT,
@@ -414,10 +327,10 @@ void HELPER(amoswap_cap)(CPUArchState *env, uint32_t dest_reg,
     }
     // Load the value to store from the register file now in case the
     // load_cap_from_memory call overwrites that register
-    uint64_t loaded_pesbt;
-    uint64_t loaded_cursor;
+    target_ulong loaded_pesbt;
+    target_ulong loaded_cursor;
     bool loaded_tag =
-        load_cap_from_memory_128(env, &loaded_pesbt, &loaded_cursor, addr_reg,
+        load_cap_from_memory_raw(env, &loaded_pesbt, &loaded_cursor, addr_reg,
                                  cbp, addr, _host_return_address, NULL);
     // The store may still trap, so we must only update the dest register after
     // the store succeeded.
@@ -442,7 +355,6 @@ static void lr_c_impl(CPUArchState *env, uint32_t dest_reg, uint32_t auth_reg,
         raise_cheri_exception(env, CapEx_PermitLoadViolation, auth_reg);
     }
 
-    uint64_t addr = (uint64_t)(cap_get_cursor(cbp) + (target_long)offset);
     if (!cap_is_in_bounds(cbp, addr, CHERI_CAP_SIZE)) {
         qemu_log_instr_or_mask_msg(
             env, CPU_LOG_INT,
@@ -466,38 +378,52 @@ static void lr_c_impl(CPUArchState *env, uint32_t dest_reg, uint32_t auth_reg,
     env->load_val = cursor;
     env->load_pesbt = pesbt;
     env->load_tag = tag;
-    log_changed_special_reg(env, "load_res", env->load_res);
-    log_changed_special_reg(env, "load_val", env->load_val);
-    log_changed_special_reg(env, "load_pesbt", env->load_pesbt);
-    log_changed_special_reg(env, "load_tag", (uint64_t)env->load_tag);
+    log_changed_special_reg(env, "load_res", env->load_res, ~0u, 0);
+    log_changed_special_reg(env, "load_val", env->load_val, ~0u, 0);
+    log_changed_special_reg(env, "load_pesbt", env->load_pesbt, ~0u, 0);
+    log_changed_special_reg(env, "load_tag", (target_ulong)env->load_tag, ~0u,
+                            0);
+    /*
+     * For the memory content that we store in cd, we have to read and apply
+     * the fixups.
+     *
+     * TODO: This is inefficient. We may have to review the format of the
+     * internal reservation.
+     *
+     * TODO: Could load_cap_from_memory_raw return an indication if fixups had
+     * to be applied or not?
+     */
     tag = load_cap_from_memory_raw(env, &pesbt, &cursor, auth_reg, cbp, addr,
+                                   _host_return_address, NULL);
     update_compressed_capreg(env, dest_reg, pesbt, tag, cursor);
 }
 
 void HELPER(lr_c_modedep)(CPUArchState *env, uint32_t dest_reg, uint32_t addr_reg)
 {
-    target_long offset = 0;
+    target_ulong addr = get_capreg_cursor(env, addr_reg);
     if (!cheri_in_capmode(env)) {
-        offset = get_capreg_cursor(env, addr_reg);
+        addr = cheri_ddc_relative_addr(env, addr);
         addr_reg = CHERI_EXC_REGNUM_DDC;
     }
-    lr_c_impl(env, dest_reg, addr_reg, offset, GETPC());
+    lr_c_impl(env, dest_reg, addr_reg, addr, GETPC());
 }
 
 void HELPER(lr_c_ddc)(CPUArchState *env, uint32_t dest_reg, uint32_t addr_reg)
 {
-    target_long offset = get_capreg_cursor(env, addr_reg);
-    lr_c_impl(env, dest_reg, CHERI_EXC_REGNUM_DDC, offset, GETPC());
+    target_ulong addr =
+        cheri_ddc_relative_addr(env, get_capreg_cursor(env, addr_reg));
+    lr_c_impl(env, dest_reg, CHERI_EXC_REGNUM_DDC, addr, GETPC());
 }
 
 void HELPER(lr_c_cap)(CPUArchState *env, uint32_t dest_reg, uint32_t addr_reg)
 {
-    lr_c_impl(env, dest_reg, addr_reg, /*offset=*/0, GETPC());
+    target_ulong addr = get_capreg_cursor(env, addr_reg);
+    lr_c_impl(env, dest_reg, addr_reg, addr, GETPC());
 }
 
 // SC returns zero on success, one on failure
 static target_ulong sc_c_impl(CPUArchState *env, uint32_t addr_reg,
-                              uint32_t val_reg, target_ulong offset,
+                              uint32_t val_reg, target_ulong addr,
                               uintptr_t _host_return_address)
 {
     assert(!qemu_tcg_mttcg_enabled() ||
@@ -521,7 +447,6 @@ static target_ulong sc_c_impl(CPUArchState *env, uint32_t addr_reg,
 #endif
     }
 
-    uint64_t addr = (uint64_t)(cap_get_cursor(cbp) + (target_long)offset);
     if (!cap_is_in_bounds(auth_cap, addr, CHERI_CAP_SIZE)) {
         qemu_log_instr_or_mask_msg(
             env, CPU_LOG_INT,
@@ -539,14 +464,11 @@ static target_ulong sc_c_impl(CPUArchState *env, uint32_t addr_reg,
     // an SC to any address, in between an LR and SC pair.
     // We do this regardless of success/failure.
     env->load_res = -1;
-    log_changed_special_reg(env, "load_res", env->load_res);
+    log_changed_special_reg(env, "load_res", env->load_res, ~0u, 0);
     if (addr != expected_addr) {
         goto sc_failed;
     }
-    // FIXME: when it has not. Use load_cap_from_memory_128_raw_tag to get the
-    // real tag, and strip the LOAD_CAP
-    // FIXME: permission to ensure no MMU load faults occur (this is not a real
-    // load).
+
 #ifdef CONFIG_RVFI_DII
     /* The read that is part of the cmpxchg should not be visible in traces. */
     uint32_t old_rmask = env->rvfi_dii_trace.MEM.rvfi_mem_rmask;
@@ -564,21 +486,26 @@ static target_ulong sc_c_impl(CPUArchState *env, uint32_t addr_reg,
     /* The read that is part of the cmpxchg should not be visible in traces. */
     env->rvfi_dii_trace.MEM.rvfi_mem_rmask = old_rmask;
 #endif
+
     /* check that the reservation from the last lr is still valid */
     if (curr_cursor != env->load_val || curr_pesbt != env->load_pesbt ||
         curr_tag != env->load_tag) {
         goto sc_failed;
     }
+
     // This store may still trap, so we should update env->load_res before
     store_cap_to_memory(env, val_reg, addr_reg, addr, _host_return_address);
+
     tcg_debug_assert(env->load_res == -1);
     return 0; // success
+
 sc_failed:
     tcg_debug_assert(env->load_res == -1);
     return 1; // failure
 }
 
-target_ulong HELPER(sc_c_modedep)(CPUArchState *env, uint32_t addr_reg, uint32_t val_reg)
+target_ulong HELPER(sc_c_modedep)(CPUArchState *env, uint32_t addr_reg,
+                                  uint32_t val_reg)
 {
     target_ulong addr = get_capreg_cursor(env, addr_reg);
     if (!cheri_in_capmode(env)) {
@@ -588,16 +515,19 @@ target_ulong HELPER(sc_c_modedep)(CPUArchState *env, uint32_t addr_reg, uint32_t
     return sc_c_impl(env, addr_reg, val_reg, addr, GETPC());
 }
 
-target_ulong HELPER(sc_c_ddc)(CPUArchState *env, uint32_t addr_reg, uint32_t val_reg)
+target_ulong HELPER(sc_c_ddc)(CPUArchState *env, uint32_t addr_reg,
+                              uint32_t val_reg)
 {
-    return sc_c_impl(env, CHERI_EXC_REGNUM_DDC, val_reg, offset, GETPC());
+    target_ulong addr =
+        cheri_ddc_relative_addr(env, get_capreg_cursor(env, addr_reg));
+    return sc_c_impl(env, CHERI_EXC_REGNUM_DDC, val_reg, addr, GETPC());
 }
 
-target_ulong HELPER(sc_c_cap)(CPUArchState *env, uint32_t addr_reg, uint32_t val_reg)
+target_ulong HELPER(sc_c_cap)(CPUArchState *env, uint32_t addr_reg,
+                              uint32_t val_reg)
 {
-    return sc_c_impl(env, addr_reg, val_reg, /*offset=*/0, GETPC());
-
-{
+    target_ulong addr = get_capreg_cursor(env, addr_reg);
+    return sc_c_impl(env, addr_reg, val_reg, addr, GETPC());
 }
 
 target_ulong HELPER(gcmode)(CPUArchState *env, uint32_t cs1)

@@ -8,6 +8,7 @@
 #include "cpu-features.h"
 #include "migration/qemu-file-types.h"
 #include "migration/vmstate.h"
+#include "migration/cpu.h"
 #include "target/arm/gtimer.h"
 #include "hw/arm/machines-qom.h"
 
@@ -1115,6 +1116,15 @@ static int cpu_post_load(void *opaque, int version_id)
     return 0;
 }
 
+#ifdef TARGET_CHERI
+#define VMSTATE_REG_ARRAY VMSTATE_ALIGN_CAP_ARRAY
+#define VMSTATE_REG(reg, ...) VMSTATE_CAP(reg.cap, __VA_ARGS__)
+#else
+#define VMSTATE_REG_ARRAY VMSTATE_UINT64_ARRAY
+#define VMSTATE_REG VMSTATE_UINT64
+#endif
+
+/* clang-format off */
 const VMStateDescription vmstate_arm_cpu = {
     .name = "cpu",
     .version_id = 22,
@@ -1131,7 +1141,8 @@ const VMStateDescription vmstate_arm_cpu = {
         VMSTATE_REG_ARRAY(env.DDCs, ARMCPU, N_BANK_WITH_RESTRICTED),
 #else
         VMSTATE_UINT64_ARRAY(env.xregs, ARMCPU, 32),
-        VMSTATE_UINT64(env.pc, ARMCPU),
+#endif
+        VMSTATE_REG(env.pc, ARMCPU),
         /*
          * If any bits are set in the upper 32 bits of cpsr/pstate,
          * or if the cpu is in aa32 mode and PSTATE.SS is set, then
@@ -1152,8 +1163,8 @@ const VMStateDescription vmstate_arm_cpu = {
         VMSTATE_UINT32_ARRAY(env.banked_r14, ARMCPU, 8),
         VMSTATE_UINT32_ARRAY(env.usr_regs, ARMCPU, 5),
         VMSTATE_UINT32_ARRAY(env.fiq_regs, ARMCPU, 5),
-        VMSTATE_UINT64_ARRAY(env.elr_el, ARMCPU, 4),
-        VMSTATE_UINT64_ARRAY(env.sp_el, ARMCPU, 4),
+        VMSTATE_REG_ARRAY(env.elr_el, ARMCPU, 4),
+        VMSTATE_REG_ARRAY(env.sp_el, ARMCPU, N_BANK_WITH_RESTRICTED),
 #ifdef TARGET_CHERI
         VMSTATE_UINT64_ARRAY(env.CCTLR_el, ARMCPU, 4),
         VMSTATE_REG(env.cid_el0, ARMCPU),

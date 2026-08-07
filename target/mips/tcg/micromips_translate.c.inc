@@ -1212,7 +1212,7 @@ static void gen_pool32axf(CPUMIPSState *env, DisasContext *ctx, int rt, int rs)
         case RDPGPR:
             check_cp0_enabled(ctx);
             check_insn(ctx, ISA_MIPS_R2);
-            gen_load_srsgpr(rs, rt);
+            gen_load_srsgpr(ctx, rs, rt);
             break;
         case WRPGPR:
             check_cp0_enabled(ctx);

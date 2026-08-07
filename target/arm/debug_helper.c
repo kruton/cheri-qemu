@@ -283,7 +283,8 @@ static bool bp_wp_matches(ARMCPU *cpu, int n, bool is_wp)
             access_el = 0;
         }
     } else {
-        uint64_t pc = is_a64(env) ? env->pc : env->regs[15];
+        uint64_t pc =
+            is_a64(env) ? get_aarch_reg_as_x(&env->pc) : env->regs[15];
 
         if (!env->cpu_breakpoint[n] || env->cpu_breakpoint[n]->pc != pc) {
             return false;
@@ -403,7 +404,8 @@ bool arm_debug_check_breakpoint(CPUState *cs)
     /*
      * PC alignment faults have priority over breakpoint exceptions.
      */
-    pc = is_a64(env) ? env->pc : env->regs[15];
+    cheri_debug_assert(pc_is_current(env));
+    pc = cpu_get_recent_pc(env);
     if ((is_a64(env) || !env->thumb) && (pc & 3) != 0) {
         return false;
     }
@@ -486,7 +488,8 @@ void arm_debug_excp_handler(CPUState *cs)
                                   syn_watchpoint(0, 0, wnr));
         }
     } else {
-        uint64_t pc = is_a64(env) ? env->pc : env->regs[15];
+        uint64_t pc =
+            is_a64(env) ? get_aarch_reg_as_x(&env->pc) : env->regs[15];
 
         /*
          * (1) GDB breakpoints should be handled first.

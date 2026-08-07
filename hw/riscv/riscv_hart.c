@@ -69,7 +69,7 @@ static void csr_call(char *cmd, uint64_t cpu_num, int csrno, uint64_t *val)
 
     int ret = RISCV_EXCP_NONE;
     if (strcmp(cmd, "get_csr") == 0) {
-        ret = riscv_csrr(env, csrno, (target_ulong *)val);
+        ret = riscv_csrr(env, csrno, (target_ulong *)val, 0);
     } else if (strcmp(cmd, "set_csr") == 0) {
         ret = riscv_csrrw(env, csrno, NULL, *(target_ulong *)val,
                           MAKE_64BIT_MASK(0, TARGET_LONG_BITS), 0);

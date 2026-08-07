@@ -39,6 +39,7 @@
 #include "system/tcg.h"
 #include "cpu-qom.h"
 #include "cpu.h"
+#include "helper_utils.h"
 
 static void riscv_cpu_add_definition(gpointer data, gpointer user_data)
 {
@@ -262,6 +263,24 @@ static bool reg_is_ulong_integer(CPURISCVState *env, const char *name,
                                  target_ulong *val, bool is_gprh)
 {
     const char * const *reg_names;
+
+#ifdef TARGET_CHERI
+    if (is_gprh) {
+        return false;
+    }
+    reg_names = riscv_int_regnames;
+    for (int i = 0; i < 32; i++) {
+        g_autofree char *reg_name = g_strdup(reg_names[i]);
+        char *reg1 = strtok(reg_name, "/");
+        char *reg2 = strtok(NULL, "/");
+
+        if (strcasecmp(reg1, name) == 0 ||
+            (reg2 && strcasecmp(reg2, name) == 0)) {
+            *val = gpr_int_value(env, i);
+            return true;
+        }
+    }
+#else
     target_ulong *vals;
 
     if (is_gprh) {
@@ -284,6 +303,7 @@ static bool reg_is_ulong_integer(CPURISCVState *env, const char *name,
             return true;
         }
     }
+#endif
 
     return false;
 }

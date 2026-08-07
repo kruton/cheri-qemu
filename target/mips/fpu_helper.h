@@ -41,6 +41,7 @@ static inline void restore_snan_bit_mode(CPUMIPSState *env)
      * no easy cherry-pick to restore the previous behaviour. For now just
      * comment out this call and revisit once we have merged up to 9.2.
      *
+     set_default_nan_mode(!nan2008, &env->active_fpu.fp_status);
      */
     /*
      * For MIPS systems that conform to IEEE754-1985, the (inf,zero,nan)
@@ -59,7 +60,6 @@ static inline void restore_snan_bit_mode(CPUMIPSState *env)
      */
     set_float_default_nan_pattern(nan2008 ? 0b01000000 : 0b00111111,
                                   &env->active_fpu.fp_status);
-
 }
 
 static inline void restore_fp_status(CPUMIPSState *env)

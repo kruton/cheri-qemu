@@ -68,10 +68,20 @@ struct DisasContextBase {
     TranslationBlock *tb;
     vaddr pc_first;
     vaddr pc_next;
+    vaddr pcc_base;
+    vaddr pcc_top;
+    uint32_t cheri_flags;
+    // Keeps track of all compression states a cap could be at TRANSLATATION
+    // TIME. Within a basic block, this is possible to track for any runtime
+    // use.
     uint8_t cap_compression_states[64];
     DisasJumpType is_jmp;
     int num_insns;
     int max_insns;
+#ifdef CONFIG_TCG_LOG_INSTR
+    bool log_instr_enabled;
+    uint8_t printf_used_ptr;
+#endif
     bool plugin_enabled;
     bool fake_insn;
     uint8_t code_mmuidx;

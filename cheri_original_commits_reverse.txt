@@ -1,0 +1,2598 @@
+4555166b90 Add a CHERI target based on MIPS64.
+a78cda6e02 CHERI hardware has 40 bit physical address.
+13db571f5a Add CHERI capability register definitions.
+5c2ee7b433 Add CHERI instructions to built-in disassembler.
+b6ddb8e4c7 Add BERI register dumping extensions for testing.
+dee6534104 Add -bp commandline option for adding breakpoint.
+ee5314b61c Update to new version of CHERI Spec.
+535a4b53a1 Check the PC and Load/Store addresses against PCC and DDC.
+009148e36f Add instruction decoding for CHERI instructions.
+e33207812c Add CHERI CGetPCC instruction support.
+afcff8ea26 Add CHERI CGetPerm instruction support.
+31f0a64121 Add CHERI CGetSealed instruction support.
+98c85ef85b Add CHERI CGetTag instruction support.
+41bbc1b1cb Add CHERI CGetType instruction support.
+5ce7df8138 Add CHERI CGetBase instruction support.
+9c8a8259b6 Add CHERI CGetCause instruction support.
+87e43dba3a Add CHERI CGetLen instruction support.
+a7d772ee91 Add CHERI CGetOffset instruction support.
+0ea9544518 Add CHERI CSetCause instruction support.
+41f78ac153 Add CHERI CSetLen instruction support.
+955a8de6d8 Add CHERI CSetOffset instruction support.
+5924d0dc31 Add CHERI CIncBase instruction support.
+4b107bcf55 Add CHERI CIncOffset instruction support.
+dc3269c006 Add CHERI CAndPerm instruction support.
+d3c77e7946 Add CHERI CFromPtr instruction support.
+deca70a571 Add CHERI CToPtr instruction support.
+a8073966b4 Switch cursor to be offset in the capability register.
+3022fe84a5 Add CHERI CClearTag instruction support.
+b177d7f836 Add CHERI CSetBounds instruction support.
+816813f5f0 Add CHERI CSeal and CUnseal instructions support.
+000a74dc7a Add CHERI CCheckPerm and CCheckType instructions.
+b8ccd9d581  Add CHERI CCall and CReturn instructions.
+3d70beceb9 For CAndPerm instruction sealed flag should not be set.
+f1b5076815 Add CHERI CEQ, CNE, CLT, CLE, CLTU, and CLEU instructions.
+60ea3d5b38 Add CHERI clb, clh, clw, cld, clbu, clhu, and clwu instructions.
+a63fe8ade1 Fix typo in cunseal instruction helper.
+d56ccbe461 Use gen_load_gpr()/gen_store_gpr() instead of cpu_gpr[].
+53382721d6 Add CHERI CClearRegs instruction support.
+df07d0f94a Add CHERI CBTS and CBTU instructions.
+9da826975a Add CHERI CJR and CJALR instructions.
+f8122b515a Fix so the proper PC is saved for C2 exception.
+522a6069c9 Add CHERI L and S flags to TLB entry.
+9a93d16bf6 Add tagged memory emulation for CHERI mips target.
+96abdd218f Add CHERI CLC and CSC instructions.
+41243a28f8 Add CHERI csb, csh, csw, and csd instructions.
+1ae00692c8 Bug fix: correctly cast offset
+8315689242 Use the gxemul format for mtc0_dumpstate.
+f2950a6c78 Bug fix: must compute address from offset and DDC base.
+2d5aa597a2 Bug fix: Set all the permission bits on reset.
+3b67853788 Add CP2 present bit to the config1 register.
+4d45c03e18 Return the cursor and not the offset in helper_cjalr and helper_cjr.
+568aa694de Use the sim format of GPR and Cap Register dumping
+e3b2ffe9ef Fix the opcode values for cl[b,h,w]u
+73ebabd99c EPCC is actually C31.  Use it instead.
+522a4f081b Add CLDU instruction
+6774f48e46 Fix JR/JLAR to work in a sandbox.
+9c31bd1865 Replace pcc_compute_br helper with generated code.
+30c52b2edf Load PCC during the delay slot for CJALR/CJR instructions.
+e5c880d8ed Support the CHERI Coprocessor being disabled.
+99ae5987d4 Bug fixes: Check the correct perms for clc and csc.
+74f7599b45 Bug fix: ignore bit 2 for cscdr instructions.
+754ddec430 Bug fix: Tag violation should return the right cause.
+79cd5d008d Bug fix: Tag in memory should be invalidated if tag is not set.
+644abf2278 Bug fix: Do alignment exceptions properly.
+4e0d267a28 Bug Fix: Should give Coprocessor Unusable exception.
+8f14294e89 Bug fix: Include the Coprocessor number (2) in cause.
+a43f6c9b71 Bug fix: Don't subtract base twice to compute offset in EPCC.
+3676d006b4 Bug fix: Check for overflow with csetbounds.
+17394abe83 Bug fix: The length for PCC checks should be only 4 bytes.
+3eea6a316b Add cllc, cscc, cll[bhwd][u], and csc[bhwd] instructions.
+b47ec84c77 Bug fix: Make sure BD bit gets set in Cause code.
+6a4c59cfd2 Add CEXEQ instruction.
+91c80e81d8 Check the TLB L and S bits on capability loads and stores
+f814d097dc Add instruction and register tracing.
+319fded244 Add memory tracing for clc, csc, cl[bhwd][u], cs[bhwd] instructions.
+e3822f5ab2 Bug fix: mask perms so that seal bit doesn't get set.
+3d75947934 Bug Fix: Give the correct values to be reported in the instruction trace.
+1683d1c7f6 Add Cap register support to instruction tracing.
+b99547c55f Used the ULRI register for thread local storage pointer.
+e79421dcf8 Bug fix: Incorrect value gets written to object type.
+559e758fed Bug fix: The address offset for cld, csd, etc. is 8-bit.
+feb3b7fe55 Bug fix: Don't access the tag until after the first load for cld, clld.
+9be1daae18 Bug fix: The cbts and cbtu instructions using wrong value for PC.
+903caab23c Bug fix: Save the Cap register index in case of exception.
+3ef379b6ce Make instruction tracing a Cheri-only feature.
+dcf52d35be Reduce instruction tracing overhead by coalescing with PC check.
+8eebf7cef1 Reduce memory write tracing overhead by coalescing with tag invalidation.
+34518e99e5 Don't log the extra exception information for INSTR logging.
+cf0fe46453 Clean up of memory read tracing.
+1491fb1c91 Bug fix: Use the correct upper memory limit for the memory size.
+bea400ea7c Reduce instruction tracing overhead by coalescing it with cap store packing.
+dd10c60207 Fix type warnings for Mac OS X build.
+9f3928050a Fix -Werror=format build: l is a long unsigned int so we need %ld
+001e377849 Fix -Werror=comment build
+19d44fec3d Add libcheritrace compatible binary stream tracing.
+22042b8161 Add README.md file.
+c05bc138b4 Must indent by four spaces for fenced blocks.
+6a9db02a4f Force a fenced code block by adding quotes.
+100abeddda Use the Linux/glib approved version of strlcpy().
+2f012c3184 Eliminate a race condition when turning on instruction tracing.
+bb6b29fcd7 Add magic 128-bit capabilities.
+b840475dcc Use 16-byte alignment for 128-bit capabilities.
+5f5668398f Update instruction/memory tracing for 128-bit capabilities.
+8e758a0934 Add representable check and clean up sealed bit check.
+146707533d Use the correct exception code for CP2Ca_INEXACT.
+dbb681069e Disassemble the immediate offset values correctly.
+d348332f2b The size of a capability write is CHERI_CAP_SIZE.
+f8749f26a8 Fix CBTS and CBTU instruction exception address.
+5d1f1bf1d0 Add compile-time option for unaligned accesses.
+dcdd142439 Add instruction decoding for new cap instructions.
+9c557dbe80 Add the CSetBoundsExact (Set Bounds Exactly) instruction.
+d62ecfff9d No (cursor + rt) overflow check with CSetBoundsExact instruction.
+cd63819952 Always enable CP1X instructions for CHERI.
+573065c00f Use new Access System Registers permission.
+aa5910d0ec Consolidation of access system register violation exception codes.
+f9faa83ecc Immediate values now scaled for capability-relative loads and stores.
+8d6dd65150 Add decoding for newisa one- and two-operand instructions.
+554bb2bfa6 Don't consolidate access system registers just yet.
+79133219ac Don't consolidate access system register exceptions just yet.
+8e73dddfcd Add the CHERI CGetPCCSetOffset instruction.
+09b24dbdd3 Correctly decode the revised cap-relative load/store immediate.
+ce930c51bd Bug fix: For the new ISA version of CGetPCC use r16 instead of r11.
+ca633a36f2 Bug Fix: Add missing 'break'.
+03465b922f Bug fix: Add missing break.
+f2bfaee592 Immediate values now scaled for CLC/CSC instructions.
+e202db079a Bug Fix: fix typo with CAndPerm instruction emulation.
+291a5b0fa1 Disassembler changes for new ISA.
+7d2300432a Add "clear registers" instructions to disassembler.
+b1661e175b Add CSub instruction.
+042979d7f1 Turn on and off instruction tracing under program control.
+cc85c197bd Rewrite of load linked and store conditional via cap instructions.
+afe5bbc23e Start/stop instruction tracing in emulation execution.
+75a56ca16c Add capability support to floating point loads and stores.
+40a7fc2823 Add compressed 128-bit capability support.
+f203c7e12b Label the instruction trace memory access correctly.
+133d18b923 Various fixes for compressed capabilities.
+63e0edd346 Account for the special case of e=45 with compressed capabilities.
+816a4cce85 For compressed 128-bit capabilites perms are set to 0x7fff.
+307991b81e Handle the boundary cases for the representable check.
+c6dffdcece Use #elif defined(CHERI_128) rather than #elif CHERI_128.
+cb015c55b0 On a DMA write to memory invalidate CHERI tag(s).
+ee4b3a9df9 The mantissa for both sealed and unsealed caps is the same.
+6014ec4e77 Split capability permissions into perms and uperms.
+4b3b0d85ae With compressed capabilities E and unused bits must be saved.
+347457aac1 Change the is_representable() check to match the Cheri ISA spec.
+3749d95f9c Check if DDC (or PPC) is sealed for loads/stores.
+22027fd076 Add a transition mechanism for the access sys reg permissions/exceptions.
+dcda8d0114 Add missing (R != Amid) test to representable check.
+7c760b57d7 A = base + offset not A = base + increment for is_representable().
+09b76d7d84 Add imprecision check for jump to register instructions.
+54e2b17fbd Check for a precision loss with sealed capabilities.
+62e666604b Add a cycle limit command-line option.
+b82b4eada1 Fix Qemu-Cheri regression for 256-bit.
+df862f3d93 If the tag is not set then just do a regular data store for CSC.
+3f79fd249b Change to use a single privilege bit for 256-bit CHERI (ISAv5).
+ebe6296c1b Remove stray, unmatched '{'.
+b66b366a43 Save all the compressed bits when the tag is invalid on cap load/store.
+ede8acc5a2 If struct cap_register is changed then the TCG must be changed too.
+f1692ec887 Clean up on struct cap_register.
+eef28ffd40 The sealed check in is_representable() no longer causes failures.
+369adb1df2 Enable BadInstr register and BadInstrP register for CHERI.
+a9f64d0a74 For the CHERI CPU the counter register is just incremented per cycle.
+8564cca57d Revert "For the CHERI CPU the counter register is just incremented per cycle."
+a33b3a191c Add the tag bit to the debug capability register output.
+7ab60476fb BadInstr and BadInstrP are different registers and have different indexes.
+ab5220b7b0 Move the DMA CHERI tag invalidation to invalidate_and_set_dirty().
+f657dbe2cf Add virtio 1.0 way of handling virtqueues for virtio over MMIO.
+2942122a0e Add a virtio over MMIO device for CHERI-malta.
+db7253d293 Disable compact branch instructions in disassembler.
+3330393bba For 128-bit CSetBounds check and make result capability representable.
+4b544407a6 For 128-bit CSetBounds make the result base representable.
+dbc013c2e9 Some clean-up of the CHERI permission bits for 128-bit.
+1a25b38596 Bug fix: The representable check should used the correct increment.
+88f49c2e5e Bug Fix: representable check needs to check both B and T.
+c7df68a536 Move the logging of registers after the execution step.
+d712a8b21b Revert 1a25b38.  The increment should be cb.offset + rt.
+43ab4c933a Update CToPtr to implement experimental new ISA spec.
+002ad9035e Add an alternate method of doing the is_representable() check.
+ea2453d54b Revert "For 128-bit CSetBounds make the result base representable."
+d60a5b54f9 Fix bug causing a malformed val2 in trace entries.
+6fa9c8e7a6 Fix various build warnings on Linux.
+779758b2ec g_mem_set_vtable() has been deprecated in glib.
+5b5e75415e Make the '-bp' command line option multi-cpu friendly.
+cd20eb5851 Make the tag block allocation multi-cpu safe.
+b500fda6da Bug fix for the CCheckPerm instruction.
+30fd38db1e Bug fix for the CUnseal instruction.
+71b406c3c7 Bug fix for the CGetType instruction.
+1d0b1d2439 Generate exception if cjalr or cjr is used in delay slot.
+ad3454e364 Bug fix: sc and scd were not being check/adjusted by DDC.
+a8db32f95e Make the "-bc" command-line option multi-cpu friendly.
+e42d215389 Implement -cheri-trace-format
+7d1271beb4 Add support for user-space only tracing using special nops
+7b60735c06 Also print ASID in debug output
+0ea90a47f5 Fix handling of "trace off" events when userspace-only tracing is enabled
+fab625c00c Minor simplification of user-only tracing code
+91ba31205e Silence the user-only tracing debug output
+872e2ac6d7 Don't close and reopen the QEMU logfile whenever tracing is suspended
+3215a11805 Print correct PC for trace on/off events
+9f0044d65f Use qemu_log_mask() to simplify code
+22aa977e9a Add support for outputting a debug message using li $zero, 0xface
+0c5b6c7447 FIX rebase errors
+de6c25cc02 User only tracing: correctly handle trace disable/enable on process switch
+5b36eeceb0 Don't write "search pc 1" to the log
+0e503969cc Enable logging of exception cause in cheri traces when the exception is EXT_INTERRUPT
+377694b4c4 Fix binary trace generation bugs that store the tag and sealed bits incorrectly.
+74f5d5de90 cbtu/cbts offsets should be sign-extended
+71c21be529 Avoid using a C99 feature (needed to get it to compile under Linux).
+ab908f7965 Pass the correct number of arguments to cvtrace_dump_cap_store().
+3bc00e144f Generate exception if cbtu or cbts is used in delay slot.
+8660236885 Only do the legacy permission bit clearing for CHERI_128.
+66d79da439 Add mechanism for the host system to trigger Qemu shutdown with MALTA config.
+c3721d6780 Tidy error message when failing to read a debug message trace buffer.
+9c3b1a0579 Invalidate tags for DMA writes in dma_memory_rw().
+4e4eba0e43 Start with a tag aligned address.
+40435d3fd8 cheri_tag_phys_invalidate: Round down by a single capability, not a whole tag block
+0850949caa Don't track duplicate tag bits between upper and lower RAM
+5c078e05e4 Revert "Invalidate tags for DMA writes in dma_memory_rw()."
+ca641ccb0e Set MIPS_HFLAG_BDS* flag if the helper is running in a branch delay slot.
+abd7743388 Fix clang compiler warnings.
+baae745130 Add -cheri-c2e-on-unrepresentable.
+8712918882 Make -cheri-c2e-on-unrepresentable only throw exception if the capability previously had a valid tag.
+24bac72c20 Per Mike's suggestion, change the type of exception thrown with -cheri-c2e-on-unrepresentable from CP2Ca_TAG to CP2Ca_INEXACT.
+25020af753 Update the register inaccessible check to reflect the most recent spec.
+ab2c75604e Remove legacy access permission definitions.
+65cc9fc1b4 We must save/restore the hflags before/after setting the tag.
+578c23dac5 Add some entropy to the icount timer.
+abef7fdd33 Use clock_gettime(CLOCK_VIRTUAL,...) for QEMU_CLOCK_VIRTUAL.
+bbee5bcb76 Fix Magic 128-bit mode build.
+12871eb88c Revert "Use clock_gettime(CLOCK_VIRTUAL,...) for QEMU_CLOCK_VIRTUAL."
+b79c3d9b47 More accurately emulate MIPS Count register.
+12b39eaa9a Add support for a realtime clock.
+bdffe625c8 Add fake FPGA-compatible statcounters support.
+985209e362 Added CNEXEQ instruction.
+36baab75b5 Fixed the numbering of the Access_System_Registers permission bit.
+a521d7aa82 Add built-in dissembler support for CNEXEQ instruction.
+e3b3a094cc CSetBounds should adjust both base and length for imprecise representation.
+d246bba18f new_cursor shouldn't be declared twice.
+e0507fcacb Fix for an MSA instruction in the branch delay slot of JR. (This is a backport of a fix by Brian Campbell that has already been accepted upstream).
+124de16d13 Fix for the case when a branch from the 3D extensions is in the branch delay slot of JR. This patch was originally from Brian Campbell.
+2093f817a2 Add support for examining capability registers via the gdb server.
+78c60868de Add feature descriptions for the "system" register set.
+305b8c557f Support "-name flag -name debug-threads=on" under FreeBSD.
+bc0d547787 Make sure the logfile is flushed when dying due to missing debugger
+0388b12243 Add encodings definitions of new 1.22 ISA encodings.
+a621bc2aaa Add new encoding instructions in cp2 instruction generation step.
+30cb11c4e7 Add implementation for cincoffsetimmediate and csetboundsimmediate.
+bdf6ba48c4 Add implementation for cmove/z/n instructions.
+bffccb357d Add encodings of new instructions to the disassembler.
+662ba4f1c5 Fix encoding of csetbounds/imm cincoffsetimm to match newer spec. Add encoding for instructions in the newer spec.
+88bee539f1 Add unimplemented instructions placeholders.
+a99ddd5b7c Fix encodings of csetbounds/imm cincoffsetimm in disassembler.
+d561028013 Add new instruction encodings to disassembler.
+d0bbed47ad Add cbuildcap basic implementation.
+564d6545d7 Add ccopytype basic implementation.
+b8af474c08 Add ctestsubset implementation.
+b774d289d2 Add CNExEQ instruction implementation.
+da42ca5306 Add implementation for cbez/cbnz instructions.
+f5740514b3 GC some commented out ifdefs.
+8a4e70bd45 Cleanup comments.
+0edd594b42 Fix calls to generate functions for cjr and csetcause with new encoding, previously the wrong value was given as the register number.
+1bc8ccfa69 Make a couple constants unsigned to reduce warnings.
+47ec4253ad Make ASID a uint8_t not a uint_fast8_t.
+0abc227f86 Write the cvtrace magic to a qemu logfile when the logfile is changes without shutting down qemu
+39dfc2f4fa Reset cycle counter when changing log file
+2995352fd8 Fix implementation of cbez and cbnz. Fix extraction of register indexes during translation for ccheckperm. Stub implementation for the ccall selector field.
+41fe3737e2 Fix disassembler matcher for new encodings cgetoffset.
+ee06e56b4e Fix sign-extension in immediates for cincoffsetimmediate and csetboundsimmediate. Remove unused variables.
+d5f26cb42f Add implementation for ccall fast instruction (ccall selector 1).
+40b48767f6 Fix disassembler for ccall with non-zero selectors. Cleanup ccall translation.
+0753364d4b Fix invalid condition check that prevented triggering the Access_CCall_IDC exception in a delay slot.
+6f86d3a9ae Cleanup cbez cbnz translation broken after cleaning up the branch.
+dc781235de Add support for BERI/CHERI Core and Thread ID registers.
+7595d2a87b MaxCoreID is off by one.
+525ec179fd Fix otype after cunseal
+7edf67e047 Make cgettype return -1 on unsealed capabilities
+71c98873b8 Fix rdhwr register 2, now returns the correct value for the cp0 counter.
+86534957b2 Fix clc behaviour when cb does not have Perm_Load_Capability set to match the specificiation.
+482acedd0e Set PCC from KCC also when cp0.status.EXL is set.
+312f74220d Fix cclearregs to prevent registers to be cleared if an exception is raised.
+0f1c245eaa MIPS_DEBUG has been removed
+74ba519f0f Make the statcounters rdhwr work after 2.5.0 merge
+56d2936b31 Move some functions around that ended up inside the ifdef cheri128 postmerge
+b6ac92c2fc Fix compilation of the virtio stuff (probably wrong)
+dea340d6b3 Adjust to function renaming
+17a67d73fd Use mips-softmmu-common.mak to keep future updates
+3df316858d Reduce diff to upstream
+d33ba5e7ec Fix MIPS_HFLAG_TMASK after MIPS_HFLAG_COP2X was shifted by one
+fcba197023 Fix integer-to-pointer warning
+4608f0dbc1 Move doing_statcounters inside TARGET_CHERI
+5075fd3013 Revert addition of virtio-mmio (pull request #13)
+11a0a5e339 Fix compile after merge
+c92aa0e635 Delete the code #if 0 code from a78cda6e0212ccb16711d0dd30c2bb3480b36415
+b65302e6de Also dump changed cp0 ErrCtl register
+d51716475a Fix missing prototype warning on FreeBSD
+e615c1847d Make CheriBSD boot again by changing the default CPU model for TARGET_CHERI
+d849e3cec7 Fix mask for creturn and add ccseal.
+b77f3decfd Stop using the simple representability check that just compresses and decompresses the capability.
+3459357bbd Properly set EPC and EPCC when entering an exception with an unrepresentable PCC.
+47c4486ae1 Make it clear that the 'inc' argument of is_representable is not the increment but the new offset.
+d1402696c8 Add implementation for ccseal.
+977a4022bf Revert "Stop using the simple representability check that just compresses and decompresses the capability."
+2e4251f89a Implement the correct NULL capability representation for 128bit CHERI.
+ce941f46fe Fix bug in the representability check of PCC when raising and exception. Remove debug lines.
+25d7f4fd05 Fix NULL capability implementation to only XOR the exponent to maintain the zero-memory representation. Properly fix bug in PCC representability check during exception handling.
+d905aec83a Perform the representability check on PCC during exception handling only for cheri128.
+efa4e482e4 Fix bug in clc causing the tag bit on the loaded capability to disappear when the permissions on the loaded capability do not include Perm_Load_Capability.
+88d0d174b0 Fix representability check when the representable range underflows and would wrap around 0.
+1b67acc4cb Properly fix 128bit NULL capability representation and compression/decompression of values with exponent > 44.
+00c955ded0 Tidy ifdefs and comments for null capability representation.
+54764144a5 Fix bug preventing proper termination of cheri traces.
+c7eae042bd Correctly set the NULL capability length for 256bit CHERI.
+5cab147f8c Re-enable the full 128bit representability check.
+03be7ba4aa Add new targets cheri256-softmmu, cheri128-softmmu and cheri128magic-softmmu
+70d3f94a6c Print whether we are targeting CHERI128/CHERI256/CHERI128MAGIC in --version
+8dc34320bb Fix endianess of cheri256, cheri128 and cheri128 magic targets
+600ee937d1 Allow changing ABS2008 and NAN2008 bits in fcr31 for the CHERI CPU models
+07cb87be09 Fix #63: Also XOR capability length with -1 for magic128
+beaa314a56 Implement experimental CLC/CSC with a 16-bit immediate and no register offset
+bce2d3688d Add disassembler support for the new clc/csc instructions
+3c694bdb2e Make the big immediate clc/csc work for immediates greater than 11 bits
+00b5fc6187 Add a symbolize-cheri-trace.py file to add symbol names to a text trace
+ef5859fe80 Fix a bunch of printf() format warnings
+068688a531 Silence an unused function warning
+3bcc36e410 Include the statcounters HWREna bits for TARGET_CHERI in mtc0 $7
+f8f9b54340 Fix handling of BERI statcounters (now they check HWREna)
+becc8ded5e Fix unused function warning for magic128
+53c34067e9 Esure that the tracing_suspended flags get cleared on CPU reset
+82064edd63 Fix installation of symbolize-cheri-trace.py
+c9dee047df Implement CReadHwr and CWriteHwr (untested)
+393699e786 Implement instruction logging for UserTlsCap and PrivTlsCap
+8f0f3a7093 Use register names when logging changed capregs
+d24bbddb66 Correctly initialize UserTlsCap and PrivTlsCap to NULL
+5892e12b16 Fix the timer interrupt not working as expected
+9f413a83fa Revert "Fix the timer interrupt not working as expected"
+b64c23ec71 Fix using the wrong macro name
+fd6f754bc5 Treat writing UINT32_MAX to CP0_Compare as a maximum timer wait (85 seconds)
+2c82f7891d Create Jenkinsfile
+632205d209 Update Jenkinsfile
+65ca8c71e5 Update Jenkinsfile
+44e6a37b4e Fix syntax error in Jenkinsfile
+089878119b Update Jenkinsfile
+9c2b379f53 Update archiveArtifacts step
+df8e80d65b Add some more debug output to trace to debug #68
+0cdb5b8194 Make -DCHERI_UNALIGNED actually work for cld/csd instructions
+5bd479519c Add more interrupt debug output if CPU_LOG_INSTR is enabled
+df1e0f7a6c Fix build with -DCHERI_UNALIGNED defined
+2deb75fbf3 Fix -DCHERI_UNALIGNED
+be8fb56c22 Print whether QEMU supports unaligned loads/stores in `--version`
+a300a391d7 Check for Permit_Store in csc
+1d114bac93 Fix -Wformat warnings on MacOS
+5de70e6caa Check for Permit_Load in clc
+ba3e90f88b Add the checks for Permit_Load/Store to cllc and cscc
+89f8b59c95 Log the value of $pcc on exception entry and return
+4ebe4bd192 Add disassembler support for CRead/WriteHwr
+6f87329118 Fix CRead/WriteHwr sometimes setting the wrong EPC
+4356c62963 Add creg_inaccessible() check to CReadHwr/CWriteHwr
+04b72415ac Handle the new Permit_Unseal permission in CUnseal
+d111f4c6ce Silence a compiler warning
+6d92b091e7 Fix ctestsubset implementation.
+65928faa77 Update the cllc checks to match the spec
+62c99ebcd6 Fix magic128 in-memory capability representation
+cda572ea4c Also archive the rom files needed by QEMU in jenkins
+106d5611e0 Make ctestsubset match specification
+28f233465e Implement CGetAddr
+2c373146a2 Add missing generate_check_access_idc()
+2ebd2b107b Use llvm-symbolizer instead of elftoolchain addr2line for symbolizing traces
+ef4a1889e8 Fix symbolize-trace if llvm-symbolizer outputs (inlined by)
+e92b0f6565 Fix symbolize-cheri-trace.py if there are multiple levels of inlining
+942c158a70 Fix cbuildcap when cd == ct
+55d86731c4 Add a set_max_perms_capability helper to simplify CPU reset
+e47cf147f7 First step towards no longer accessing the cap gpr array directly
+898e53a285 Stop using active_tc.C[N] directly
+8dfc33c825 Don't mirror cap hwreg kr1c and kr2c into the cap GPRs
+e81e9647e6 Stop using get_writable_capreg()
+6a07948a64 Also dump the cap hwregs in cheri_dump_state()
+05f071fb62 Initial support for building QEMU with $c0 == NULL
+104d6acdcf Use $ddc for cb == 0 for various instructions in -DCHERI_C0_NULL mode
+db6f39e875 Also treat register number 0 as $ddc for cclearregs
+581e103e71 Fix the tag not being loaded correctly with CHERI_C0_NULL
+778e3fce89 Fix which operand refers to $ddc in ctoptr (it's ct and not cb)
+df5026ff73 Add some always_inline to functions that should always be inlined
+bc64952e04 mips: introduce internal.h and cleanup cpu.h
+f4aed94705 mips: split cpu_mips_realize_env() out of cpu_mips_init()
+13e0f65224 mips: call cpu_mips_realize_env() from mips_cpu_realizefn()
+e8785ea4ed mips: MIPSCPU model subclasses
+d6534640d3 mips: replace cpu_mips_init() with cpu_generic_init()
+51f39b989f mips: Improve macro parenthesization
+7b8aed8113 Update Jenkinsfile
+5cea5a0b05 Fix +char
+bd9caaa835 Really use the correct flag for creadhwr disasm
+d8048904e8 Add a range check assertion before accessing cheri_tagmem
+6b5c2e7771 Raise a DBE exception when attempting to write a tag to ROM
+0ccdba29fb default to CHERI_CO_IS_NULL
+d51d303b7f Adjust initial CP2 register state to the architecture doc
+3030b598b8 EPCC also needs to be set to be a full address-space capability
+e84f726b2c Use error_report() instead of fprintf()
+5942f17df2 Add missing #include
+90a61c3d39 Stop mirroring KCC,KDC and EPCC into the general purpose register file
+45ef771c89 Revert "Stop mirroring KCC,KDC and EPCC into the general purpose register file"
+0187d825ce Allow passing -DCHERI_C0_NULL=0
+e47a647e02 Revert "Stop mirroring KCC,KDC and EPCC into the general purpose register file"
+a0528ea622 Remove get_default_data_cap()/get_writable_default_data_cap()
+2540522cde Remove CAP_PERMS_LEGACY and set number of hw-perms for CHERI256 to 11
+43432dc62f Dump KDC/KCC/EPCC changes in instruction tracing
+6185382e6f Fix loading+storing untagged values for CHERI256
+d8f2839449 Add a better error message for big/little test failed
+1a7f788ce8 First cut of cheri concentrate format with second higher precision sealing mode.
+82f6d5250e Fix undefined behaviour found by UBSAN (shift by 66)
+a58c7c1f08 Another UBSAN fix: 1 << 44 is zero and not 1ULL << 44
+453befbc93 Print the changed register contents before disassembling the next instr
+f0c7454ad3 Fix undefined behaviour when loading untagged values with nonsense E
+26d2ce1d1f Restore 24 bit otype
+14a8a63b8e Avoid ASAN error that qsort() argument 1 must be non-null
+f512dff19e Fix bounds checks for swr/sdr/lwr/ldr
+567da85b81 tcg: Reduce max TB opcode count
+13ad34de6d Add statistics for number of out of bounds capabilities and by how much
+dbafd2add7 Turn off collecting out-of-bounds statistics by default (it slows down QEMU)
+3f7fc8a4c7 Improve the out-of-bounds statistics printing
+72a22e1d82 Minor improvement to statistics output format
+4ed883c6f7 Build the FreeBSD version of QEMU without LTO
+36618d9fe4 Fixed number of out-of-bounds bytes calculation for negative offsets
+f279669b5f Enable logging of out-of-bounds capabilities with -d instr
+ca0c9d9c48 Log which out-of-bounds pointers are before vs after the allocation
+7060525cf2 Fix stupid typo
+db1edec525 Add a -d bounds flag to log out-of-bounds messages only
+ba284ae416 Also print the ASID for out-of-bounds capabilities
+8b267541f3 Build QEMU with bounds statistics in Jenkins for now
+2b4edcaba3 Fix non stats build
+c0db9b2645 Revert "Build QEMU with bounds statistics in Jenkins for now"
+d806a71085 Dump bounds stats to logfile instead of stderr if possible
+03a251314d Make  `mtc0	$v0, $23` actually terminate QEMU
+fb6320feaa Don't kill QEMU on a typo in the logfile command
+b411a7acf8 Set BadInstr/BadInstrP for CHERI exceptions as well
+8ad8360f09 Don't sign extend BadInstr/BadInstrP register
+2cef916c98 Remove JALX from this switch for CHERI
+424126c73e Hacky workaround for address sanitizer error
+9d745da368 Ensure that the CP0_Cause.BD flag is set correctly for CHERI instructions
+ebddbe0d29 Fix indentation
+47641a8288 Fix various tests by using qemu_system_powerdown_request() instead of cpu_loop_exit_noexc()
+93219229a9 Avoid an infinite loop in exception cases
+8b01595e5e Be less agressive in attempting to fill BadInst
+7c5309ac9a Turn creg_inaccessible into a no-op
+00003b7ac2 Bump PrId revision number for CHERI to 0x2
+e25ac0ecd1 Fix QEMU shutdown on mtc0 $23
+8a3a235e05 git subrepo clone ctsrd:cheri-compressed-cap target/mips/cheri-compressed-cap
+cb2910349d Allow using the cheri_compressed_cap.h header for QEMU256
+50f9a7275a Use the cheri_compressed_cap.h header for compression/decompression
+b6a797804e git subrepo push target/mips/cheri-compressed-cap
+92e9e8f38a git subrepo pull target/mips/cheri-compressed-cap
+1356c0d237 git subrepo pull target/mips/cheri-compressed-cap
+009463ec03 Use /dev/urandom for virtio-random
+11d2dde72e Remove branch delay slot from CCallFast
+ced43f48f1 slirp: Fix spurious error report when sending directly
+75720da760 slirp: correct size computation while concatenating mbuf
+1b6112f4eb Correctly disassemble cgetaddr instruction.
+9343cc089c 9p: linux: Fix a couple Linux assumptions
+8e6bd321ae 9p: Rename 9p-util -> 9p-util-linux
+c8a1908b05 9p: darwin: Handle struct stat(fs) differences
+4a758b0c3a 9p: darwin: Handle struct dirent differences
+202d79bc02 9p: darwin: Ignore O_{NOATIME, DIRECT}
+697fc110b7 9p: darwin: Provide a compatibility definition for XATTR_SIZE_MAX
+0d7c7c6233 9p: darwin: *xattr_nofollow implementations
+f8da0ddd59 9p: darwin: Compatibility for f/l*xattr
+1faab5a631 9p: darwin: Provide a fallback implementation for utimensat
+d8a2b2d57d 9p: darwin: Implement compatibility for mknodat
+195f341e3d 9p: darwin: virtfs-proxy: Implement setuid code for darwin
+002aeff320 9p: darwin: configure: Allow VirtFS on Darwin
+eb5aea6e1f Add CC128_* constants for the permissions
+890ea174f5 Add a LOG_INSTR message if the tag is cleared due to perms
+928453fd46 git subrepo push target/mips/cheri-compressed-cap
+6fc070e03d [Upstream?] Print a message when the forked smbd dies
+6972f656fb Revert "Don't sign extend BadInstr/BadInstrP register". By my reading of MIPS spec. mfc0 should always sign extend, even if it doesn't makes sense.
+9fdd54cef0 Fix compiler warnings
+c05c01be3a Check for cp2 enabled when doing a mtc2
+0ab0c47349 Revert "Check for cp2 enabled when doing a mtc2"
+2be17246b5 [UPSTREAM?] Don't sign-extend BadInstr and BadInstrP in dmfc0
+207b26d76c Don't fail when the cjr/cjalr target register is modified in delay slot
+7174347045 Ensure that EPC and EPCC.offset remain in sync after a mtc0/dmtc0
+2a6024b29f Add a debug-only check that EPCC.offset and CP0_EPC are in sync
+a14740234b Update EPC when writing EPCC
+a7041dd5fa Use offsetof instead of hardcoded constants
+4ca0988d6c Remove JALX case for CHERI
+35b8b2917c Revert "Remove JALX case for CHERI"
+e38b03faae Commit a fixed version of 4ca0988d6cd0b273e9c9bb164c15d36670aded5c
+732124fa6d Avoid the TCG call opcode for helper_log_registers
+268f6f0c04 Inline the instruction logging into helper_ccheck_pc (1.22 times faster!)
+0e9a933c21 Remove one argument from ccheck_pc
+efcfa37766 Check bounds of $pcc when executing jr/jalr instead of on branch execute
+4ac108a17d Silence some debug output
+ade753e61e Add pcc bounds check for conditioal and unconditional MIPS branches
+f1f79781d4 Don't set EPC.offset to ErrorEPC in NMI/SRESET exceptions
+cd4c903e59 Stop using SRESET exception just to exit the current tb in mtc0_debug
+124604e058 Use a better approach to make the mtc0 $23 shutdown work
+44309c154a Never use EPCC.cr_offset
+82bfa81691 Revert "Ensure that EPC and EPCC.offset remain in sync after a mtc0/dmtc0"
+e190a92ed1 Really remove all uses of EPCC.cr_offset
+38a80d4c37 Correct the logic for csetepcc
+22c0d53ffb Correctly set PCC.cr_offset during eret instead of copying the fake EPCC cr_offset
+5735d105d8 Untag the result of cgetepcc if it is not representable
+79d9963b72 Share duplicated code for cbez/cbnz/cbtu/cbts
+9cb1df6ae7 Add a branch bounds check for the CHERI branches
+1b998fd0e5 Add branch target bounds check against $pcc for FPU branch instructions
+68ca29feb5 Also add $pcc branch bounds check to gen_compute_compact_branch()
+ef0a0b5e45 Fix value of EPCC.offset when we reach the end of $pcc on instruction fetch
+d6282286d3 Share code to get the architectural epcc
+7f7b48cc01 Don't require smbd when building QEMU in jenkins
+5d6e3ca2bd Fix test_cp2_csc_tlb for magic128
+c64a6bcf35 Fix typo that caused a condition to be always true
+a6d4e40fc3 Fix non-TARGET_CHERI build
+5d5f2eb984 Print whether unaligned loads/stores are okay also for MIPS64 --version
+b9d62d1f86 Make -bc flag work for MIPS64 version of QEMU
+f5412fcd09 Add -cpu BERI flag
+f0e642069c Support the dumpstate mtc for MIPS64
+0298ab2eb6 Try to get qemu-system-mips64 to work with testsuite
+9beea27b6d Enable statcounters hwrena for BERI cpu model on TARGET_MIPS64
+2be9ac44dd Make more helpers available for MIPS-only
+40d13aea1e Move CHERI helpers to a separate file
+8d0e00f0b5 Move most CHERI translate.c bits to a separate file
+eb9a1f1b04 Fix unreachable code warning
+0cb9df850b Move more code to a separate file
+e88bd5eb9d Clear CapBranchTarget.sealed and CapBranchTarget.otype in CCallFast
+43d2da43a1 Add a cap_get_cursor(cap*) helper
+7b87259994 Use ~UINT64_C(0) instead of -1
+24329c87cd Allow disabling of instruction logging with  --disable-mips-log-instr
+57f9c97658 Enable instruction logging for MIPS as well
+3a36ee8281 Fix compiler warnings
+ab34c716f0 set KX bit set on startup for BERI CPU
+6733a33d9c Remove option to compile without NULL register
+c77fb32a6b Remove option to compile with legacy ACCESS_SYS_REGS checks on GPRs
+3bc418491c Remove creg_inaccessible checks()
+c58f9715fb Use named constants for CCall selectors instead of integers
+27ecea339f Add a print_capreg() helper function
+75659240aa Remove lots of unused PPC.cr_perms variables
+fde3722acf Add a CPU_LOG_GUEST_DEBUG_MSG (-d guest_debug) to enable debug messages
+310691349a Add support for dumping hex and decimal values with the debug helper
+b90c485cea Print n64 register names in LOG_INSTR
+27cdad6256 v2p_addr: take pc argument
+22f313456b Initial support for CLoadTags
+d847841719 Implement a magic memset nop
+d7eb643b6e Initial version of QEMU memset helper
+34378e83e6 Dump the magic memset stores if LOG_INSTR is on
+ba8a7cde0f Attempt to make magic memset work for TLB mapped addresses
+2ef2a98d96 Fix some bugs in magic memset
+24a5090886 Clear tags when doing magic memset
+651e658a8f Make cheri_tag_invalidate() handle more than CAP_SIZE bytes
+2242837fb3 With the latest change CheriBSD boots so turn on magic memset for 0xc....
+f0a97ad09e Check the bounds of $ddc before performing magic memset nop
+3383fd79b4 Adjust to latest QEMU changes
+198ed85efc Avoid repeated virtual to ram_addr_t translations in cheri_tag_invalidate()
+3a4834f65d Fix check for lladdr reset in cheri_tag_invalidate
+5e47b9cc08 Split magic memset stats between user mode and kernel mode
+671971f6a3 Dump writes to tag memory with LOG_INSTR
+1b6b31d945 Print which instruction triggered the assertion in tag_invalidate
+585b3c8014 Add a FIXME comment
+d6fc2f31df Never clear more than one tag when using swl/swr/sdr/sdl
+b9bf27ff06 Initial implementation of magic memmove/memset/bcopy nop
+5d54b80645 Fix format string warning
+c61c8c956f Minor cleanup for memset helper
+a421bb4587 Treat an unknown magic libcall as a nop instead of EXCP_RI
+7815a168ca Improve stats collection for magic nops and turn off by default
+7f6823e721 Speed up magic memset tag invalidation
+703dc23c10 Do a single DDC check for magic memset/memcpy nops
+ca5cbfba7c Avoid byte copies for memcpy where src+dest don't cross a page boundary
+e1b4748c1b Avoid using the memset() slowpath for more cases
+aa77ab7b4a Dump register values when a magic nop fails
+8bfa1fafda Disable magic memcpy fastpath
+7734ab0593 Fix LOG_INSTR memcpy dump output
+05df601224 Fix check_ddc() permissions check
+f672f1fbec Implement 4 byte pattern magic memset
+c6e083028b Write the memset pattern in the target endianess
+d45438143c Fix jenkins
+946ad122ff [UPSTREAM?] Allow more than one directory to be shared using SMB
+f9c5c22871 Disable debug messages on unimplemented magic nop call
+e6e3281ae1 Fix divide by zero when dumping stats
+494973e475 Fix assertion that was being triggered in jenkins
+8638fa445e Fix CSetBoundsImm decoding (do not sign_extend)
+2ea603f023 Correctly disassemble csetbounds (immediate)
+b319ec70e2 Update QEMU CPU revision to 0x3 (ISAv7 + CCall without delay slot)
+25030df90f Allow starting QEMU with -d user-instr to start tracing once we get to init
+04396b264d Add volatile qualifier to TLB_L and TLB_S flags that control whether the currently used TLB entry can be used to load/store capabilities.
+a6a19f5fb2 Remove workaround to erratic TLB_L behaviour and fix TLB_L update.
+616cd0ccd5 Fix tag clearing across page boundaries
+eb037df9ff Fix creash in the magic memcpy helper if src == dest
+6fc57dcd97 Do not dump EPCC when an exception occurs.
+d84827ca57 Export special capability registers via the GDB stub.
+92ea0dbbea Expand tabs to spaces and remove trailing whitespace.
+8a41e05178 Don't kill QEMU on unrepresentable $pcc
+9748bcde8f Add option -cheri-debugger-on-unrepresentable to drop to gdb on unrepresentable caps
+3b6cb3cb82 helper_raise_exception(EXCP_DEBUG) -> helper_raise_exception_debug().
+7d9183402e Use cap_get_cursor() more
+2136682d85 Introduce getters for the individual cap_register_t fields
+a236f746d2 Add code to warn on csub between pointers with different provenance
+8c04f6b77a Use cap_get_top() instead of cr_base + cr_length
+9698044d25 Implement the icount statcounter
+8c4e3bfe20 git subrepo pull (merge) target/mips/cheri-compressed-cap
+7a4037f6bb Add Permit_SetCID permission
+ad1940b6bd Dump otype in the format expected by cheritest
+e3e9dd8a68 Ensure CGetType is correctly sign extended
+264d0dbacd Implement a better way of handling EPC/ErrorEPC
+7b6d06eff4 ErrorEPCC needs to be initialized to a full address space cap
+2796d67b77 Minor simplification
+b342aa15e1 Move function to header so it can be used in other files
+d4d4f23965 Raise an exception when attempting to eret with a sealed epcc
+07001608fb GC dead code
+2a55172da6 Instead of faulting on eret with sealed EPCC don't change it in the handler
+6276e2ccde Use cr_sealed less
+ae1d0351c9 Partial support for otype == -1 -> unsealed
+560580a37a Fixes for otype and sealing
+b7f70ca451 Move initialization of CHERI registers earlier
+dacf06281a Fix wrong assertion
+1975be9bb9 Fix wrong log message
+bc4b1cf612 Remove all uses of cr_sealed
+f757ac0be3 Move some CHERI helper functions out of cpu.h
+6094f84e4d Speed up csc for CHERI256
+8f9ba47e61 Do the same for CSCC so we can remove some helpers
+9dc9dd99bc Also change CSC/CSCC change for CHERI128/CHERI128MAGIC
+8556d1dfef Add ErrorEPCC to gdbstub
+8a52375cf7 Fix bitsize of errorepcc on 128.
+4045561819 Return the right size for errorepcc.
+bd2e1accd6 Implement TLB miss statcounters
+e9ecc57b1e Implement cap write statcounter
+afb4a6c9af Implemented read_cap statcounter
+1c85391b78 Implement CHERI256 clc/cllc as a single helper instead of multiple
+6f5c0c4ce6 Also dump ErrorEPCC at the end of a test run
+13d0092280 Also implement clc/cllc as a single helper for CHERI128/magic128
+71be843b18 Experimental implementation of "sentry" capabilities
+86927ac45d Allow access to ErrorEPCC using HWR 28
+95cf42a8a9 Make sure that logging output for text traces is not emitted in binary traces.
+869e853111 Reorder dump of registers for cvtrace.
+6f710e2302 Fix build after latest changes
+d75250eff8 CHERI: Fix r4k_helper_tlbr
+12ca2a6903 CHERI: CLC: all reads before updates
+a22090be71 Add the three new experimental instruction csetaddr,candaddr,cgetandaddr
+d10e448ad4 User/kernel mode statcounters
+c8294a8083 Undo the change to the TLB size that should not have been committed
+8f97c98d48 cloadtags: enforce alignment as if we had caches
+fd631b0b90 Add support for new 14-bit CC format
+1c68c8fbae Add gitignore for compressed-cap
+5d6c679973 Fix CHERI256 permissions count
+7078bda767 Add a test for capability decompression with random inputs from sail
+18500d8823 Do not add 1 to exponent if IE is true
+4ad667d740 Use an unsigned __int128 for cr_length
+7cc66978ff Use different NULL legnth for CHERI128 and CHERI256
+7347fe1e09 Fix more compiler warnings
+337cd2a7b1 Use 1 << 64 as the CHERI128 NULL top value
+5369801cee Fix compression of NULL for CHERI256
+82b083f167 Add a cap_is_in_bounds() helper and use it
+7108d45149 Simplify use of is_representable()
+53213a4501 Recompress tagged capabilities for the gdbstub
+d10df7797e gdbstub: use compress_256cap() to get the memory bits
+782c1486f8 Correctly decompress 256-bit capabilities
+d900918715 Use cheri-compressed-cap for CHERI256 memory representation encode/decode
+12cb726688 Use unsigned __int128 for cr_length
+6d366444f8 Fix sentry logic to raise CP2Ca_TYPE instead of CP2Ca_SEAL for sentry caps
+b1b5f1fe9c Make unrepresentable EPCC behaviour match sail
+9e6f31321c git subrepo commit (merge) target/mips/cheri-compressed-cap
+e06e7834cc git subrepo push target/mips/cheri-compressed-cap
+720deb5375 Extend the random inputs test to check that recompressing a normalized pesbt works
+d5ef370b73 Rename pesbt to pesbt_xored_for_mem
+28391a0270 Remove an unused constant
+4ba452b5a6 Length 0x1000 needs an internal exponent
+ddaf2c871a Fix tests build
+25d1195b0a Use __int128 in helper_csetbounds
+08bd6bfe52 git subrepo push target/mips/cheri-compressed-cap
+51022613b3 Use Catch2 for the compressed cap unit tests
+4d8647aba7 Remove last use of is_representable
+28b9d9f6b8 Stop using the fast representable check, it doesn't work correclty
+725144680a Add cc128_setbounds() transcribed from sail
+6eb4f0ba2d Implement CSetBounds(Exact) using the new cc128_setbounds() function
+aa77323800 Add a missing memset() that was causing assertion failures
+95806d328a Use the new compression/decompression code with 23-bit format
+0956dd67f8 Make cc128_setbounds() work with the 23-bit format
+2510ad54a5 Correctly set cr_offset in cc128_setbounds()
+3cf4ca0f11 Encode IE=1 and E=0 for 23-bit format too
+deb849074f Fix some compiler warnings
+b37161ef70 Use the correct NULL xor mask for 23-bit mode
+161ccc2313 Add a test for cc128_setbounds() that compares with sail generated inputs
+d0c8dd19a1 Use rebase for git-subrepo
+00cb476443 git subrepo push target/mips/cheri-compressed-cap
+57e7ec057e Check that cc128_setbounds with the same lenght is idempotent
+54139a5230 Fix debug asserting found when running testsuite
+a1c964516a Fix 64-bit wraparound bug in bounds check
+d361580e6b Remove unnecessary assertion
+0e85116327 Fix UBSAN warning
+19ef2e5c6a Fix unused function warning
+eea92a5fbe Post-merge build fixes
+429cf22dda Reduce diff to upstream
+0d1bb522d3 Update CHERI build instructions
+74f27bf9b8 Adjust to upstream build system changes
+ae2278ef7d More adjustment
+545ed5f82b Attempt to fix sc after the way it is implemented changed
+9b1255c041 Don't use a tcg_temp that has been freed
+bd055cbd3c Set MO_ALIGN for cmpxchg operation
+0a21748af6 Do not shift LLAddr by 4 to match BERI
+4d4b0527ee Don't sign-extend BadInstr when reading it with DMFC0
+871047cc63 Fix size calculation for ll/sc $ddc check
+496299f624 Print more debug messages if DEBUG_KERNEL_CP2_VIOLATION is defined
+7d1c7fb867 Raise a RI exception for cincbase and csetlen
+1a1deb7650 Fix missing parens in PRINT_CAP_ARGS() expansion
+783c796cce Use GETPC() for the CHERI helpers and raise_c2_exception
+6970e81525 Change exception handling to always use active_tc.PC (virtual address)
+a842eddf5f set_epc_or_error_epc() expects a vaddr not and offset
+25ba15bb36 Add some gdbstub fixme comments
+f74f97a15d On reset set PCC.offset correctly
+a1653b49d3 Move GEN_CAP_CHECK_PC_AND_LOG_INSTR() after tcg_gen_insn_start()
+1b5831d796 Correctly adjust PCC.offset in cpu_io_recompile()
+f3bebe4d8b Silence some verbose debug messages from makefile
+9f2a4a48ec Add support for specifying a SMB share name
+7ec21fc2ab Make smb shares case sensitive
+ea57407dcc Re-link QEMU if the libslirp.a file changed
+05bc047721 Fix incorrect debug message
+7d976b9362 Avoid false-positive debug warnings
+a109e968d6 Add cc128_get_exponent()
+48e105e0a5 Initial (untested) implementation of crap and cram
+b2839cedfa Fix jenkinsfile
+d85e3988f6 Add some more statcounters for unrepresentable caps and imprecise setbounds
+fa5e32685b Try building QEMU with LTO enabled on FreeBSD
+a0d765d9fa Fix CRAM
+4bad2c2efc Add disassembly for new instrs
+60ba2f5dac Use the new compression format
+d9a0b3511b Fix CRAM instruction
+1fe6f72798 Add tests for CRAM to the setbounds_test
+b261bb8d1f Fix __builtin_clz detection
+6e667b78da Add a CC128_MANTISSA_WIDTH defines and cleanup static_asserts
+8356fb95d3 Use the getCapBoundsBits() logic from sail
+bd50409eb2 Build tests with ubsan
+9cff6ae133 git subrepo commit target/mips/cheri-compressed-cap
+893eca99c3 Fix compiler warning
+49246b6d25 git subrepo commit target/mips/cheri-compressed-cap
+a42ab9979d git subrepo commit target/mips/cheri-compressed-cap
+1856a8f721 git subrepo push target/mips/cheri-compressed-cap subrepo/target/mips/cheri-compressed-cap
+5ee22864ba Fix computation of correction_bot and correction_top
+cb049d1135 Improve setbounds test
+f929ebec42 Add some regression tests to representability checks
+19aa30a861 remove dead store
+db2f2683a1 rebase: fix
+32a201e961 Avoid two xors when checking representability
+e8a1db9da1 copy setbounds logic to compute T/B values
+e7808e4bcd Silence warning
+8904ae83e4 Fix unused variable warning
+9097b2a29d git subrepo pull target/mips/cheri-compressed-cap
+7d80719233 git subrepo push target/mips/cheri-compressed-cap
+c6d4fe539b git subrepo pull target/mips/cheri-compressed-cap
+f6b503b2e6 Fix tons of GCC -Wpedantic warnings
+9b560aa342 Fix one more pedantic warning
+ac1d713f88 git subrepo push target/mips/cheri-compressed-cap
+7d1671819f Fix assertion for non-offset zero csetbounds
+3e01273384 Store _cr_top instead of _cr_length
+e440d438d0 Fix failed representability check due to missing parentheses
+5e6d0bf1ef Clear the tag bit instead of using int_to_cap() for unrepresentable capabilities
+864e3d45db Fix typo in assertion message
+2138ac019a Bump QEMU revision number
+ddef766bdc Add some newlines to interrupt log printout
+2175c4ecc1 When storing a capability, take the faults first
+91b21fe34e Clearing tags is a store, not a load
+6bca58beea CHERI TLB: don't return TLBRET_MATCH when we mean TLBRET_DIRTY
+0363d630f3 Dump IPS on exit
+6efe6426e6 Fix missing enum values
+1842c572c5 Minor improvement to IPS output
+a81db5e865 git subrepo pull target/mips/cheri-compressed-cap
+cab2ad3253 Jenkins: build with smbd
+87f5f49891 Fix CHERI256 128-bit addition in decompress_256cap.
+e082774f5a git subrepo push target/mips/cheri-compressed-cap
+ba0a571840 Fix some compiler warnings
+35ee0439c4 Fix some deprecated decl warnings
+8c079c4040 Update KR1C/KR2C access permissions to latest spec
+af69a3aa9b Make QEMU eret with sealed EPCC behaviour consistent with sail
+b7457c125c Fix magic debug message nop printing more bytes than requested.
+59465a4b2f Reduce diff to upstream
+65887553ba Major speedup for CIncOffset (over 30% quicker execution)
+56a251d7c6 Store cr_cursor instead of cr_offset
+15165a6635 Make cheri_compressed_cap assertion debug-only
+fe40751c27 No longer include the tag bit in CEQ/CNE/CLT/CLTU/CLE/CLEU
+aeb371928b git subrepo pull target/mips/cheri-compressed-cap
+e3230f7e0d git subrepo push target/mips/cheri-compressed-cap
+3d42a5a30c Fix after merge
+9a520acfd8 Fix compilation after merge
+31b6db12d2 Update statistics reporting for internal API change
+c4e68d3fb2 Set the cursor in cap_mark_unrepresentable instead of asserting
+52c6d13d47 Add a debug assertion
+b1c8817fff Don't assert on zero-length csetbounds on zero-length cap.
+5962ec1531 Remove old (broken) special casing of full-address-space caps
+0b53152987 Correct the debug assert
+8a78f333e0 Rename cap_get_length -> cap_get_length64
+a5eec0de1d git subrepo commit target/mips/cheri-compressed-cap
+430877ff53 git subrepo push target/mips/cheri-compressed-cap subrepo/target/mips/cheri-compressed-cap
+fc8f760523 Allow up to 40 bits of Physical addresses for BERI
+091eea9980 Allow 64-bit addresses in "bootloader"
+83899af46b Do not truncate ELF all address to kseg0
+47d701652d Jenkinsfile: Remove unneeded --unified-sdk flag
+bb44db69c3 Generate a misaligned exception even for unpaired SC/SCD
+ffd2f02b0c Include interrupt info when instruction logging is on
+ebb325c431 Merge tag 'v4.2.0-rc2' into qemu-cheri
+01093d2c87 Jenkinsfile: Remove unneeded --unified-sdk flag
+929408f10e Generate a misaligned exception even for unpaired SC/SCD
+ba500dfa70 Include interrupt info when instruction logging is on
+b5ba0ee6c0 Convert an assertion to a warning message
+e7b07e4063 Clean up OOB statistics handling
+34893da96f Add CGetPCCSetAddr and CGetPCCIncOffset
+61170d9f05 Increase CPU revision number
+a7c6de3852 Fix cause register when using cunseal on a sentry cap
+52583f12a9 Unseal sentry capabilities in ERET
+7252852cd3 CHERI: refactor C2/TLB interaction
+1ac298c839 Prevent access to CP0 if Access_System_Registers is missing
+a1b09a077c Stop always clearing ERL
+5d8eb0a66b Update access to CP0 in a trap even when EXL was set
+c5f3471730 Fix exception delivery priority for ASR to match Bluespec
+b56cac8ae9 Jenkins: build on the oldest supported Ubuntu version
+84ccf99f09 Don't call _exit() if the target logfile directory doesn't exist.
+a6cfc8909b Fix logging code after latest merge
+74b2081be3 I seem to have (mis-)merged a bad revision...  Print a warning message and exit() until I have a fix
+a18d80c629 [UPSTREAM][MIPS] Fix ll/sc after 7dd547e5ab6b31e7a0cfc182d3ad131dd55a948f
+ee049db608 Add a helper to dump a value
+74711d7559 Catch up with upstream CP0_LLAddr/lladdr split
+dd54593bd3 Add a DEBUG_VALUE macro to debug TCG values
+ea0b4c7674 Don't invalidate tag bits if SC fails
+26819fd6c2 Revert "I seem to have (mis-)merged a bad revision...  Print a warning message and exit() until I have a fix"
+7d45a93efa Revert "[UPSTREAM][MIPS] Fix ll/sc after 7dd547e5ab6b31e7a0cfc182d3ad131dd55a948f"
+6fef82daf6 [MIPS] Fix ll/sc after 7dd547e5ab6b31e7a0cfc182d3ad131dd55a948f
+cf9e8b3da8 Fix !TARGET_CHERI build
+8217459b7f Fix capability checks for ldpc and lwpc
+0a086e8e8a Ensure all QEMU tcg_gen_ld/st calls check $ddc first
+ce959de120 Use an explicit helper to modify $ddc
+edb6f270c9 Fix !TARGET_CHERI build
+999e250137 Move instruction logging and BERI-specific helpers to a separate file
+71592cadcc Move CHERI tagged memory handling functions to a separate helper
+8112878e11 Fix build without CONFIG_CHERI
+049011e94e Fix unsetting linkedflag
+4702eb10bc Use CPUArchState instead of CPUMIPSState
+72b9487f31 configure: sync cheri and mips cases
+741eab5dba Add a riscv64cheri-softmmu target
+bbde702881 Add an empty insn32-cheri.decode file
+9d4a76f51f Add the encodings from sail as comments
+5c7c9620aa git subrepo pull target/mips/cheri-compressed-cap
+7d717b06d8 Update for latest cheri-compressed-cap
+2701732b32 Rename some otype constants for QEMU
+ea5e5879f4 Various fixes to ebt computation
+a708676847 Fix assertion message
+7bdf7c750a Fix NULL capabilities not having an EBT field
+b11778b0ab Fix incorrect capability LL/SC operations
+c2c9f6ad95 Don't clear the architecturally visible CP0_LLAddr
+e1c4ed6037 git subrepo push target/mips/cheri-compressed-cap
+b3b218e627 Move cheri-compressed-cap to target/cheri-common
+c7d5584a0b Move two more headers to target/cheri-common
+551e6adbe9 [RISCV-CHERI] Introduce capability registers (currently always integers)
+838f661de8 Introduce a new memop type for helpers
+857731b716 Introduce a new TCGv_cap_checked_ptr
+c9dddc3d58 Reduce code duplication for MIPS loads/load-linked
+38468f99bc Reduce duplication for capability store operations
+2fe7546114 Fix inverted encodings for signed/unsigned capability load linked
+77af71c78e Fix CHERI256/magic128 build after cheri-compressed-cap update
+babee58742 Fix incorrect set of permissions for magic128
+afebb0f2b1 Fix reported CHERI256 permissions
+9e33cddb85 Fix magic128
+e2d43c67e8 [UPSTREAM?] Make QEMU binaries relocatable (to fix jenkins)
+99b16a002f More fixes for magic128
+c53727b7a0 Disable MTTCG for CHERI
+c00276a405 Fix non-CHERI compilation
+6be20521ca Major refactoring to move $ddc checks + tag invalidation into common TCG code
+d020a4b5a5 Fix integer stores via capabilities not clearing tags
+f46699e73f Fix MIPS store conditional after latest changes
+b79746a130 Report an error register of zero for $ddc
+cea1dfff5a Fix RMW $ddc check
+fe88d0d2c8 Allow riscv64cheri to compile with $ddc interception
+ed34b3712f Fix !TARGET_CHERI MIPS build
+e4a2e52f90 Move logging of stores from mips/translate.c to common TCG code
+30132a97b9 Move the load dumping support to target-independent TCG code
+a9657d2842 Fix use of unitialized TCG variable in certain load logging cases
+d6de7aa6de [UPSTREAM] Fix detection of 64-bit atomics for Clang
+53d3ed3866 [UPSTREAM] Enable AVX2 code with clang too
+133172be77 Fix tcg-op.c compilation after clang atomic64 fix
+ed99cfee71 Add support for lazy decompression of capability registers
+6081d28393 Don't require capability decompression for CGetAddr
+6b259202bc Only memset decompressed capregs to 0xaa with CONFIG_DEBUG_TCG
+6b039bc88a fixup: cgetaddr
+aedc402cf3 Fix incorrect update of lazy capregs
+528aae76ae Lazyly decompress capability registers on CLC/CLLC
+ab8c800975 Fix RISCV without CHERI build
+896b11b8c1 Fix CLLC always storing to address zero
+6ead64f31f Don't attempt to decompress capabilities for store operations
+43222d1b37 Really avoid decompressing the stored value for CSC
+9a369d580e Use RAM_ADDR_INVALID instead of -1LL
+95c979c6f3 Avoid double translation when reading/writing capabilities
+bbdd986229 Fix logging of clc/csc memory read/writes
+d4fd4b0d10 Do not use pesbt for CHERI256
+7907ad3b20 Initialize tags and DDC for RISCV
+6deb11dc3d [UPSTREAM?] When -singlestep is passed, set cpu->singlestep_enabled
+26f39eb9b9 Initial support for RVFI-DII
+21a7798285 Add --enable-rvfi-dii/disable-rvfi-dii configure flags
+2e93de4010 RVFI-DII: log the rd_addr and rd_wdata fields
+2e82f48687 RVFI-DII: log the pc_wdata, pc_rdata and insn fields
+7fa369b5ff Fix handling of exceptions in RVFI-DII mode
+754a8ff49f Fix disassembly for RVFI-DII
+498575783c Fix target_disas_buf()
+09d9df6bbc Don't allow caching of TCG translation blocks in RVFI-DII mode
+ce0555d135 Log rvfi_dii_{mem_addr,mem_rdata,mem_wdata}
+b3c5f97a8a RVFI-DII: report mem_rmask and mem_wmask
+15bdca19e5 RVFI-DII: memset() RAM to zero on reset
+11ebcbcdbc RVFI-DII: reject memory requests outside the RAM region
+d7b2af3e6d RVFI-DII: Messy approach for validating branch targets
+19692a7ab3 Revert "RVFI-DII: Messy approach for validating branch targets"
+da588296d5 Remove the new memory_region_flush_ram() API.
+65efc3ce4b Use cpu_physical_memory_map/unmap APIs for zeroing RAM
+29bac92878 Flush TCG state after resetting RAM
+8bec753765 Pass the RAM MemoryRegion* to cheri_tag_init()
+74c31bd9b3 Fix unused function warning
+07b028fc52 Add an assertion to cheri_tagmem.c
+78845630ec Save 64bits of capapability register storage
+8bdd2ce2f4 Add Xcheri CPU flag
+e0733fe26b Add initial gdbstub for CHERI-RISCV
+2148ceaa56 Fix -Wformat warning
+bab3794756 Add PCC to RISCV registers
+325d9ef76d Implement the first CHERI-RISCV instruction: CGetPerm
+b0f0e9b4f1 Implement CGetType for CHERI-RISCV
+913d28d659 clang-format op_helper_cheri_common.c
+4b62ca4097 Use a macro in trans_cheri.inc.c to avoid duplicating lots of code
+0f2c4d91fc Implement CGetBase for RISCV
+17ad1b380e Implement CGetLen for RISCV
+dadb14e130 Implement CGetOffset, CGetSealed, CGetTag
+86905f79b8 Implement CGetAddr for RISCV
+92b29b567b Implement CGetFlags for RISCV and MIPS
+12510c8f5a Reduce code duplication in mips/translate.c
+2cd7c1fcff Fix cheri_gdbstub build errors for cheri128magic.
+8eaa2a1d40 Implement CMove and CClearTag for RISCV
+f454391ef0 Add a target-independent helper to raise CHERI exceptions
+d5ea4d90cc Make CAndPerm and CCheckType target-independent
+bba809f4b2 Replace all CP2Ca_* -> CapExc_*
+27caaf661c Use raise_cheri_exception instead of do_raise_c2_exception
+a482753fee Remove obsolete check
+6cb4a81250 Implement CCSeal/CSeal/CUnseal for RISCV
+5d35f044f2 Move CAndPerm to common CHERI instructions
+df5b871837 clang-format op_helper_cheri_common.c
+70aca84bb6 Add my .clang-format config file
+a46fc25019 Fix RISCV compilation without CHERI
+7d4a4bff9b Implement CSetFlags for MIPS and RISCV
+ea80e2fd9a Use CPUArchState instead of CPUMIPSState
+607c7ea542 Move most of the out-of-bounds statistics code to a new header
+524abaf366 Move CIncOffset/CSetOffset/CAndAddr/CSetAddr to common code
+518e49d882 Add CIncOffset/CSetAddr/CSetOffset translation for RISCV
+5412b02b4c Implement CSetOffset in terms of CIncOffset
+b1fed74d97 Fix -Wformat warning
+2cf7414224 Don't enable OOB stats by default
+a8d1912294 Stop special-casing a value of zero in CIncOffset (MIPS)
+71be2f373f Fix capability registers being cleared incorrectly
+cfe48df31f Reset capregs to max permissions on RVFI-DII reset packet
+530d1da0da Write RD RVFI-DII field for capability instructions
+f5dc1df132 Move CSetBounds to common CHERI code
+79e0388994 [CHERI-RISCV] Translate CSetBounds and CSetBoundsExact
+7e8d178754 [CHERI-RISCV] Add CBuildCap and CCopyType
+d90bb8b24c clang-format
+42bad50842 Avoid duplicating some code in trans_cheri.inc.c
+cae44ddf6f [CHERI-RISCV] Add CFromPtr and CToPtr
+a752ec9694 More code de-deduplication
+46a90aacf4 [CHERI-RISCV] Add CSub
+0d4f986c1c [CHERI-RISCV] Add CTestSubset
+e6b03000b3 [CHERI-RISCV] Add CSetBoundsImm and CIncOffsetImm
+6190614eb2 Sort insn32-cheri by opcode
+772dc6c8cf Stop handling $rt == $zero differently for CIncOffset
+a1f8e57e53 RVFI-DII: Log capability cursor on modification
+0ba677653a Register number zero for CTestSubset operand one should refer to DDC
+0fed0b1d23 Add a rvfi-dii-debug command line flag
+a22ad85bcf [CHERI-RISCV] Add special capability registers
+8f8cfee5d1 [CHERI-RISCV] Add (untested) CSpecialRW instruction
+0e7215e09b [RISCV] Reset MEPC/SEPC in riscv_cpu_reset()
+739ed92148 [CHERI-RISCV] Always access env->PCC instead of env->pc
+133f3d3a64 Fix uninitialized variable
+7c6b0f46da Remove old CToPtr subset check
+b602885856 Move CJALR to cheri-common
+fa12a479a5 Fix unused variable
+ddfdfc4b62 Revert accidental change to ctestsubset
+fd99325076 [CHERI-RISCV] Implement CJALR (untested)
+30139346dc [CHERI-RISCV] Add DDC-relative loads
+2bc453471f [CHERI-RISCV] Add DDC-relative stores
+5c8eefc4ee [CHERI-RISCV] Add capability-relative integer loads
+3727e61900 [CHERI-RISCV] Add capability-relative integer stores
+102c53a3a1 Move CLC and CSC helpers from MIPS to cheri-common
+b824c62e63 [CHERI-MIPS] Fix incorrect sign extension in load/store translation
+fd30ac118a [CHERI-RISCV] Add lcddc instruction
+abb4b1bfa9 [CHERI-RISCV] Add support for lccap
+a031043fbc [CHERI-RISCV] Implement scddc/sccap
+db5dc77934 [CHERI-RISCV] Store the capmode flag in DisasContext
+7e12026e00 [CHERI-RISCV] Use capability registers for loads/stores in capmode
+27aab561b2 [CHERI-RISCV] Fix incorrect helper call
+322616a34e [CHERI-RISCV] Add csc/clc
+58f3b101e3 [CHERI-RISCV] CLC/CSC need capmode
+4456332642 Fix CJALR corrupting TCG state
+f3b17c3de4 [CHERI-RISCV] Implement riscv_cpu_synchronize_from_tb()
+9d3b6cf953 [CHERI-RISCV] Fix incorrectly calling rvfi_dii_communicate()
+c24c6301e8 Move instruction logging to target-independent code
+374dc49fe5 Try to reduce overhead of instruction logging
+abe3e4699f Fix instruction logging magic nops
+8b66370bfb Move the helper for PCC-relative capability generation to a shared file
+ccbadff7d1 [CHERI-RISCV] Implement AUIPCC
+4078ee70ba clang-format
+7b559f9213 RVFI-DII: write rd_addr inside update_capreg()
+bee70ecedc Add some initial RISCV CHERI disassembly
+2ca1038fbe More instruction logging for RISCV
+bf14e7ea75 [CHERI-RISCV] Disassemble two-ioperand instructions
+39560a3d0b [CHERI-RISCV] Translate instructions for "tag controller"
+016da25d8f Fix !TARGET_CHERI riscv64 build
+89a162d043 [CHERI-RISCV] Allow delegation of CHERI exceptions
+fd4235b015 Fix RISCV32 build
+c19dea2e45 CHERI: update CP2Ca defines for ISA v7
+9495ee4b00 CHERI: dump tlb via target_ulong
+f0feea1d13 CHERI: Capability Load Generation bits
+153a83b136 [CHERI-RISCV] Enable capability load/store checks
+bb7a92239d [CHERI-RISCV] Write xtval with capability cause and register
+1741837312 Add more RISCV disassembly
+0e5db79d85 [CHERI-RISCV] Fix mret/sret not copying MEPCC/SEPCC attributes
+17368e75ef [CHERI-RISCV] Log (and try to disassemble) the illegal instruction on trap
+099c6965ed Silence -Wformat warnings
+d9e863034e [CHERI-RISCV] CLC/CSC without capmode are LC/SC (DDC-relative)
+7fbe0ce1ab Fix incorrect helper call for scddc
+49c7f292bf Print capability flags in debug output
+b982a3ece2 Add some debug output (LOG_INT) to find out why SEPCC is wrong
+4e3c400c38 Fix comments
+1f6c9de58c [CHERI-RISCV] Log writes to SCRs
+040c835c82 If TCG has marked a capreg as an integer we have to assume NULL pesbt
+d75b6e675e Read and write capabilities in the right order
+3f6a9a9a34 Fill in RVFI-DII fields when loading/storing caps
+908ac489c1 [CHERI-RISCV] Fix lc/sc ignoring immediate argument
+6510ae33ff [NFC] Add cheri_have_access_sysregs(env)
+fdcaf3d8fa Use do_raise_exception instead of helper_raise_exception_debug
+0c70a87976 micro-optimization: don't call tcg_addi for zero values
+f17622a9f9 Cleanup switch added in b982a3ece2a2f846b5848dd54d3a80375208eb2a
+dcc7e3aa0a Avoid architecture-specific ifdefs in cheri-common
+c37b1c6794 Fix CHERI256 debug build
+1560b2c505 Fix RV32 debug build
+bdb60aaa78 [CHERI-RISCV] Restrict access to CSRs without PCC.ASR
+01df19501e Fix OOB access
+0286fa0d3f [CHERI-RISCV] Implement xCCSR registers
+6405691dc3 Improve trap logging to disassemble the faulting instruction
+5731072e0b [CHERI-RISCV] Disassemble most three-operand CHERI instructions
+593c1ed122 Handle address filter (-dfilter flag) for instruction logging
+53c5db4371 [NFC] Add a cheri_in_capmode() helper
+41ee08df63 Add debug output to debug why we are getting an untagged $ddc
+e0c2da0217 Support -dfilter for instruction logging
+fa7caa8626 Fix -Wformat
+f30c302032 More warning fixes
+e15e7ede8c [NFC] clang-format
+9bc9b79b4c When logging memory acccesses with -dfilter also check memory address
+173420f4cd More debug assertions
+fb1f9f9940 Log when tag is cleared due to missing loadcap TLB permission
+2533096149 [CHERI-RISCV] disas: put SCR in the middle
+f6ba1cc465 Fix typo in tagmem debug output
+c5ee65f415 Fix -Wformat
+74df55c6c5 Fix disassembly of CHERI-RISCV stores
+652eace2ca Fix CHERI256 assertions
+61c8e3f2c0 [UPSTREAM] RISCV: get_physical_address should not ignore low bits
+90a6d0b860 Improved debug logging for tag controller
+6e5609c3b8 Refactoring of CHERI cause printing
+7bd69dc00b Log string version of CHERI cause on fault (CPU_INT logging)
+bd4fc828db Update .clang-format
+6f2a968b67 Flush TCG state when chaning instruction logging flag
+db0ac4f437 Fix missing prototypes warning
+34e0ca9ae6 [CHERI-RISCV] Add CRRL/CRAM (and remove old CCheckType/CCheckPerm)
+103ded010b Also dump changed CP0 state after CP0_Cause has been set
+717b7f9130 Remove accidentally copy-pasted lines
+7c74ddc17a Revise Cap Load Gen patch (#82)
+69f11ed141 get_physical_address: Reject access to everything outside the RVFI-DII region
+e28c1d3a3e Fake 1:1 mapping for INST_FETCH in RVFI-DII get_physical_address
+2385f1a63b Be less verbose with -d int
+3b9d0e9bbe Handle MMU_DATA_CAP_STORE and MMU_DATA_CAP_LOAD in riscv raise_mmu_exception
+8c7b5f5aec CSetFlags should only trap on sealed if the tag is also set
+e8af08b1cf [RVFI-DII] Don't store read/write entries in host TLB for ifetch
+6efaacebaf Fix LOG_INSTR when RVFI-DII is enabled
+8d0ba4925e [RVFI-DII] Avoid an unnecessary cpu_memory_rw_debug()
+9129ffa7b1 [NFC] Reduce code duplication using cload_check/cstore_check helpers
+1bfe87a74b [NFC] Add tcg_gen_mov_cap_checked to avoid casts
+7c85f9e151 [CHERI-RISCV] Translate c.jalr/c.jr as c.cjalr/c.cjr
+ce8310d8c9 [CHERI-RISCV] Add capmode versions of the atomic LR/SC instructions
+062aec067f [CHERI-RISCV] Add capmode versions of the atomic RMW instructions
+bd8d69d564 [CHERI-RISCV] Be less verbose with -d int
+2f37553ed9 [CHERI-RISCV] Implement capmode floating point loads/stores
+2e65e30040 [CHERI-RISCV] Fix capability atomic RMW not checking store permission
+80817453f7 Fix !TARGET_CHERI build
+36fca7994b [CHERI-RISCV] Implement (c)amoswap.cap
+acf43f3d01 [CHERI-RISCV] Implement (c)lr.cap and (c)sc.cap
+df167bed93 clang-format
+8f17bc88e6 [CHERI-RISCV] Add LR.{B,H} and SC.{B,H}
+223dae174c [CHERI-MIPS] Fix incorrect AdEL trap on capability loads
+43b3134259 CHERI: set badvaddr when CLG traps
+f350b64efa Add a -cheri-debugger-on-trap command line flag
+a5b2ef2928 [CHERI-RISCV] GDBstub: Fix order of $pcc+ddc
+6506105200 CHERI gdbstub: Report memory representation of capabilities
+9598354239 Do not log text when the trace format is binary.
+c0085cf693 Use cap_disas_host in target_disas_buf.
+934b0d4556 Add NO_READ/WRITE_GLOBALS flag to some CHERI helpers
+34a650627c Fix -Wformat warning
+7534fb90e9 cheri_tagmem.c: Don't assert on capability loads from RAM-ish regions
+e832c164ba [CHERI-RISCV] Rename clc/csc to lc/sc to match [ls][bhwd]
+6a7363d4bf [CHERI-RISCV] Fix some comments
+af52257e09 [UPSTREAM?] RISCV: Read the BIOS start address from the ELF file
+46148c9fd6 [CHERI-RISCV] Log GPR writes with -d instr
+795560ece4 Possible increase performance of isntr logging by adding TCG_CALL_NO_RWG
+894ff8f129 Fix riscv_find_and_load_firmware for RV32
+e6cb76fa7d Factor out duplicated code into a helper
+d11b8dee0b Log writes to special capability registers
+141c865338 Add update_capreg_to_intval() and log GPR writes from GDB
+fd047c0f24 [CHERI-RISCV] More register change logging
+7cd7ae6c3f Log CSR writes
+b3b68bb2be [CHERI RISCV] Fix capmode floating point loads/stores disassembly
+5f650933d4 [CHERI RISCV] Fix formatting
+3800ba72a1 [CHERI RISCV] Honour -dfilter for PC updates and CRAM logging
+e688cd1d37 [CHERI-RISCV] Catch up with upstream addition of H extension
+a172c5dc2d Catch up with upstream documentation format changes
+d79c175182 Catch up with upstream gdbstub changes
+af7f67c7fe Fix mismerge
+643c6ea8f4 Fix (incorrect) PMP violations after cpu_riscv_translate_address_tagmem() change
+7c686c62f8 Remove a duplicate line.
+25f63956cc Fix AdEL being raised instead of AdES
+982bd4f755 Don't check alignment inside cap_check_common
+02c49a9299 Use TCGv_env instead of TCGv_ptr. NFC
+e229c1ddfd Use cpu_transaction_failed in check_tagmem_writable()
+dab24d3449 Use an enum instead of #defines for CHERI permissions
+764f0f468c Check that PC (or PCC.cursor for CHERI-RISCV) was updated before reading it
+3584bda1a7 [CHERI-RISCV] Don't save PC for all CHERI instructions
+26cdb9aa50 Move some CHERI helpers to a separate header
+bfbaba910f Save PC before calling the dumpstate helpers
+5165a28106 [CHERI-MIPS] Use PCC.cursor instead of PC
+66f172d2c0 Improve checks and comment in PCC update helper
+e23dbaa910 Save PCC.cursor before calling cgetpccincoffset helper
+7d4c8646d0 Use MipsExcp enum
+b7aab28e32 A bit more detail for "stale pcc is okay" comment
+f3318b3fc6 Explain that _howmuch_out_of_bounds does not trap
+7f38797ab5 [UPSTREAM?] Fix missing gen_save_pc() before eret
+1ab8018bc3 [CHERI-MIPS] Use cs_base to store pcc.base
+cffff28aaa [CHERI-RISCV] Use cs_base to store pcc.base
+a132177bb9 Reduce number of ifdefs by adding a pcc_base() helper
+190a596f68 [CHERI-RISCV] auipc should return a value relative to pcc.base
+f177ea6dc7 [CHERI-MIPS] Handle pcc.base for MIPSr6 PCREL instructions
+0ceedefd01 [CHERI-MIPS] Use the checked PCC accessors
+04b35743b2 Share exception entry+return code between MIPS and RISCV
+7e22db46af [CHERI-MIPS] Fix missing save_pc before CGetPCC
+bf9f62f8f0 Remove an unncessary #ifdef TARGET_MIPS
+caf6c9900a Assertt that CapBranchTarget is representable
+1ea8bba1cc Fix incorrect condition in cheri_update_pcc_for_exc_return()
+7f142a7fbc Fix handling of eret with sealed caps
+2069eacd60 [CHERI-MIPS] Stop updating pcc->_cr_cursor in ccheck_pc()
+56b852d9ff Refactor instruction logging logic
+d8491a297c Fix flushing TCG on instruction logging change
+489136cc97 Disable verbose debug messages
+0933b56976 [CHERI-MIPS] Move most of ccheck_pc into the translator
+2033ae5dea Fix !TARGET_CHERI build
+1125329597 Fix unused variable warning
+f8ad80d42d Refactor handing of BERI icount statcounters
+0a32382104 [CHERI-MIPS] Update one few icount variable per instruction
+b460dc3264 CHERI: Significant speedup by performing PCC bounds checks during translation
+4563351c7b Check PCC permissions,tag and type using a TB flag instead of a helper
+b734799755 Share some code between MIPS and RISCV to set flags/cs_base/cs_top
+dcfc8beca0 Remove unnecessary diff to upstream
+39e0ed269c Avoid changes to non-CHERI targets using macro hacks
+38bb0e693c Fix typo in comment
+153e0a766b Move a PCC bounds assertion to common CHERI code
+2943df8949 Minor refactoring to share more code
+bb215b033d [CHERI-MIPS] Perform PCC bounds checks for branches in translator
+3fb10fc9cb [CHERI-MIPS] Check register branch (jr/jalr) targets without a helper call
+3ac72dbff6 Avoid JALR/JR dynamic checks if PCC spans the full address space
+da0d6be8f5 Fix setting DISAS_NORETURN for PCC violations
+18251a3558 [CHERI] Cache the bounds of DDC in TCG
+a6ebb28abb Instead of storing DDC.base and DDC.top add a single flags field
+ead3b4b847 [CHERI-MIPS] Avoid some DDC checks if it spans the full address space
+e6c4e314f0 [CHERI-RISCV] Use the new (faster) DDC checks for RISCV
+7c531cbb8f Remove now-unused helpers
+0843bd6637 Fix unused function warning
+fe5beacfbb Fix copy-paste error in comment
+b61e34cb21 Avoid full TLB/page table lookups in cheri_tag_invalidate
+9a6917b82d Add TB_FLAG_PCC_FULL_AS to indicate that PCC spans the full address space
+6e903cfca2 Drop likely/unlikely hints for full addrspace PCC
+7dee1bb6a2 Drop likely/unlikely hints for full addrspace PCC
+da46b9ce99 Use a CheriTagBlock structure instead of uint8_t. NFC
+6f754bc891 Reimplement MAGIC128 using a hash table
+a7e8db4907 Output a warning if MTTCG is enabled
+9d20332e72 Store CHERI tags in each RAMBlock rather than using one global variable
+86f01e9577 Use accessor functions for cheri tag memory blocks. NFC
+ce6b36d002 Use a bitmap for tag memory
+800f207c35 [UPSTREAM] Clarify TLB miss exception strings
+392383e212 Tweak logging for tag stripping cases
+ca894095db Silence an unused function warning
+8c5acb1048 cheri-mips: Raise an MCHECK exception on duplicate TLB entry insertion.
+06eb478c39 [CHERI-RISCV] Implement explicit DDC/capability load-reserved
+3d35f60843 [CHERI-RISCV] Implement explicit DDC/capability store-conditional
+68033ec80f [CHERI-RISCV] Improve consistency of capability amoswap naming
+46cf5419a4 [CHERI-RISCV] Reorder and rename explicit load/store decoding
+f330eedced [CHERI-RISCV] Add missing REQUIRE_EXT(RVA) for capability atomics
+1f728df4f8 [CHERI-RISCV] Fix store conditional of capabilities
+8ed06196af Fix assertion when enabling all debug output
+f38d39dcb7 Disable MTTCG for CHERI-RISCV
+df58dc119d Re-enable SMBv1 ("NT1" revision) with modern Samba
+b16747d2ca Fix building non-RISCV/MIPS targets
+5d97d3e054 [CHERI-RISCV] Add CSealEntry
+05bd951a54 [CHERI-RISCV] Fix address/offset confusion on exception handling paths
+3fdbfbc189 [CHERI-RISCV] Fix exception reporting for 0-is-DDC instructions
+95b9f1296f Start implementing generic cheri instruction tracing interface.
+b79942a14c Move instr logging start/stop helpers to generic implementation.
+882ff83da3 Generalize instruction logging common instruction logging helpers.
+61522f3a10 Move log info structure to generic CPUState.
+a21a28f694 Tentatively refactor core user mode logging.
+404574917e Remove tranlator hook intended to dump changed state.
+8c8daab727 Implment register logging interface.
+eeb006edfb Rename instruction logging ifdefs.
+bbbf22aaa9 Implement instruction logging of memory accesses.
+b247a0b793 Cleanup checks for instruction logging enabled status.
+7f73da2b46 Remove or disable cvtrace everywhere.
+c88008d31c Implement new instruction logging exception interface.
+b7fab4c4fd Implement logging of ASID from targets.
+e568633bba Implement instruction logging output to legacy cvtrace.
+2bee1eeabf Refactor the way trace format is handled.
+6038b6a52e Remove all uses of CPU_LOG_CVTRACE.
+9ebf87aadf Cleanup all leftover functions.
+fe33a281aa Implement -dfilter filtering for instruction logging.
+81cc6be0c8 Add missing helper to log updates to MIPS HI and LO registers.
+b080807e49 Remove unused translator hook tb_in_user_mode.
+823527ba49 Remove debugging output from instruction logging.
+61c0eaacb5 Merge typedefs with struct definitions.
+9699857dd0 Fix byte-order conversion for cvtrace format.
+8182cbd59c Cleanup comments.
+18ed52e945 Use a local constant variable to avoid repeating qemu_log_instr_enabled in translator loop.
+7746e6f816 Move log instruction info to generic CPUState (take 2).
+240d1216d0 Minor fixes to instruction logging in the TCG translator.
+327da5998e Update configure
+9fb7508c1c Move instruction logging helpers to tcg-runtime header.
+4a84bc08cb Fix indentation in log_instr.h
+8c3d3833d4 Remove cpu_log_instr.h header.
+e4cf9dee7c Update instruction logging implementetion description comment.
+ab8b768731 Fix logging of the MIPS ASID.
+767a7af53f Update license headers.
+bd3572d542 Fix instruction logging exception code output for cvtrace format.
+4435a1f19e Fix disassembly during text instruction logging.
+afd3e69bdb Remove RISCV instruction injection disassembly.
+ecaee7c1e6 Update cheri-compressed-cap
+4fd1091acd Fix CONFIG_DEBUG_TCG builds
+b3bccdb2b5 Fix jenkins properties
+74fe7afb4f Fix build
+c057bbba41 Allow building x86 with instruction logging enabled
+4843f2f37c Fix linux build
+a721f3e900 Allow building x86 with instruction logging enabled
+e531fd1d81 Update symbolizer script for current instruction logging format
+3a728538a9 [CHERI-MIPS] Also add the special registers to cap_valid
+a04986ea0a Fix off-by-one in mips_gdb_get_cheri_reg
+47015ed275 Rename xml registers to match GDB
+446dbebdfd riscv: Implement register (GPR, CSR and capability) and instruction logging.
+212d805801 riscv: Implement magic nops to control tracing.
+72ebc69aed Make sure we commit to the log the instruction that disables instruction logging.
+4bd4441ee7 cheri: Rename log_changed_capreg_* variants.
+9f7f84cf38 riscv: Add instruction logging for CSR and CSR registers and exceptions.
+5cbf94d764 Extend implementation of user-only logging.
+0d109cd51a riscv: Replace old extra instruction logging output.
+551fc7c284 riscv: replace more CSR/SCR copies with helper macro.
+fc3d306aee Only enable instruction tracing for targets that support it.
+28babb1c68 Un-break qemu build.
+42bf4383ad git subrepo commit target/cheri-common/cheri-compressed-cap
+b3f5264ec1 git subrepo push target/cheri-common/cheri-compressed-cap subrepo/target/cheri-common/cheri-compressed-cap
+766ad97747 Fix build after updating cheri-compressed-cap
+e474bc0bd1 Fix unused variable warning in release builds
+840bde4d1d Fix magic128 build
+958635656e git subrepo pull target/cheri-common/cheri-compressed-cap
+d375b79282 git subrepo push target/cheri-common/cheri-compressed-cap
+e9c6f747fd Fix fatal error introduced in 840bde4d1d0cc73df39a653d228acfc46d2b47fe
+9e65038213 Add debug assertions that would have found the previous bug earlier
+eacc2ce457 Fix CExEq to also compare cr_flags
+e7bc6ff348 Fix bug in 8c5acb1048137c02c74862791c9e7346ff9e822a
+be8fc6e04a Fix NULL-dereference in gen_log_instr_hilo_update
+088a6a27e3 Fix tests on macos
+8141861533 Fix compilation after merge
+e072cb63cf Fix incorrect register name in instruction logging
+7328f7c86d Change default BIOS name for CHERI
+8317d35a70 Include BBL.bin with the QEMU Jenkins archives
+6743d94d93 Jenkins: don't run QEMU tests yet
+f90db4dd06 Build the cheri_purecap branch of BBL
+e5c57c4f12 Enable 64-bit FPU operations for BERI CPU
+35008777b1 Use (1 << CP0C1_C2) instead of 0x40
+515ec3afe2 Allow running cheritest tests with qemu-system-mips64
+a6eaeb9b00 Jenkins: run the CHERI-MIPS regression tests on every commit
+a07a63b6d9 Jenkins: Set github status for cheritest on the QEMU repo
+e6d5fffbcf Jenkins: don't allocate a new node
+256c4ad2ec Jenkins: Fix cheritest
+826bb93aca Unconditionally seal the cjalr link capability (#109)
+f7ad57932c Update Jenkinsfile
+5341bae4ba Add an abort() to write_misa since it's completely broken
+0594925130 CHERI: Overhaul LL/SC atomics
+9cb3c9eb3c Enable MT ASE for default CHERI CPU
+60b4ce79cb MIPS 5Kf: also assert config3 MT
+7151fa6429 MIPS BERI: enable MT
+83c4127dfb mips_cpu_synchronize_from_tb does not need to clear CP0_LLAddr (#111)
+deaa81c422 RISC-V: Avoid crash on SC
+22252aa744 mips: Fix logging of EntryLo1.
+5c792a5e8e Refactor instruction logging pause/resume.
+4b132ba22d Fix build with instruction logging disabled.
+7bdc6dbbae Cleanup instruction logging subsystem.
+f1cf25c905 Fix bug in stopping instruction tracing from qemu monitor.
+529ad42c00 Fix build on macos
+6bfe3fbee2 Default to enabling support for instruction logging
+14d8aeebbc Fix building aarch64 softmmu target.
+5397bdcb19 riscv: Fix helper_amoswap_cap assertion
+37ea578ff1 Fix CHERI256 build
+9ca6408c11 riscv: plic: Honour source priorities
+577cced74f riscv: plic: Simplify logic in previous commit
+da1c25f406 riscv: plic: Add a couple of mising sifive_plic_update calls
+9b7c982851 Add support for CHERI-RISC-V LC and SC PTE bits.
+ba588023e1 Jenkins: Build on 'linux-baseline' not 'xenial'
+1a63948ed1 Fix jenkins job properties
+da4eaf53fd Jenkinsfile: Shorter github context names
+f16cdc7d1f Fix setbounds_impl assertion
+749cdca755 Fix subrepo to not use Alex's personal alias
+b2e8ad88a9 git subrepo commit target/cheri-common/cheri-compressed-cap
+24c4f92aac git subrepo push target/cheri-common/cheri-compressed-cap subrepo/target/cheri-common/cheri-compressed-cap
+188f7b7467 Add virtio-mmio transports to malta
+8e9561d8a8 Add missing iothread locking to MIPS CP0 helpers
+e73ecb2bed Add CCall2, SMP yield, and Cheri GC registers
+23a76c2b1f Mark <cc>is_representable_cap_exact() inline.
+9e882315ef Consolidate duplicated logic for handling tags on load. (#113)
+90cf5f449f [CHERI-MIPS] raise TLBS/AdES for MMU_DATA_CAP_STORE (#114)
+3df5a16690 git subrepo push target/cheri-common/cheri-compressed-cap
+bce9d4cef9 hw/riscv: Allow 64 bit access to SiFive CLINT
+07afa28cda Jenkinsfile: use junitXmlFiles
+492ee06abf Fix MIPS add.s after 1ace099f2acb952eaaef0ba7725879949a7e4406
+600b8d329a [UPSTREAM] riscv MMU: zero reserved pte bits in ppn
+9863dd39e3 CHERI riscv: fix comment for CHERI hint instructions
+f490199488 symbolize-cheri-trace: addr2line needs output-style
+7f080240a4 CHERI: remove PAGE_SC_TRAP flag
+76b527f3e9 Jenkins: archive firmware files needed to boot x86_64/aarch64 (#119)
+9461c8bc14 Fix compilation after merge
+f7c72b4469 goldfish_rtc: Fix non-atomic read behaviour of TIME_LOW/TIME_HIGH
+a47a287fe8 goldfish_rtc: Add time_high to goldfish_rtc_vmstate and increment version
+a1b9c2e5b1 disas/riscv: cincoffsetimm/csetboundsimm use capability registers
+70eea26e70 disas/riscv: Fix CRRL/CRAM and add CSealEntry
+32f6a8eecd cbuildcap: Use the "bag of bits" when constructing
+cd35dc7102 cbuildcap: require PERM_EXECUTE for sentries
+3812d29bcb cheri-riscv: csetequalexact
+db9702b42d Refactor cap_exactly_equal out to cheri-compressed-cap
+4741e67858 CHERI MIPS: remove cexeq helper in favor of cseqx instead
+cd4044e3e2 MIPS: replace cnexeq helper with in-TCG negation of cseqx
+15e768315b Jenkins: Fix rateLimitBuilds()
+c1a4ca2d45 git subrepo push target/cheri-common/cheri-compressed-cap
+6c4223a89d git subrepo pull target/cheri-common/cheri-compressed-cap
+8476dfbe20 Remove code for handling CSetLen
+a079bc499d Remove code for handling CSetLen
+333101a20d Remove csettype from the dissasembler
+c688577c1a GC old manual instructions
+d1591d5b3b fix typo
+7b6f008214 Recommend cheribuild in the main README
+090dc457ff Implement a new mode for logging instruction traces in a ring buffer.
+a933d19598 Fold RISC-V switch for buffered mode tracing.
+076c7452d8 Only dump new instructions when flushing the instruction log buffer multiple times.
+02f05d974e op_helper: Fix typo in string
+2089716c8b Fix TARGET_ALIGNED_ONLY not being defined for cheri128
+5ec4c609ac Fix fatal error being triggered on unaligned tag invalidate
+658f02c4c1 Change if statement to assert()
+1c1bc39457 Fix bug in CCopyType with sentries
+b94b2c5aa0 Update CCSeal semantics
+9e773fbe5a Return zero for unrepresetable CRRL results
+82fc6e0bc6 CToPtr: stop inverting the results if cs2.base > cs1.cursor
+e558bcf535 RISC-V: Correctly mask the low bit(s) of xEPC on read
+1507c06388 Make RVFI output a bit less spammy
+42c1638047 CBuildCap: raise a length error for for base > top
+8d4d8296fe CBuildCap: raise an exception when reserved bits are set
+a026007b7e RVFI-DII: Fix missing mem_wdata reporting for capability stores
+cb2dbca864 RVFI-DII: also fill in the rvfi_dii_pc_rdata field
+5a36a4043d [UPSTREAM?] Report SXL and UXL in mstatus
+4a95923ebb Report 'X' bit in misa when CHERI support is present
+9adb69777a [UPSTREAM] Report the UXL value in sstatus
+ee974ce800 Zero most fields in CPURISCVState on TestRIG reset
+5c2d4c0511 Stop writing cap_cause+cap_index to xCCSR
+24b6201526 Fix debug assertion
+ac46ca2f84 [CHERI-RISC-V] Fix CJALR bounds check
+3669f4936d Avoid unused variable when building RV32
+c218687c53 Clear the low bit(s) of xEPCC when reading
+24cf909228 [RISC-V] Add bounds check to taken branches
+0f0b9d6d67 Match sail for cgetlen when top < base
+c32b9e9a8f target/riscv: Fix definition of MSTATUS_TW and MSTATUS_TSR
+675958177f [UPSTREAM?] Ignore writes to hypervisor mstatus bits when disabled
+6d8cc81a47 Add support for reporting version 2 RVFI-DII traces
+55d3249452 Fix missing reporting of CHERI register updates
+a3a6f95458 Move helper_log_value from MIPS to target independent code
+209e965cb0 Use stores of the right size when updating RVFI DII state
+6ff0b47bf8 RVFI-DII: report IXL
+d2d8d0b19c Improve RVFI-DII debug output
+afb1fac112 RVFI-DII: print whether the instruction was a trap in the debug output
+3dced0620b RVFI-DII: fix memory data packet layout
+3105c4c5e7 RVFI-DII: Fix reporting of capability memory loads/stores
+f44186cb22 RISC-V: Add missing PCC bounds check for jalr
+9aa9c6828f GC unused gen_rvfi_dii_validate_jump() macro
+a51f9d313a Rename PERMIT_CCALL to PERMIT_CINVOKE
+04740a549d Add an implementation of CInvoke
+1c04dce15f Move CINVOKE_DATA_REGNUM to the cheri-archspecific-early.h header
+4893ffbee4 Fix RV32 RVFI-DII build
+df4f99bea1 Remove unnecessary helper_cjalr return value
+b8c5d73f72 Remove unnecessary helper_cinvoke return value
+0897c1bde4 Clean up some stale CCall comments
+2803abf439 Use the cheri-common helper_cinvoke for MIPS
+8da4eeed47 Move updating the next PCC to cher-archspecific.h
+0fdd6a4981 Fix register number reported on missing PERM_CINVOKE
+5a3d429f98 git subrepo pull target/cheri-common/cheri-compressed-cap
+c357c6f908 Update slirp to a version that has the smbd zombie issue fixed
+7e0bc5488f Revert "Update slirp to a version that has the smbd zombie issue fixed"
+434b132087 Jenkinsfile: Use new BBL job rather than building it here
+24821ef236 Jenkinsfile: Separate out artifact archiving to its own stage
+9778718d48 Jenkinsfile: Trigger on BBL builds
+50077b7ae7 Jenkinsfile: Perform Linux and FreeBSD builds in parallel
+77090afdf9 Jenkinsfile: Rename target parameter to os for clarity
+fb876a5a68 Jenkinsfile: Only archive artifacts for default branches
+c7efdf3639 Jenkinsfile: Hopefully un-break running cheritest in PRs
+e2b6cbadb1 Fix setting TB_FLAG_PCC_FULL_AS
+b3bf141c23 Revert "[UPSTREAM?] Make QEMU binaries relocatable (to fix jenkins)"
+eee328e0c4 Add CHERI files to the meson build system and fix compilation after merge
+b13a9affed Fix build after merge
+517da1595f Try to fix the berkeley-testfloat-3 build with clang
+008f7ac4ef Fix TARGET_CHERI build
+28272f8fec Correctly disable MTTCG for CHERI targets
+b2b0f0bf4e Make -bp and -bc options always available
+2b0d8a9710 Fix instruction logging initialization for MIPS targets
+4f569de083 Try to fix virtfs-proxy-helper build
+ecffc937a0 target/riscv: Reduce duplicated code in trans_rvh.c.inc
+6d16ce02ff target/riscv: Call check_access() before tcg_temp_new()
+9a9443aaea [CHERI-RISCV] Update the new hypervisor load/store instructions
+c143a7edb1 riscv: Update comments post-merge
+b1cf1349fe Cache the tag memory buffer in the QEMU iotlb
+c049d471cc Handle TLB_WATCHPOINT correctly for MMU_DATA_CAP_STORE
+aa64bc6170 Avoid a few more branches in cheri_invalidate_tags()
+af8413c4f6 Use a magic constant for ALL_ZERO_TAGBLK instead of a global
+e498b3e36f Use an output parameter instead of a boolean return value
+7fcf948a19 Correctly invalidate the TCG TLB when allocating a new tag block
+474eff94a2 Fix trans_hsv* using gen_hlv instead of gen_hsv
+e5acf0361c CHERI-MIPS: Change CBEZ/CBNZ to only compare the address
+6119e26f43 Bump CHERI_PROCESSOR_REVISION_COUNTER
+647153c36b Update libslirp to unbreak networking on macOS hosts
+cfb866bb1f Rename cheri128(magic) targets to mips64cheri128(magic)
+bf7986fb25 meson: Propagate gnutls dependency
+8d91f4d817 util: Extract flush_icache_range to cacheflush.c
+0984a906dd tcg: Do not flush icache for interpreter
+694cd28942 util: Enhance flush_icache_range with separate data pointer
+b2260baa08 util: Specialize flush_idcache_range for aarch64
+0414ae2e6e tcg: Move tcg prologue pointer out of TCGContext
+520b0722a0 tcg: Move tcg epilogue pointer out of TCGContext
+39d912dd2d tcg: Add in_code_gen_buffer
+2dcf777d4e tcg: Introduce tcg_splitwx_to_{rx,rw}
+24bb731b56 tcg: Adjust TCGLabel for const
+ca186b89e5 tcg: Adjust tcg_out_call for const
+2407e749f2 tcg: Adjust tcg_out_label for const
+1c20150272 tcg: Adjust tcg_register_jit for const
+f8a5301e27 tcg: Adjust tb_target_set_jmp_target for split-wx
+8c96bcb72b tcg: Make DisasContextBase.tb const
+90fc8f9a27 tcg: Make tb arg to synchronize_from_tb const
+d85fc10141 tcg: Use Error with alloc_code_gen_buffer
+a94a09d5fb tcg: Add --accel tcg,split-wx property
+c6c7f67a7e accel/tcg: Support split-wx for linux with memfd
+23d4c19298 accel/tcg: Support split-wx for darwin/iOS with vm_remap
+3834c11307 tcg: Return the TB pointer from the rx region from exit_tb
+0d8184f5f8 tcg/i386: Support split-wx code generation
+6bb18cdf93 tcg/aarch64: Use B not BL for tcg_out_goto_long
+c7c054ebdb tcg/aarch64: Support split-wx code generation
+45d39edfec disas: Push const down through host disassembly
+ea4fdc15fe tcg/tci: Push const down through bytecode reading
+5f55ad81d2 tcg: Introduce tcg_tbrel_diff
+061a980a31 tcg/ppc: Use tcg_tbrel_diff
+9549655621 tcg/ppc: Use tcg_out_mem_long to reset TCG_REG_TB
+386cd9fb5f tcg/ppc: Support split-wx code generation
+954cd0ce25 tcg/sparc: Use tcg_tbrel_diff
+1455e7045c tcg/sparc: Support split-wx code generation
+d4394733b6 tcg/s390: Use tcg_tbrel_diff
+dcd9c4a436 tcg/s390: Support split-wx code generation
+19828cf97e tcg/riscv: Fix branch range checks
+89858b3ed3 tcg/riscv: Remove branch-over-branch fallback
+3b2381e048 tcg/riscv: Support split-wx code generation
+e633923fbc accel/tcg: Add mips support to alloc_code_gen_buffer_splitwx_memfd
+a88dca95e8 tcg/mips: Do not assert on relocation overflow
+8a401c9f3f tcg/mips: Support split-wx code generation
+d9bf20188a tcg/arm: Support split-wx code generation
+cedad3051c tcg: Remove TCG_TARGET_SUPPORT_MIRROR
+05d791d11e tcg: Constify tcg_code_gen_epilogue
+25034854c2 tcg: Constify TCGLabelQemuLdst.raddr
+74f4c96c82 tcg: Toggle page execution for Apple Silicon
+b096decbfb meson: Propagate gnutls dependency to migration
+69a108769d Add workaround for mprotect(PROT_NONE) on macOS 12.2 on Apple Silicon
+be4c3e0008 git subrepo push target/cheri-common/cheri-compressed-cap
+23542fd653 Fix comment for CGetFlags.
+2dda210ff4 git subrepo pull target/cheri-common/cheri-compressed-cap
+c1dd695da3 Reuse compressed lib for set_max_perms_capability
+2030e70832 Remove use of EBT in cheri utils
+6da2a6c95b Use encapsulated wrappers to modify cap fields
+0c0d9a9474 Delete binary that was accidentally committed
+67d2ae3538 CHERI-RISCV: TRANSLATE_CGET -> TRANSLATE_INT_CAP
+c393c38fb1 CHERI-RISC-V CLoadTags support
+3016ccd188 git subrepo pull target/cheri-common/cheri-compressed-cap
+cc65c965fd Provide cap_register_t definition after cheri-compressed-cap update
+79d5edbccb git subrepo pull target/cheri-common/cheri-compressed-cap
+68d8e8c861 Fix target_disas_buf to read from the buffer not target memory
+b77e5c8294 [UPSTREAM] Fix error return code for print_insn_riscv
+708324c01a Don't force print_insn_riscv64 for capmode
+8976fd15d2 meson: Set implicit_include_directories to false
+9860db76bf Fix copy-pasto in MIPS csetflags disassembly.
+6beeeccf9f Handle MMU_DATA_CAP_STORE for watchpoints based on TARGET_CHERI
+0ed2018784 [UPSTREAM] riscv: Remove traces of old decoder
+ab78c2af0e Remove CHERI256 remnants, remove MAGIC128 and add CHERI64 support
+d12be52e80 Fix riscv32cheri target so it builds
+85400a8f0d qapi/machine.json: Add riscv32cheri target
+cdedf8336e Delete stray line from riscv-32bit-cheri.xml
+dab5a869f4 [UPSTREAM] decodetree: Support dynamic predicates on patterns
+6b74662bca riscv: Add mode-dependent jumps and compressed instructions
+ec4e8b4a4e Use the PESBT field in cap_register_t instead of duplicating it
+e37a04fb65 Stop hardcoding 0 as the NULL capability register index
+7510a8f7bb Move getpcc helpers into common code
+19dde80cdb Move cpu_capreg_state into common code
+ac633474cd Add decompress cap helper
+96745e4844 Add PCC bounds check helper
+27466a5c3e Rename TB_FLAG_PCC_FULL_AS to TB_FLAG_CHERI_PCC_FULL_AS
+80dc38216f Add PCC READABLE TB flags
+cc7327cfd2 Make DDC bounds checker into a more general DDC/PCC bounds checker
+4a78601b20 Factor out permission checks for load/store better
+54d32041a8 Do not require storecap permission if storing untagged values
+9c8cff3332 Fix incorrect exception being raised after cap_check refactoring
+eea91fc778 Use the cheri-compressed-cap permission macros
+fbb5615582 Rename TB_FLAG_CHERI_PCC_VALID -> TB_FLAG_CHERI_PCC_EXECUTABLE
+138a0040e9 Avoid ternary expressions in cheri_flags compuatation
+cd127434c9 Minor formatting fix
+f2e666e20b Stop modifying cached_pesbt inside sanity_check_capreg()
+4a3858b9de Work around ASAN and -O1 build failures
+2a35ad497c [CHERI-RISC-V] Update the lazy PESBT value when storing integers
+88d97eec02 Use target_ulong instead of uint64_t
+23818545a3 Fix usage of GETPC to only be at top level in helpers
+948328cf15 Fix a hardcoded 0 index for the NULL register
+829a2eee69 No bounds check required for magic_memset for zero length
+e9dc4d62a4 Speed up cap_check_common_reg() by avoiding a division
+3ddfa40c15 Mark cap_check_common_reg() as QEMU_ALWAYS_INLINE
+82bb4f0f68 Update .clang-format to better match QEMU coding style
+fc5f0e089c Speed up cincoffset_impl()
+1a129601a1 Simplify the #ifdef around cincoffset_impl()
+4690b9c345 git subrepo pull target/cheri-common/cheri-compressed-cap
+06a04f440a Add cheri_tag_set_many()
+e59cf69bb8 Fix glaring wrong argument in setmany
+f4aeb0e599 Always use soft-TLB for tag reads/writes
+292241c6ec Minor style fixes to make checkpatch.pl mostly happy
+c43b67cb12 Move the old check_tagmem_writable() into cheri_tagmem_for_addr()
+c724403435 Fix number of gettag bits on RISCV
+9543fb1257 Minor cleanup
+031dff6bdf Have loadtags work like multiple normal capability loads w.r.t. the MMU
+abbe2454de tests: Replace deprecated ASN1 code
+4a87cd7b9d Fix CONFIG_DEBUG_TCG CHERI binaries
+fef93782d5 cheri-common/cap_check_common_reg: LOAD_CAP check
+6de7eae78c CLoadTags fixes
+b2162da832 Add command line and monitor options to change the size of the trace buffer.
+6ff354cf6b Inline probe_access() into probe_{write,read,cap_write}
+0c09763123 Remove incorrect TCG_CALL_NO_WG flags on helpers that decompress caps
+a374112c2b Avoid QEMU's deposit64/extract64 in hot code paths
+834dc43798 Stop packing capreg_state into a single 64-bit integer
+0579c0ba44 Add printf-like instruction logging function
+3c3d3945a9 CHERI riscv: rename PTE SC/LC to CW/CR
+59a7c0ba69 CHERI riscv: CapDirty support
+670017d153 CHERI riscv: define additional new PTE bits
+b102a23978 CHERI riscv: expose new PTE bits in monitor
+2cba3f7ef7 CHERI riscv: 2-layer PTW cap-load caveats only from guest tables
+31fbd83eb2 CHERI riscv: PTE load-side caveats for non-LCG behaviors
+1333c86177 CHERI riscv: cap-load generation support
+17612ea420 CHERI riscv: guard against reserved PTE bit configurations
+241ef19d3d CHERI MIPS: don't clobber CLG bits in MMU fault
+47ce3cf269 CHERI riscv: optionally trap on PTE_{A,D,CD} clear
+286784ca4c CHERI riscv: flush TLB on ccsr write
+1ca3bd0298 CHERI MIPS: also flush qemu TLB on GCLG change
+d5fb54796a [NFC] Use cap_has_perms() in more places
+a3012597dd [NFC] Use COMBINED_PERMS_VALUE instead of manually combining
+f3f6b58ebb [NFC] Rename cap_get_otype to cap_get_otype_signext
+94df863f75 [CHERI-MIPS] Remove old commented-out code in cheri_dump_creg()
+a55bcbc7e8 [NFC] Introduce cap_get_uperms()
+4de201cfce [NFC] Introduce cap_get_perms()
+8162e4d807 [NFC] Clang-format the capability accessor helpers
+5b2acfc364 [NFC] Introduce cap_has_reserved_bits_set()
+d6bff0d144 [NFC] Introduce cap_get_otype_unsigned()
+624dd1c2cd [NFC] Use the capability accessors in a few more places
+205f56a2de [NFC] Introduce cap_get_flags
+81c876b451 hvf: Add hypervisor entitlement to output binaries
+e2d8499d9a hvf: Sign the code after installation
+d63d876ad7 build: -no-pie is no functional linker flag
+f36534f4ac Partially revert "build: -no-pie is no functional linker flag"
+e913ff3779 Include comment change intended for previous commit...
+9537d84482 riscv: Fix TARGET_CHERI build when using GCC
+9d7081c1aa Jenkinsfile: Also archive qemu-img
+90672724ca cheri-compressed-cap: don't unpack permissions and type
+167980181b cheri-compressed-cap: Fix macOS build with non-Apple Clang
+5ecbb12930 git subrepo push target/cheri-common/cheri-compressed-cap
+70bb4224cc Use a #define for the number of lazy capregs
+72673ac36f Define a separate aligned capability type
+87793f277d Add bare-bones support for migrating capability types
+faefc017bf Fix vmstate_info_cap_register for 64-bit CHERI
+d991859178 Fix -Wformat warning when building 32-bit RISC-V
+6e0c510d0e Remove unused pcc_check_load helper
+f4b0659705 Add tag memory property to automatically create tags for memory objects
+b72751d9fa Remove calls to cheri_tag_init that are no longer needed
+9d6c25f13e [cheri-compressed-cap] Fix Morello bounds setting sign extension
+2d7f70babf [cheri-compressed-cap] Cache the exponent value
+8973ce86e5 [Morello] Check capability decode is valid in set bounds
+758f01711b Add cap load helper that returns un-squashed tag
+5cba103471 Fix segfault in debug message
+8d98379e48 Fix argument in cheri_tag_set_many
+206a275c7d Factor out mmu_index from tag set/get
+676d1a1e9f Always pass mmu_idx to cheri_invalidate_tags
+a397c7355f Drop memop argument from gen_cheri_break_loadlink()
+6cba07acda Revert "Fix usage of GETPC to only be at top level in helpers"
+22d760b4a2 Add sail parsing script and its output
+e83bb81441 Add morello board hardware
+9425e1b20f Add morello CPU type
+e764b4f665 Add arm trickbox device
+8d49a0c9bc Add get_capreg_or_special
+bae7b9764d Changes to CHERI common code to support AARCH64
+c04f3cb3bb Add a couple cap cursor modification helpers
+8f3b133b8a Fix otype sign related issues for AARCH64
+b173849277 [Morello] DDC interposition depends on CCTLR_DDCBO
+0dce7486ab Update generate_get_ddc_checked_gpr_plus_offset for Morello
+b22dd0a30b Add TCG implementations of some capability operations
+80bdaea64f Add basic CHERI support to AARCH64
+d39d1299d5 Add the morello config files
+2cc0ca8f96 Add load/store pair and GCx family of instructions to morello
+40c037ca53 Add load pair and branch and link instruction to morello.
+070246cf4a Fix sail parser missing instructions
+f1bb8a531b Add tcg condition to string function
+f89675c7d6 Add sync TCG instruction
+762f204ef0 Add static tracking of capability decompression
+52942ae49d Give CapRegState a to string helper
+7d93b434ca Make Morello specific changes to cheri utils
+f4aa315a13 Add another cap debug helper
+932f0a56a0 Lots more TCG helpers and Morello specific changes to setting offset and bounds
+aae7292fff Use the common tcg for setting merged registers to integers
+9e0e48ec05 Pay attention to out of bounds exponants for bounds checks
+64ee92773c build/ccseal/copytype TCG for morello
+a582a153e8 [Morello] Implement -cheri-debugger-on-unrepresentable
+c8daf7bcc7 Better tracing of changes to registers
+2fa1cabd48 Move some aarch helpers from internal to cpu.h
+102acf9c29 Add restricted mode CSRS. PL_ALL redundant.
+513545931c General bug fixes for morello instructions
+8ce3cfa4c4 Fix sign related issues with atomic operations
+fef72e000a Add helpers to get certain fields without decompression
+4a92e3a2d7 Allow atomics on Morello
+ce1b092ab9 Add comments and some missing instructions to arm cheri decode
+eb84c6209c Add some bit/byte packing functions
+026300d9fa 64-bit memops should never have MO_SIGN
+8360c27bbe Too lazy to fix, adding comment
+cd7a9a98c7 Add tag set many. Slightly refactor getting / setting multiple tags with atomicity in mind
+8ac24d1976 Remove some over-zelous asserts for morello
+12c61e6cf6 Fix off by one on bounds check
+fca85b99a3 Add some missing gpr_reg_modified calls
+5f6f61b6a5 Add CHERI MMU bits to morello
+b8becee4dc Add exclusives and multi-tag loads/stores to morello
+4d6daa0198 TCG for bounds checking normal loads and stores
+bcdda49681 Implement alignment and morello exceptions
+b760ad0803 Fix some capability checking logic for atomic operations
+961590d21e Always bounds check with length at least 1
+a3e28739da Fix DDC exception number on MIPS
+454fb5ee38 Remove defunct print
+97899b6bdd Assert too strict on AARCH64
+063e199c41 Fix usage of GETPC to only be at top level in helpers
+825af29dd3 Define a separate aligned capability type
+8f7f9bc26a Add script to annotate instruction traces with source lines
+1358ed6c80 Improve implementation of sync
+9aa3707d6b Add userspace logging console command and remove translation cache flushing on mode change
+115eebc673 Add userspace logging to arm
+cc8a07b669 Enabled CHERI tags and logging on arm virt board
+86c1d2b72f Add debug assert for lazy capreg static optimisation
+3959c8c226 Add some missing tcg tmp frees
+6fbaaa09ed Fix some cursor sync issues
+5aa971a435 Exceptions write to (and decompress) SP
+05735cad07 Cheri-fy arm's TPID registers
+3777bf88e6 Do CHERI things for DC ZVA
+276ce4c279 Fix morello board minimum page size
+7c58b8ab77 Restore state before CHERI exceptions on morello
+ea097bd610 Add a pytest script to run the morello tests
+8cf1bdd5f6 Fix out-of-bounds access found by UBSAN
+637c4cb8e3 Fix TCG temporary leak in gen_cap_get_type_for_copytype
+daf911a233 Improve output for failed morello tests
+66490208d0 disas/libvixl: Rename source files in preparation for update
+16a22efb60 Update disas/libvixl to https://github.com/Linaro/vixl/tree/morello
+ede64266b3 [Morello] Forward PSTATE.C64 to the disassembler
+b835d32738 [Morello] Fix out-of-bounds access when translating RRLEN
+f84e8072d2 [Morello] Always use soft-TLB for tag reads/writes
+1710a81617 Cache instructions should bounds check
+e414345445 Fix C64 mode change for exception
+bca1c5bfa3 Fix morello 2 stage CHERI mmu permission checks
+6e0f4565cc Implement unprivileged morello loads/stores
+1ea2a9e2d5 Configure morello cpu features
+a76bcdb55b [Morello] remove stray debug prints
+959efe249d [Morello] Allow capability read/write functions CSRs
+c695b86819 sp is sometimes register 13
+13fe5199dd Add missing newline
+f8217d6cb2 Use qemu_printf
+b4260b0153 Fix double field initialisation
+3acf44326c Fix comments and whitespace
+547427c9ce Add comment for cache maintenance instructions
+a659dabae4 [LD/ST]CT should also do sp_alignment checks
+10c317dd83 Fix off by one opc1 for CSCR_EL3
+a7f3a80218 Cannot use set tag at EL0
+a00fabd95b Add CCTLR_EL12 to arm
+64dbd487ce Dont unseal untagged sentries
+c20989f3d1 Generate trace for SCTAG
+9cbc2411b9 Check SP alignment for LD|STCT in non C64 mode
+9d8eda5c88 Take PC alignment exceptions on AARCH64
+144975a524 Fix CHERI MMU bits in stage 2 translation
+bfee4b21a1 Fix off by one in number of flags define
+4b6747e851 Morello untags sealed capabilities just before branching to them
+6c91b94bf8 Propagate a faulting address to pcc related faults
+57b728d0cd Exception return should also clear tag if capability is sealed
+fa3027c280 Propagate address for non-bounds faults for PCC and DDC
+7e9452698c TC TCPAC controls whether exceptions are enabled
+7a556e78a4 Print better register names when taking an exception
+dbdbed1bf6 Exception offset depends on executive bit
+1ccd929c9f Fix tracing EL
+31b7939bb7 Add better games for AARCH64 DBG registers
+4f2704c153 Enable more breakpoints and watchpoints for morello
+f9f2c1c1de Do not claim RAS is implemented on morello
+9d2b7018ac SPSel is RAZ/WI in restricted mode
+700f9619cf Capabilities enabled exceptions need to set pc properly
+78b15d5e16 Fix ignoring TGE when E2H enabled
+c5e1d23201 capability access SYN should have IL bit in a64
+4fee445447 Remove assert as behaviour is legal
+747402331c Make comment accurate
+e56117e8f1 Capability return without access system registers untags
+463489a9f0 Correct ESR for SP alignment faults
+196138ce2b MSR immediate also needs to respect CHERI SPSEL rules
+a2edffdb66 Move PC alignment faults to tb_start to fix alignment priority
+5f0077e9dc Fix lots of unallocated morello encodings
+ee720b860f Take MMU protection faults for capability CAS even when not storing
+025e5d2c77 Add DBGCLAIM CSRS to make testhappy
+b024587b06 Probe with correct sizes so watchpoints trigger correctly
+35a328c007 Move some morello specific logic for capability jumps earlier
+662c3a6f51 Fix E2H related mistakes in FP enabled
+50d7b9f27c Fix tag setting enabled
+fd5e1b92d0 CAP_NO_SEALING is 64bit, not the size of the type field
+e7475914f0 Do representability checks for legacy branches
+6e6496348a Only squash mutable permissions for tagged caps
+b052c06ac1 Generate correct ESR for MMU faults due to tags
+18064457f8 Add an always trapping version of PAGE_LC_TRAP
+49512ff72c Handle device memory correctly in conjunction with LC bit
+e110381748 Fix cache maintenance instructions on morello
+fcd106dac4 CASL should not tag clear when compare fails
+764c928934 Representability check post-index for simd structure load/store
+55d475b497 Correctly set WnR bit for capability MMU faults
+818c573e88 Move TLB tag store faults into probe
+80fc470c65 Sort fault priority of atomic cap operations
+3bf6ecf209 Force morello to be little endian
+f1752d5656 Handle jumping to non-sentry caps properly
+9c7b6eedf5 Morello set bounds immediate is exact
+bdc90d5511 Fix bounds setting on morello to do sign extention at correct point
+69d2c327ba Fix access to sysregs requiring access sysreg permission
+e01a2cafc4 Force printf commit for first instruction in a translation block
+1ac2e6f25c Fix cheri bounds check size for multiple loads
+d2e99ec93c Expose symbol handling callback to arm boot
+624bd02b51 Fail Morello tests with a more useful error message when misconfigured
+c0f308462e Fix incorrect max_size argument in gen_mov_cap_select()
+3ac362598f Fix datasize in load/store exlusive pair
+c2d700b143 CHERI bounds check needed on another cache op
+098e242671 Fix cheri permission checks for double cap stores
+b77f192c25 Add TCG fast cap add for morello
+fb3fa4fd9c Respect exp and valid decode in more places in tcg
+45d0e15e16 Use CAP_CC() instead of hardcoding CC128
+40a80bf9fc [Morello] Fix passing an invalid register number in BLR_BR_RET_CHKD
+058a40590c Change a few assertions to be debug-only
+e89f919f5e Make get_load_store_base_cap() always_inline
+70c88aaa1d Fix passing argument to handle_sys which does not uses 33 different register numbers
+e09fed565e Add PL_NO_SYSREG to special registers
+e3a94040a1 Reduce diff to upstream by using g_assert_not_reached()
+82388458e6 Avoid some large whitespace-only diffs to upstream
+c9c8982d07 Don't provide the csetflags helper for Morello
+d42eed853d Reduce clang-format diffs to upstream
+8a5fa3842f Drop duplicate call to cheri_tag_init() for morello board
+d15cabc75b Remove old TARGET_CHERI128 config from morello-softmmu.mak
+f3018715a5 Support GDB for Morello
+1909e0d1c4 Revert "Remove assert as behaviour is legal"
+123995d20f Rename TARGET_IS_MORELLO to TARGET_MORELLO
+8cb99737b2 Fix some comments
+964f3a3286 Branch and link bug has been fixed in ASL
+b90c3de6b8 Use typedef not #define
+eea23b7256 Add assert in store tags helper
+906338051e Dont assume CC128
+d019dff9c6 Turn logical op into else branch
+9d8acd3927 Slightly better comment / name for capability swap
+72b3685138 Distinguish between signed and unsigned in tcg_cond_string
+234372b4dc Sensible ordering in list of masks
+7bc004a1eb Fix PAGE_C_BITS define to actually include all bits
+041d178655 Use canonical bit inclusion pattern
+63ebb2253f ifdef out dead code
+fb72c876bd Neaten up defines
+cc88b09e4a Less crazy line brbreak
+7dd4d0e7fd Fix cpu get asid
+7a45afd672 Revert type change in mte_check_zva
+172b5a6fb0 Make the mpidr bit a property
+b11c0eb176 Small whitespace fix
+95d446d67d Inline return one for is_a64 for cheri arm
+79770bfb94 Pass PC to cpu_get_asid
+680db26673 Make some more TCG work for 32-bit
+3dfb6e2e90 Remove stale comments
+4e2762ff8e Simplify some flow control
+d3a0255315 Fix type of placeholder for RISCV target_get_gpr_global
+0da7537693 Change asserts for cap_set_(un)sealed for AARCH64
+14ea14ff3a morello: Diff-reduce tables (and match style for new ones)
+538b2e04d9 tcg: Diff-reduce GEN_ATOMIC_HELPER
+c5619baf60 morello: Fix up clang-format directives
+061d269af4 Update clang-format config to be closer to upstream code style
+7ed28460d3 Rename INSN_ARM_C64 to ARM_DIS_FLAG_C64
+e4b608e1a2 Reformat translate-a64.c with `IndentCaseBlocks: true`
+2bc73a234c Simplify cap_is_unsealed()
+d0f5750dce Clean up Morello ifdefs in cap_set_sealed/cap_set_unsealed
+592a9c35be Add a cap_unseal_reserved_otype() helper
+3cbc78ae98 Cleanup cap_is_sealed_with_type()
+d0ac758405 Simplify assertions in cap_set_sealed() and cap_set_unsealed()
+44a5bf3b4e Fix value of CC{64,128}_LAST_NONRESERVED_OTYPE
+537ec7b7c8 Stop using CAP_LAST_NONRESERVED_OTYPE
+227d42e3a7 [cheri-compressed-cap] Replace FIRST/LAST otype with MIN/MAX
+771c788dc2 [cheri-compressed-cap] Assert cap_pesbt_deposit_X arguments are in range
+d122a31c46 git subrepo pull target/cheri-common/cheri-compressed-cap
+788d0e626d git subrepo push target/cheri-common/cheri-compressed-cap
+bfbf8bb657 Update Morello test script to handle the new tests repo
+a288e855d9 Fix a -Wshadow warning
+dd1b0bb879 Avoid calling probe_read() twice in load_cap_from_memory_raw_tag_mmu_idx()
+5b3a1ff596 Avoid calling probe_write() twice in store_cap_to_memory_mmu_index()
+3225d11802 morello: Add (all?) missing PL_NO_SYSREG
+865660094b Coding style action (#170)
+0bac8e9c6f Try to make the Morello tests compatible with python 3.6
+ad279cc9e6 Fix incorrect path in bfbf8bb6577f675d5f51a62d062563b8193d7c9f
+be4c0ea5ab Morello tests: Avoid calling gunzip in parallel
+a0caa9eebc Jenkins: Add a Debug+ASAN build configuration (#179)
+f8d12a3654 Run the generated Morello tests in Jenkins (#177)
+cbd1d6200d Make clang-format work with older versions
+42bb8edc97 Update morello board to support ACK
+8a8398ea0a morello: Add missing PL_NO_SYSREG for various DC by VA operations
+d2911af2f1 morello: Silence unused claim_cp_reginfo warning
+9081e73af0 morello: Fix -Wformat issue on macOS (and 32-bit architectures)
+6f94b82947 morello: Fix up DC/IC bounds checking confusion
+b41cb77510 Jenkins: Don't archive Debug+ASAN builds
+0461317faf Jenkinsfile: Remove unnecessary fileExists()
+c5fac7318b [Morello] Use the helper functions to create NULL/max perm capabilities
+896bfbf523 [Morello][NFC] Avoid direct accesses to env->pc.cap
+3490c3f2fa [Morello] Add a load_and_decompress_cap_from_memory_raw() helper
+53779a4c63 Move CapRegState into a new cap_register_t field
+a93532fd84 [Morello] Ensure that all special capability registers are canonical
+fa97916d25 [Morello] Initialize ARM_CP_ALIAS capregs explicitly in arm_cpu_reset
+3c894a6867 [Morello] Use an early return to reduce diff to upstream.
+9f230c379a git subrepo push target/cheri-common/cheri-compressed-cap
+654af07968 [Morello] NULL-initialize VBAR
+91ad9213bc Backport upstream Catch2 fix for macOS/arm64
+8427347c13 Import newer sail.c to support building on non-x86
+142b51e301 Silence Clang 13 -Wunused-but-set-variable for Sail-generated C
+d6bf196190 checkpatch: Don't apply QEMU style to imported cheri-compressed-cap
+7867982da1 Use proper atomics for tag memory updates so I/O threads don't clobber vCPUs
+4368df4626 Capability SYS instructions use zero not sp
+3aee4b286c morello: Don't compare unspecified padding bytes in assertion
+c70deb6cb6 Add better logging to RISCV page table walker
+b230cfc0c9 Don't warn about untagged capabilities that wrap
+ef6b687187 morello: Fix explicit (C)RTPIDR_EL0 access
+f8279974ba Split out new cc128m Morello format from cc128 and refactor tests
+740c33946e git subrepo push target/cheri-common/cheri-compressed-cap
+400ae79894 [Morello] Don't assert jump targets are representable (#195)
+c141b61954 Clean up TCG instruction logging printf handling a little
+d6653f7e00 Don't let PCC fault squash log of previous instruction
+db23778af5 morello: Fix missing register change log for C64 ADR/ADRP/ADRDP
+092be0a4f7 morello: Fix missing register change log for C64 BL
+0c2d1abc2a Morello: honor PTE SC and CDBM bits correctly
+bd536fab24 vmstate-types: Don't assert on ccX_aligned_cap_t
+6442d30c2f vmstate-types: Fix various issues with capabilities
+6d2c0716b9 arm: Add more architectural VM state for Morello
+c6a53c9673 Switch to the Morello cap register tdesc from Morello GDB.
+f0b5d6ed3a Return the tag in a leading byte for capability registers.
+ccb2d3bcef Morello: Update for CHERI GDB 12.
+836e2de8b6 Export ctpidr_el0, rcsp, rddc, rctpidr_el0, and cid_el0 to gdb.
+3f51b6218b Fail writes to cctlr and treat it as a read-only register.
+cb75889f76 Update CHERI-RISC-V to work with CHERI GDB 12.
+01a05aaf95 Support for fetching in-memory capabilities via GDB.
+5b7ee61e63 Jenkins: Add CheriBSD boot testing
+a4e1834006 Ensure we clean up artifacts after running tests
+3d115925ec Remove a warning message that causes tests to fail
+0cddc8ec38 Revert "Add better games for AARCH64 DBG registers"
+5f18ecb2de Fix aarch64 debug register names.
+12bd3b37eb edk2: update binaries to stable202202
+02fe0504a6 CTestSubset: Compare full top value
+807f231d32 [CHERI-RISC-V] Check for AccessSystemRegs permission in mret/sret
+3771e96493 Fix CONFIG_PLUGIN build (#215)
+7995fc09a8 git subrepo pull target/cheri-common/cheri-compressed-cap
+b8f3e6f72f Add missing (void) to prototypes
+821d11fcc3 symbolize-cheri-trace.py: Update for newer llvm-addr2line
+ec192f8e17 Do not cause a GlobalViolation trap in cjalr.
+37e5559aa0 [CHERI] Fix not setting cr_extra after calling decompress_raw
+ff40e4f938 [Morello] Fix pytest warning that test functions should return None
+92c61b7ccd Work around bug in cheri-compressed-cap 1a3898fa066e9f7e0560
+c95389253d [cheri-common] Use a CHERI_TAG_CLEAR_ON_INVALID macro
+f656d20814 [CHERI-RISC-V] Use tag-clearing semantics for most instructions
+ab9bf4577c [CHERI-RISC-V] CFromPtr: use tag-clearing semantics
+1ff8d27462 [CHERI-RISC-V] CUnseal: use tag-clearing semantics
+70d4bbf262 [CHERI-RISC-V] CBuildCap: use tag-clearing semantics
+2c7fef40a5 [CHERI-RISC-V] CToPtr: use tag-clearing semantics
+5f92c7dda7 [CHERI-RISC-V] CSeal: use tag-clearing semantics
+914067666e [CHERI-RISC-V] CCopyType: use tag-clearing semantics
+83304bd0fa [CHERI-RISC-V] CSealEntry: use tag-clearing semantics
+6b93b4e7b9 [CHERI-RISC-V] Allow creating non-executable sentries
+dc9098921a [CHERI-RISC-V] CAndPerm: update for tag-clearing semantics
+27fa292cd2 [cheri-common] Fix assertion in CSeal with out-of-range otype
+bd6aa84d50 [CHERI-RISC-V] CSetFlags: use tag-clearing semantics
+e700ba39dc [cheri-common] CBuildCap: Reject non-canonical encodings
+2b1a3b13ab [cheri-common] Make CCSeal match sail when both inputs are untagged
+aa32e4d576 Jenkins: Synchronize boot test with CheriBSD logic
+15d296de20 CHERI-RISC-V: Use a bit in xCCSR to report we are tag clearing
+26e0295e13 Jenkins: Boot the dev branch of CheriBSD for RISC-V
+5ee44ff1bf Update cheri-compressed-cap
+f97c8023ba arm: tcg: Adhere to SMCCC 1.3 section 5.2
+b6b02de1e7 [RVFI-DII] Avoid unncessary warning messages
+969190d253 [RVFI-DII] Fix mem_rdata tracing
+bef2b6ce77 [RVFI-DII] Only set rvfi_insn when the instruction fetch succeeds
+94d05c530e [RVFI-DII] Match sail for CLoadTags tracing
+616d54788a [RVFI-DII] Match sail for mem_addr logging
+126384187e Revert "Jenkins: Boot the dev branch of CheriBSD for RISC-V"
+17d0e33f77 [RVFI-DII] Only log mem_addr if the load/store succeeds
+96f6418b18 [CHERI-RISC-V] Set XCCSR_TAG_CLEARING based on CHERI_TAG_CLEAR_ON_INVALID
+7d0b88cfb9 [CHERI-RISC-V] Turn trapping semantics on again
+3b4689cf68 Jenkins: Stop building debug builds with ASan
+91307177cd Jenkins: Also test booting the latest releng/ branch
+d480225a7b [CHERI-RISC-V] Allow dynamically enabling ISAv8/v9 semantics
+3bab3428cc [CHERI-RISC-V] Remove the dirty bit from xCCSR
+9610e7f887 [UPSTREAM?] riscv: support c.addi HINT encodings
+f93f1d1d60 [UPSTREAM?] riscv: support c.srai64 HINT for RV32/64
+9e14389342 [UPSTREAM?] riscv: support c.slli64 HINT for RV32/64
+cca9140b6d [UPSTREAM?] riscv: support c.srli64 HINT for RV32/64
+3653d4e07f [CHERI-RISC-V] Make CCopyType match sail
+d6c47dc967 [RVFI-DII] Avoiding reporting rmask for sc.c
+08513b796d [RVFI-DII] Avoiding reporting rmask for sc.*
+3b809157ff CCopyType: Tag clear for all reserved otypes
+be4c10c954 CCopyType: Actually tag-clear the result
+d37c09f659 Handle reserved non-sentry otypes in CGetSealed
+312827702c Restore ISAv8 compatability by default
+514635ea94 [CHERI-RISC-V] Add support for CGetHigh
+56c3469a6d [CHERI-RISC-V] Add support for CSetHigh
+691b0ad09f Request a clean build after the last two commits
+cf90f1ba1d Update cheri-compressed-cap to fix SetBounds HW divergences
+490e0ca689 Remove an unnecessary assertion from cap_is_in_bounds()
+3983d0534c Also install EDK2 firmware binaries for Morello targets
+d8ac09710d [CHERI-RISC-V] Fix missing at-source branch target check for jal
+95b8029109 [CHERI-RISC-V] Mask the LSB in CJALR
+f42b1addcc Fix commit has for cheri-compressed-cap update
+a576f6f043 git subrepo pull target/cheri-common/cheri-compressed-cap
+ef506a6616 git subrepo pull target/cheri-common/cheri-compressed-cap
+4bb3846d55 Move cap_is_representable() assertion to the correct line
+bd7a4ec77f Use the cheri-compressed-cap make_null_derived_cap() helper
+2f08d42d27 Fix assertion when marking capabilities as unrepresentable
+6da501ee89 [UPSTREAM?] Check for SC alignment even in failure cases
+cf0b865d9c [CHERI-RISC-V] Require alignment checks for explicit-mode LR
+3328cef33c [CHERI-RISC-V] Require alignment checks for explicit-mode SC
+d502f64df5 [UPSTREAM?] Raise RISCV_EXCP_STORE_AMO_ADDR_MIS for misaligned RMW
+c9ff36905a [CHERI-RISC-V] Raise illegal when attempting to write a read-only SCR
+acf11e5fbc Correctly handle access to the last byte of the address space
+1a64b36ad0 [CHERI-RISC-V] Write sentries to the link register for CJAL
+b7653e6d23 [CHERI-RISC-V] Reject memory access that wrap the address space
+21644d8f64 [RVFI-DII] Truncate mem_{r,w}data to store size
+89a8b87ca5 target/riscv: fix exception index on instruction access fault
+aad18366c4 [RISC-V] Don't attempt to log an instruction on ifetch faults
+1740010258 [RISC-V] Remove unhelpful debug logging code
+206e1c543e Jenkins: Try booting the dev branch of CheriBSD for dev builds
+4dcdfb9099 Jenkins: Try building debug builds with optimizations
+0c5d917a1d Jenkins: Also boot dev branch for pull requests targeting dev
+4c0f637e7c [CHERI] Relax an overly strict assertion in cheri_tag_set_many
+084aa637c5 Jenkins: Ensure RISC-V tests the purecap kernel
+9d65065017 [CHERI-RISC-V] CLoadTags zero register index is null register not DDC
+08e990619e [RVFI-DII] Match sail's tval for invalid unaligned accesses
+6fc9f51509 [RVFI-DII] Report mem_addr for all bad accesses
+a4ad415141 [RVFI-DII] Skip initial instruction fetch from ROM
+89e099f110 [CHERI] Move address space wrapping checks to cputlb.c
+27695b30f1 Avoid architecture-specific ifdef in _generate_special_checked_ptr
+45bde83de4 Introduce a cheri_ddc_relative_addr() helper
+4430a076dd Pass address instead of offset to cap_check_common_reg. NFCI
+950c38ce71 [CHERI-RISC-V] Disable DDC relocation when Xcheri_v9 is set
+79b3b81eed [CHERI-RISC-V] Respect DDC relocation configuration in lr.c/sc.c
+a7013df0c2 [CHERI-RISC-V] Respect DDC relocation configuration in amoswap.c
+df825b68c8 [RVFI-DII] Remove unnecessary mem_addr logging in TLB refills
+abce8a813f [Morello] Allow for hardcoded capability cpregs
+63647a37dd Add default CPU types for the CHERI binaries
+3c36071ea1 [Morello] Report an error when using an A32 CPU
+c3b0dda352 [Morello] Avoid building 32-bit machines
+183821c93d [Morello] Don't add 32-bit CPU types
+0b8dd873c6 [Morello] Use "morello" as the default CPU for the virt board
+8063f02fed [CHERI-MIPS] Avoid printing executed instructions when zero
+0ece100661 iotests: Derive image names from $TEST_IMG
+d99749cdba iotests: Fix _send_qemu_cmd with bash 5.1
+a76a06885e Run tests/data/acpi/rebuild-expected-aml.sh to fix unit tests
+aa2a6d6970 Move qemu_log_instr_init calls to shared code
+1519ea5f9b Jenkins: run `make check`
+2c93ea9c00 [CHERI-RISC-V] Legalize xTCC in CSpecialRW
+f972b3831e [CHERI-RISC-V][ISAv9] Use address instead of offset for SCRs
+05b1c373d7 [CHERI-RISC-V] Disable PCC relocation for ISAv9 semantics
+1dd5211298 Use the pcc_reloc(ctx) macro in more places
+8e10599348 [CHERI] Exit QEMU when we enter an inifinite CHERI trap loop
+475b990809 [CHERI] Do not exit on an infinite trap loop
+4fb6c3700f tcg: Do not elide memory barriers for !CF_PARALLEL in system mode
+bac9587091 Jenkinsfile: Use unique boot job names for each branch
+62ef155473 Fix build after latest merge
+8c7aed4980 Disable an upstream change that seems wrong
+c87619e5f8 Fix RVFI-DII cflags
+2a6d3c79c7 Fix the _pc_is_current assertion
+3edb79cc0b Fix build after merge
+bce9dfa48e [CHERI-RISC-V] Fix PMP rejecting MMU_DATA_CAP_*
+d9bfd1355f Minor style fix
+482f107202 [CHERI-MIPS] Restore a SET_BTARGET_CHECKED() that was lost during merge
+d0eff2e474 Use uintptr_t for the host return PC
+2f458428a0 Reduce diff to upstream
+b9da974784 Restore test changes lost during merge
+d24f1e7289 tcg/sparc: Fix temp_allocate_frame vs sparc stack bias
+22e34ec25b tcg: Allocate sufficient storage in temp_allocate_frame
+673e6960ff virtio-net: fix use after unmap/free for sg
+9f705b656f Partially revert "build: -no-pie is no functional linker flag"
+7d83a4a70c Implement riscv_cpu_set_pc
+9f99f6a6af riscv: Fix PMP clobbering LC/SC_TRAP/CLEAR prot bits
+e50aebabe0 Pass tag set/invalidate size to probe_write and on to notdirty_write
+028732849f block/export/fuse.c: fix musl build
+11905fb0a9 block/export/fuse.c: fix musl build
+297dcf5d8a block/export/fuse: Rearrange if-else-if ladder in fuse_fallocate()
+46b110efda block/export/fuse: Fix build failure on FreeBSD
+ddd1343e7e Jenkinsfile: Make bootCheriBSD resilient against default kernel ABI changes
+9c5d269b61 pc-bios/keymaps: Use the official xkb name for Arabic layout, not the legacy synonym
+fe6a2d5f09 morello: Fix missing executive checks for explicit DDCs and RSP
+6fc0bf7754 Fix -d instr for Arm32
+b168573dd9 Fix program counter reported for Arm32 instruction tracing
+90d7e31365 Log changes to most Arm32 registers
+c785485820 Jenkinsfile: Pass unencoded branch name to cheribsdInfo
+f1098ba7ac Jenkinsfile: Get latest release's version from cheribsdInfo
+4e7686c672 Add Thumb instruction tracing for Arm32
+833dc7233a tls: add macros for coroutine-safe TLS variables
+a3dabe5769 rcu: use coroutine TLS macros
+0d10619003 cpus: use coroutine TLS macros for iothread_locked
+034b9d30eb coroutine-ucontext: use QEMU_DEFINE_STATIC_CO_TLS()
+d799e4934a coroutine: use QEMU_DEFINE_STATIC_CO_TLS()
+6846c336ce coroutine-win32: use QEMU_DEFINE_STATIC_CO_TLS()
+b731976f9c target/arm: Fix instruction tracing PC + disassembly for plain AArch64
+15fef0721a target/arm: Fix PC for AArch64 (including Morello) WFI trapping
+6c09189456 target/arm: Honor HCR_E2H and HCR_TGE in ats_write64()
+acdce4e08b Jenkinsfile: Add missing def
+2fd35d0fa4 Use upstream 'name' field for CSR names
+8c25f3060a riscv: Use all lower-case for SCR names in struct CPURISCVState
+4695ba4fc9 riscv: Rename get_csr to riscv_get_csr and move to cpu.h
+a2452e0b0d gdb: Expose CHERI SCRs via the GDB stub
+967e7a86d8 Enable CHERIv9 semantics by default
+9360faef59 Avoid using cs_base for CHERI
+63a36540bc Fix uninitialized cs_base value for RISC-V and MIPS targets
+da0fa4942c target/arm: Retire local patch to handle SCTLR.A flag
+a731fd9e9d Don't load with MO_SIGN for MO_64 values
+865aa590bb target/arm: Fix return value from LDSMIN/LDSMAX 8/16 bit atomics
+452a212796 mips: Fix mismerge removal of gen_io_end().
+ae2698c6ed Merge remote-tracking branch 'remotes/pmaydell/tags/pull-target-arm-20210913-3' into staging
+90ee112e21 riscv: Fix RVFI build after e91a7227cb802ea62ffa14707ebc2f588b01213d
+2551b4fb89 arm: Fix SMCCC emulation for booting FreeBSD.
+e6f429b7ed mips: restore previous NaN behaviour expected by cheritest
+964fa03a21 Update .require_clean_build for 6.2 merge
+8cce10f9d8 cheri-tagmem: relax an assertion on memory region size
+cf038bdac1 mips: move translate_cheri.c to the right folder
+f989869237 [UPSTREAM?] mips: Fix missing reserved instruction for MDMX opcodes
+bdfba0ef5d Fix logging on load/stores.
+44be54c74e Disable repo-lockdown workflow for downstream forks like this one
+843315e4f0 riscv: Add the modesw.{cap,int} instructions
+86fad31955 Simplify comment on modesw
+e9f86371f0 tcp-op: fix warnings about duplicate function declarations
+7ae21f6d7d riscv: cheri: fix warnings about cheri_get_gpcrs
+a23f801623 Add missing exec/exec-all.h include
+dc0fb24737 Fix -Wredundant-decl warning about pc_is_current prototype
+51e1f550e1 Fix -Wredundant-decl warning for cpu_get_recent_pc()
+60fd7b7be3 Fix -Wredundant-decl warning for cpu_restore_state()
+c671e4fa45 log_instr: fix some -Wmaybe-uninitialized warnings
+67df9dd0b4 log_instr: add fallthrough maker to fix compiler warning
+e7f0b5744e tcg: log: remove two unused functions
+f24a05250f Fix warning about unused cctlr_set
+64b9ad5c26 Define fewer cheri macros/functions for !TARGET_CHERI
+f64abba5c8 Silence -Wtype-limits warning
+e4bf4a7951 morello: fix fallthrough warnings
+41a7675d0a Fix implicit fallthrough warning
+cebfd7aa98 Fix mismerge in 6d29fd4c0973a7ea218b23d9f7a36aacfbd5bcc3
+0302ca075b cheri-common: use "no-flags" macros if possible
+2103209499 Fix 'always unline function may not be inlineable' warnings.
+9acd2e076c Fix another fallthrough warning
+ae978f4647 Remove code that has been commented out since 2020
+4c2db4c532 Fix mismerge of 4f14ce4bf4ec01a840a8de4007a95a77998c5736
+06daa03695 target/mips: Avoid declaring cheri_have_access_sysregs() for !TARGET_CHERI
+8bc51e7ff9 Fix another fallthrough warning
+aa782c8ed9 target/mips: Fix fallthrough in ccseal translation
+3afce6851c target/mips: Fix -Wenum-int-mismatch warning
+d0673ebc85 target/mips: Fix unused-but-set warning
+8c1e5b39c1 decodetree: fix SyntaxWarning: invalid escape sequence '\?'
+c055c2270d stubs: update replay-tools to match replay.h types
+2cbf5e0cfa Fix -Wredundant-decls warning in log.c
+d5705d35ac Fix #pragma GCC/clang mismatch
+36779eb0b5 target/riscv: Fix -Wimplicit-fallthrough warning
+3730f91b75 softfloat: Fix declaration of partsN_compare
+6117fc4905 replay: Fix declaration of replay_read_next_clock
+6f5f7b0598 target/riscv: fix -Wunused-variable
+5747c2d498 Fix another -Wredundant-decls
+10d3425fd1 Fix mismerge of 8aa52bdc87aaf54c497902a91aaf4096cb780660
+5978f621db Fix mismerge of 6fe25ce58798815237307cf1924ef5b4d13cac99
+73ce144555 Fix mismerge of 137f4d87c6dd3c727fd5b5e777e89f610b51ae8d
+8cb543d09f Minor whitespace diff reduction vs upstream
+3dd6e31d48 Fix implicit-fallthrough warning for magic nops
+5dfaa3f9f8 target/mips: Fix -Wredundant-decl warning
+72df82ec0c Fix -Wunused-function for non-Morello builds
+a52821e279 Fix another -Wredundant-decl warning in translate-utils.h
+986ba1eb56 target/arm: Fix -Wunused-function for cheri_cause_str
+f5187829ed Fix -Wimplicit-fallthrough in gen_cheri_addr_op_tcgval()
+e47f2c5fb6 Fix -Waddress warning in arm_trickbox_write
+73dadc6d21 tests/docker: avoid invalid escape in Python string
+23cbb3a108 Added MTIDC, STIDC, and UTIDC registers
+3f76f91085 Update target/riscv/op_helper_cheri.c
+82c5e94228 Update target/riscv/op_helper_cheri.c
+70c92223c3 Update target/riscv/op_helper_cheri.c
+9f8004c876 Update target/riscv/op_helper_cheri.c
+89b5f755f1 configure: Avoid using strings binary
+de08c8f675 mips: Fix stderr being locked when using dumpstate helpers
+b6c616dd36 morello: remove unused function
+3cc0085f62 mips: Fix -Wunused-function warning
+4f4ec47f01 cheri-common: simplify code by using a new cap_get_all_perms
+e3080828cb Don't use the cap_pesbt_extract_* helpers where not necessary
+97488f8033 Avoid using the cheri-compressed-cap flags accessors directly
+826e4a954b morello: inline gen_cap_get_flags into the only caller
+75ef03897c cheri-common: avoid using cap_pesbt_encode_perms()
+77f13dfb41 mips: Remove incorrect writes of lladdr
+ec3212f835 git subrepo pull target/cheri-common/cheri-compressed-cap
+4972ecae8b cheri-common: use the new MEM_XOR_MASK instead of NULL_XOR_MASK
+b30dacfea8 cheri-common: Use the new {get_all,set}_permissions functions
+4b9e826f7e git subrepo pull target/cheri-common/cheri-compressed-cap
+0cd2759d46 Remove check for Global permission on CJ(AL)R (#274)
+3c9fb8e6c6 cheri-common: use "no-flags" macros if possible
+8606113180 mips: add missing parameter to r4k_helper_tlbwr call
+c12d2dffed target/mips: Fix 32-bit printf format
+3bb3b94506 target/mips: fix _debug_value for mips32
+ae15f940a3 target/mips: fix mips32 build
+2541ecfd1d target/mips: Disable the "magic" helpers for MIPS32
+aa9674991f CHERI-RISC-V: fix missing decodetree dependency
+de871900ae Drop meson workaround for missing .replace()
+371f07189d Install qemu-system-riscv{32,64}xcheri symlinks
+7e1137f40a Use a suffixed target name for ISAv9 CHERI-RISC-V
+681e2b6048 CHERI-RISC-V: Use cd/cs1/cs2 in the translation code
+b49beb6207 CHERI-RISC-V: Use tcg_constant_* in translate helpers
+3e953c0af4 CHERI-RISC-V: Add the gctag instruction
+2fbeb288ca CHERI-RISC-V: add the gcperm instruction
+03afa0a6fb CHERI-RISC-V: add the gchi instruction
+84e00a6b05 CHERI-RISC-V: add the gcbase instruction
+1259d65f10 CHERI-RISC-V: add the gclen instruction
+874cae53d3 CHERI-RISC-V: add the caddi instruction
+100d9156e9 CHERI-RISC-V: add support for cadd and cmv
+11aebfba6e CHERI-RISC-V: add the scaddr instruction
+683b5832cc CHERI-RISC-V: add the schi instruction
+60c9167326 CHERI-RISC-V: add the sceq instruction
+6ac1429f16 CHERI-RISC-V: add the sentry instruction
+63a6f667ab CHERI-RISC-V: add the scbnds instruction
+c4e6f4de3b CHERI-RISC-V: add the scbndsr instruction
+f4460907e0 CHERI-RISC-V: add the new cram instruction encoding
+4e0b06636e CHERI-RISC-V: Use caddi name for compressed capability adds
+3728b1a3c6 [UPSTREAM] riscv: Update immediate encodings for shift instruction
+126d94270c CHERI-RISC-V: add the scbndsi instruction
+76a3ed0af3 CHERI-RISC-V: add disas support for scbndsi
+8837625f52 CHERI-RISC-V: handle reserved scbndsi encodings
+b16a84d764 CHERI-RISC-V: add the acperm instruction
+9d90050410 CHERI-RISC-V: add the scmode instruction
+3b958d3462 CHERI-RISC-V: add the gctype instruction
+cb8aadcd85 CHERI-RISC-V: add the gcmode instruction
+ed2642b953 CHERI-RISC-V: add the cbld instruction
+882ec6bf16 CHERI-RISC-V: add the scss instruction
+99a3a4bbc4 CHERI-RISC-V: check for invalid permission encodings in gcmode/scmode
+fa433df40b CHERI-RISC-V: Implement cmv in tcg without helper calls
+f2ba7bcb7e Add new qemu-system-riscv{32,64}std binaries
+e59aff993a Add support for using the cc64r/cc128r capability format
+59947f326b CHERI-RISC-V: split the supported instructions for v9 and std
+962286e109 CHERI-RISC-V: unify encoding for LC instruction across RV32 and RV64
+6f7c828052 CHERI-RISC-V: poison the new identifiers for target-specific code
+a034af77e2 CHERI-RISC-V: add the new standard encoding of SC
+ac01b3360c CHERI-RISC-V: add standard encoding of amoswap.c
+dd1b73eb33 disas/riscv: distinguish between amoswap.q and amoswap.c
+38766b3c45 CHERI-RISC-V: add standard encoding of lr.c
+61c68ac399 disas/riscv: distinguish between lr.q and lr.c
+fa6ddfacf3 CHERI-RISC-V: add standard encoding of sc.c
+4a61dd3e4b disas/riscv: distinguish between sc.q and sc.c
+ac96b6ac3e riscv: move cheri trans stubs behind decode-insnXX.c.inc
+b318470735 qemu-img: remove unused variable
+66f74405eb riscv: use a macro to generate the translation stubs
+25ad59bde3 Move the cchecktype helper to MIPS
+109d5c0af3 Fix cap_get_otype_signext() for the RISC-V standard
+95960500e0 disas/riscv: add c.lc compressed capmode instruction
+042931ff75 disas/riscv: add the compressed c.sc capability store instruction
+0d1f25af03 disas/riscv: add the c.lcsp compressed capability instruction
+724aa17b87 disas/riscv: add the c.scsp compressed capability instruction
+d2ec8d4560 disas/riscv: add the rv32 compressed mode variants for c.lc, c.lcsp, c.sc, c.scsp
+08fa5c988d riscv: cheri: remove the UTCC SCR register
+965e17a7f4 riscv: cheri: remove the UTDC SCR register
+818d88b2ac riscv: cheri: remove the UScratchC SCR
+375e43cc89 riscv: cheri: remove the UEPCC SCR
+eaa7685532 riscv: cheri: Fix names of the hypervisor SCRs
+4f95f3f62a CHERI-RISC-V: Fix handling of c.mv instruction
+7740992e23 CHERI-RISC-V: Add #defines for the new CSR numbers
+69ba4d66d3 CHERI-RISC-V: Use the existing macros for extended CSRs
+1d208f2328 CHERI-RISC-V: {vs,s,m}scratchc extends {vs,s,m}scratch
+8003ade8b6 CHERI-RISC-V: Add CSR number defines for the *TID registers
+125cd8c5ac target/riscv: extract predicate check from riscv_csrrw
+c4d65c127e CHERI-RISC-V: Update csr_needs_asr for new standard spec
+fb6ca8108e CHERI-RISC-V: initial infrastructure for capability CSR access
+0a180f3d8f CHERI-RISC-V: initial handling of capability CSR reads/writes
+a82c7241ad CHERI-RISC-V: correctly use read/write flags for CSR permission check
+a85f8fb84e CHERI-RISC-V: Check for asr access using csr_needs_asr
+0f55d2a8e2 riscv: cheri: clean up check_csr_cap_permissions
+7a893313a6 cheri: riscv: use RISCVException in CHERI CSR helpers
+48e10f71ea target/riscv: add reset and disas for mseccfg CSR
+e8f4a7d89f riscv: Add menvcfg csr register.
+451a5f8f5f riscv: Add senvcfg csr register.
+0b1dd2a8fa riscv: define the CRE bits
+17bb190143 cheri: riscv: function to determine pointer mode
+aab4a82ae3 CHERI-RISC-V: Add MTVECC CSR handling
+8d37cb5957 CHERI-RISC-V: add STVECC CSR handling
+3a846b7889 CHERI-RISC-V: add MEPCC CSR handling
+9c08333d97 CHERI-RISC-V: add SEPCC CSR handlers
+4dfb01e293 CHERI-RISC-V: add SSCRATCHC CSR capability handling
+8f6c7f0bff CHERI-RISC-V: add handler for the DDC CSR
+9f9f558b8d CHERI-RISC-V: check for CRE status on CSR register access.
+c1faac79ed CHERI-RISC-V: refactor CSR reads to reduce duplication
+ebe8c86d7b CHERI-RISC-V: replace a number of CSR write functions with a common one
+17d07fb888 CHERI-RISC-V: Add invalid address handling functions.
+4055066842 cheri-common: Add a cap_scaddr function.
+3def7901ec CHERI-RISC-V: Rework Capability register CSR write handling.
+1ed76201ca CHERI-RISC-V: Replace use of CSR bool fields with a bitfield.
+3369cedab0 riscv: csr: make csr_cap_ops static
+9f313eeae9 riscv: csr: simplify get_csr_cap_info
+8f4337f381 riscv: csr: use consistent types for csr numbers
+c04d68d0a2 Introduce an CSR_OP_EXTENDED_REG and set it on appropriate registers.
+da8a237159 Update handling of extended csr registers.
+eb7cc9c0b4 riscv: cheri: drop unnecessary return statements
+27312e1b47 riscv: cheri: merge two if clauses in csrrs_cap helper
+07102e990b riscv: cheri: merge two if clauses in csrrc_cap helper
+95209802a8 CHERI-RISC-V: simplify write_capmode_reg
+f0e8581fd6 CHERI-RISC-V: share code for the CSRRC[I]/CSRRS[I] helpers
+b0ed0a29c5 CHERI-RISC-V: Update handling of vector registers with CSR writes.
+5059266de7 CHERI-RISC-V: add CSR registers for Zstid extension
+c4c5edf9c3 CHERI-RISC-V: Add integer mode implementation of Zstid CSR registers.
+ef7bfd4966 riscv: Add accessor and feature flag for integer mode zstid registers
+aacd701872 riscv: Swap stid/vstid when switching hypervisor mode.
+a6afb8f323 riscv: Add state migration entries for thread id registers.
+5fcb1e83fb CHERI-RISC-V: simplify check_csr_cap_permissions()
+c415fa7b4e CHERI-RISC-V: raise exceptions in check_csr_cap_permissions()
+24db01de5b CHERI-RISC-V: further simplify CSR helpers
+806ad28f6f CHERI-RISC-V: add CSRRW handlers for the vs* CSRs
+27fa0e3d60 CHERI-RISC-V: Handle capability CSRs in riscv_log_instr_csr_changed()
+a324430ad9 CHERI-RISC-V: Use the new CSRRW infrastructure for cspecialrw
+5755286a0b vmstate: refactor capability serialization to use macros
+b789bce1cb vmstate: add serialization function for cc64r/cc128r
+49e3c42c65 riscv: vmstate: serialize capability registers
+7fe2adc806 test-vmstate: fix bad GTree usage, use-after-free
+5707a2fdfb checkpatch: better pattern for inline comments
+2963b5a564 checkpatch: typo fix
+a7e65ef1a2 block/curl.c: Check error return from curl_easy_setopt()
+1b2b7f7a61 block: Handle curl 7.55.0, 7.85.0 version changes
+ff822be4ac armtrickbox: print to stderr instead of stdout
+3013978b31 tests/qtest/rtl8139-test: Make the test less verbose by default
+c3d30a45c3 tests: Ensure TAP version is printed before other messages
+545454dd4d tests: make fp-test less chatty when running from test suite
+9bde19a893 tests/fp: Bump fp-test-mulAdd test timeout to 3 minutes
+abef7cae00 Add instruction tracing debug output for untagged jump targets
+99697cfcc3 tcg: do not remove index_op_sync
+ce7f9b67e3 morello: support --cheri-debugger-on-trap
+6d07828fa8 armtrickbox: fix printf format string
+2d74a790c6 riscv: (trivial) remove useless ifndef
+de1067effb cheri_utils: (trivial) fix a comment
+c9e132c2af op_helper_cheri_common: (trivial) remove return statement
+ffb3c6e028 Jenkinsfile: use a list for extraArgs (#288)
+875370449e riscv: provide fault address for cheri
+f839b1d247 CHERI-RISC-V: Fix riscv_cpu_mode_cre() for ISAv9
+4bf83e318a CHERI-RISC-V: Restrict ext_cheri and ext_cheri_v9 to ISAv9
+e9c48b76c4 cheri-common: move sealed helpers in front of first user
+d19b566c65 CHERI-RISC-V: Add the 0.9.3 *tval2 registers
+bab43fee38 CHERI-RISC-V: Add enums for 0.9.3 CHERI exception types/causes.
+4eb9e8a278 CHERI-RISC-V: Support 0.9.3 exception reporting CSR values
+56d42f11b8 CHERI-RISC-V: Set xtval2 according to the type of page fault.
+c65dbe717d cheri-riscv: Fix handling of stval2 for MMU exceptions.
+c9140492f7 RVY: Initialise env->last_cap_type during risc-v cpu reset
+3189f42597 RVY: tcg capmode check should use M and CRE
+402f6cbb4d RVY: Add control flag to enable RVY and Zyhybrid mode on commandline
+c7d15cabd0 RVY: Ensure cheri_in_capmode is always true when hybrid is disabled
+02e8df51e0 RVY: Avoid using cheri_v9_semantics in the RISC-V standard build
+d4c778e99d RVY: Make hybrid mode only instructions illegal in purecap-only harts
+8c227d1d90 riscv: cpu: decouple CHERI settings from rv32/64
+644790f4cb RVY: Guard CHERI instructions with pred_cre
+c230de8553 riscv: minor whitespace diff reduction vs upstream
+44cf83ffbb RVY: Correctly use tag clearing in the standard draft
+4366db49c7 riscv: cheri: pass a DisasContext to all gen_cheri_* functions
+dddd8f7a6f CHERI-RISC-V: Remove redundant logging call
+4df859947c log_instr: Prepare for passing index and type with logging
+5c33bd0138 log_instr: Pass index and type fields through to logging
+01183988a0 riscv: log_instr: Use contents of register for logging csr write.
+9ab3e4fff0 riscv: log_instr: Ensure that writes to fcsr also log mstatus
+d706d70070 riscv: cheri: remove pc (offset) monitor output
+b9c4a30cbd CHERI-RISC-V: Fix reading xepcc
+35c08f9e47 log_instr: Ensure logging status is propagated to tcg
+35ccd114ee tcg: fix -Wmaybe-uninitialized warnings
+e6cc2ad215 Fix logging of the C.LC instruction. The instructions was being incorrectly decoded as C.LCSP with the result that the operands were being incorrectly decoded.
+8b9fb31bf2 cheri: pass auth cap to store_cap_to_memory
+c4a1b6e074 cheri: pass auth cap to store_cap_to_memory_mmu_index
+f2377b6dee RVY: fix handling of C permission in amoswap.cap
+8378f433e7 cheri: risc-v: storing a tagged cap in memory requires C
+746694b78e cheri: add helper to read a complete raw cap from memory
+72c65fbdcb cheri: load_raw_cap_from_memory helper
+cf90ddae05 RVY: Fix sc.c for standard CHERI
+6ed71beb6c RVY: fix lr.c for CHERI-RISC-V v0.9.x
+9921ee0639 cheri: riscv: clean up sc_c_impl
+a116f2698d cheri: clarify two function names
+4e55058862 RVY: add number of levels to cpu class config
+f76a1467ec cheri: add env parameter for set_max_perms_capability
+0c7144c399 RVY: Add a property to enable 1-bit level support (Zylevels1)
+5341d44126 RVY: Use lvbits from the RISC-V cpu config
+e2e806f5a5 cheri: Move gen_cap_has_perms into !TARGET_CHERI_RISCV_STD
+6d2c003178 cheri: refactor null_capability/int_to_cap
+df27383216 Fix an issue where guest code could cause a qemu crash.
+cc7f435f0e aio-posix: fix build failure io_uring 2.2
+252d69d622 remove unnecessary casts from uintptr_t
+edac2cb60f riscv: Fix wrong flag used in 8c227d1d905aa79e19aadf27accf1bd92757f8c5
+a5bd281740 RVY: pred_cre must return true for purecap-only CPU
+18ddb2ca47 cheri: Log the memory read during cap loads prior to stripping/validation
+0bcdd1fd9f cheri: add an env parameter to cap_has_invalid_perms_encoding
+ee8eb8d63c RVY: Add support for capability permission legalization
+c507e0e5d8 riscv: Add the cheri_levels property as a compatibility option
+6e07fb1196 riscv: Add Codasip A730 CPU type
+36a018a5b3 riscv: Add Codasip L730 CPU
+13bcfdf099 cheri: make squash_mutable_permissions static
+9a0bdd4b9d RVY: process LM during cap loads
+5109855212 RVY: process EL during capability load
+e816783040 RVY: process SL during capability store
+2069f13a1a RVY: Fix access predicate check for of mseccfg
+74713d34b7 RVY: Add property for Svucrg extension (formerly called Zcheripte)
+49cc672299 RVY: Add the sstatus.ucrg bit
+e79fb8d467 RVY: Add the two-bit PTE scheme for version 0.9.3 of the spec
+1cd20d961f RVY: Make the Capability Read Generation dependant on the PTE_U bit
+1e064f2df9 RVY: Ensure the MSTATUS.CRG bit is only used in RISCV64 targets
+b3a523bd55 riscv: Simplify RISCV_PTE_TRAPPY ifdefs
+66bcd6a4d8 RVY: Fix YTYPER assertion
+be37d156d2 RVY: Zero YPERMR reserved ones for 0.9.3 compat
+6e58cd95fe RVY: Fix reporting of xtval2 in 0.9.3 for page faults
+daa78940b5 RVY: CapEx_UnalignedBase does not exist anymore
+d5616866df target/riscv: Fix incorrect return type on write_sie
+a6228876bb Fix the disassembly output of the xui instructions.
+5588bad132 riscv: sync xenvcfg with upstream
+ee2646c23b RVY: Use openSBI firmware instead of bbl
+c0e3d82913 cheri: Simplify capability trace output
+85152c02f7 op_helper_cheri_common: remove incorrect ATTRIBUTE_UNUSED marker
+d2390794a3 RVY: implement cap_has_invalid_perms_encoding()
+626a20eddf target/riscv: Avoid leaking "no translation" TLB entries
+21124fafef disas: fix -Wint-conversion error when using capstone
+2f9b24a586 hw/riscv: remove unused includes
+32a8a79b0a Ensure that sfence.vma instructions end the current code block
+b9996282aa RVY: Implement SHxADD mode-dependent instructions
+7137b11197 RVY: Implement SHxADD.UW mode-dependent instructions
+368df852ab RVY: Implement the add.uw mode-dependent instruction
+3c98a416c3 RVY: Add a zish4add extension configuration option.
+ad993eb838 RVY: Add the 0.9.3 sh4add(.uw) instructions
+2f3ecabd79 block/curl.c: Use explicit long constants in curl_easy_setopt calls
+f32d1ecc62 io/channel-websock: Replace strlen(const_str) by sizeof(const_str) - 1
+f254e8cb9a target/riscv: Define simpler privileged spec version numbering
+b509dd6b54 target/riscv: Add the privileged spec version 1.12.0
+02e28bd9ad target/riscv: Introduce privilege version field in the CSR ops.
+20aa6db0ef target/riscv: Enable privileged spec version 1.12
+18e54aefd5 target/riscv: Implement mcountinhibit CSR
+dbd3368e45 target/riscv: Set minumum priv spec version for mcountinhibit
+af9c7e302b riscv: add dummy henvcfg
+c1bd122dab RVY: move MSECCFG_CRE to mseccfg_field_t
+2a1424ead1 target/riscv: Add *envcfg* CSRs support
+a9c6c86d5f target/riscv: Add isa extenstion strings to the device tree
+0022981737 RVY 0.9.3: Add CHERI isa extension strings
+3d3faca53a RVY 0.9.3: Add zcheripte extension string
+3eb485982f RVY 0.9.3: Add zcherilevels to isa string if enabled
+40a7ad9f07 target/riscv: implement Zicboz extension
+a6ed10ac08 target/riscv: implement Zicbom extension
+2e4d234895 riscv: cboz_blocksize must be a power of two
+3a572eb2a1 riscv: cbom_blocksize must be a power of two
+e098c6f3c7 riscv: move cbo zero handling into a helper
+87eda4d237 riscv: cbo: move some checks out of do_cbo_zero
+1da046fe43 riscv: cheri: helper for capability version of cbo.zero
+91260ba8c0 riscv: cheri: clear tags during cbo.zero
+19028649ee riscv: cheri: call cheri or non-cheri helper for cbo.zero
+fbad594bf7 riscv: cheri: Add cheri support for zicbom instructions
+65da473a29 target/riscv: fix -Wunused function for is_cap_csr
+f486655ce4 target/riscv: Switch Codasip A730 to privileged spec version 1.12
+33fb2511fc disas/riscv: add cbo instructions
+2abf46a3df cheri: move capability print macros under TARGET_CHERI
+ef1fa37b6f target/riscv: detect an endless exception loop
+33caf1b1ea Ignore .vscode files
+c7b0039a2b target/riscv: set L730 privspec version to 1.12
+c40b7f5234 RVY: Add gdbstub support for the RVY CSRs
+06482bed34 CHERI-RISC-V: warn when setting xtvecc without ASR
+c39feb512a Fix use of vs predicate.
+949565539b clipboard: vnc: fix deadlock when peer is killed
+4e02c9d3ac Update to point to qemu-mirrors
+827f24f38d target/riscv: don't support J on a cheri system
+79de1ab1b0 Add properties for A730 extension support.
+df256e44c9 Add debug logging to aid debugging PTE issues.
+8cb1c48482 hw/ssi: Fix Linux driver init issue with xilinx_spi
+e1c9ba2e95 hw/sd/ssi-sd: Fix response to CMD58 (READ_OCR)
+174af473b8 hw/sd/sdcard: Fix response to CMD0 (GO_IDLE_STATE)
+a775e7f90b hw/gpio: Import Xilinx AXI GPIO
+15a35fb49f riscv/plic: add const qualifier to signature
+e202a67a7a hw/riscv: Add Codasip Hobgoblin machine
+0eb63bd8b2 hw/riscv/hobgoblin: sanitize and explain UART mapping
+4538257fdf hw/riscv/hobgoblin: add gpio-restart
+099b004c23 hw/riscv/hobgoblin: Add FPGA SRAM block
+c0bbb13f01 net: xilinx_ethlite: Add PHY emulation
+755b640d71 hw/intc: sifive_plic: Add edge detection for level interrupts
+0b2d69e03a hw/riscv/hobgoblin: add Xilinx Ethernet Lite MAC
+952fa38427 hw/riscv/hobgoblin: Add virtio blocks
+b56c173a74 hw/riscv/hobgoblin: Add support for proFPGA platform
+8f21340324 hw/riscv/hobgoblin: Increase size of ROM to 128K
+56e1f94470 hw/riscv/hobgoblin: Add support for Xilinx AXI Ethernet device
+35ab971419 hw/riscv/hobgoblin: add Codasip Timer
+899ed5fcee hw/riscv/hobgoblin: Add support for Codasip timer
+0aebf829cb hw/riscv/hobgoblin: Fix crash when calling property get functions
+7c2b17ff0f hw/riscv/hobgoblin: Rework Genesys2/proFPGA code to use qemu object model
+6895cbd8ab hw/riscv/hobgoblin: Better support ROMs
+c9f9e72e31 hw/riscv/hobgoblin: Add id_register
+05062da7ef hw/riscv/hobgoblin: Add additional ID registers
+dac37f9a49 hw/riscv/hobgoblin: enum for memory type
+c6751a4e23 hw/riscv/hobgoblin: register ram regions as cheri tagmem
+31fc3d99db hw/riscv/hobgoblin: use next available block device for sd card
+322287a57a hw/riscv/hobgoblin: declare sram as cheri tagmem
+2712cb49b0 hw/riscv/hobgoblin: simplify redundant parameters
+c91bdc3ffd hw/riscv/hobgoblin: separate spi and sd card setup
+e76d62bdef hw/riscv/hobgoblin: document the card detect gpio
+b43c18c816 hw/riscv/hobgoblin: remove empty section names from memmap
+92b9bd9d00 hw/riscv/hobgoblin: get class from instance
+1dec0532b3 Remove hobgoblin from RV32 builds.
+a2903763d1 hw/riscv/hobgoblin: add missing dependencies
+67c272b89f hw/riscv/hobgoblin: remove local RISCV64_BIOS_BIN
+9b3d3aad9a hw: misc: Add Codasip TRNG (True Random Number Generator)
+22413e86fa hw: riscv: hobgoblin: Add TRNG peripherial
+7f6057d569 Expose invalidate to be callable without a CPU.
+352b321613 Add a CMU device skeleton.
+ff334564d3 cmu: define properties for cmu configuration
+7a67881769 cmu: set invalidate_region pointer
+24304aedd1 hw/riscv/hobgoblin: return newly added memory region
+92e03ba8ba hw/riscv/hobgoblin: create cmu devices
+191ed4c6ff cmu: move invalidate_region into the class
+83cf51ffa5 cmu: check that subtractions don't overflow
+1129b8055c cmu: Write arbitrary sizes upto 64bits.
+b1140b6808 nvram: simulate hobgoblin nvemu
+c089b57b9c hw/riscv/hobgoblin: Use class_data to initialize machine classes
+b6b9730585 hw/dma/xilinx_axidma: Improve 32/64 bit addressing
+1c6ab0781b hw/net/xilinx_axienet: Implement ID register
+2a470cb94b hw/net/xilinx_axienet: Implement full transmit checksum offloading
+f893ba8715 hw/riscv/hobgoblin: Remove BOOT_SRAM
+f28d5bea18 hw/riscv/hobgoblin: Fix SRAM size
+9374ab8d91 hw/riscv/hobgoblin: Initialise DRAM through machine class
+997a3e6aba hw/riscv/hobgoblin: Set 64bit property on Xilinx axi-dma device
+3af99deccd hw/riscv/hobgoblin: Add VCU118 board type
+54d4ed2b0c hw/riscv/hobgoblin: Add support for initrd and kernel command line
+90182947de hw/riscv/hobgoblin: Update ID register values
+de6771b4f7 cmu: area for tag clearing must be within the ram region
+d685eed4c3 hw/intc: sifive_plic: Change "priority-base" to start from interrupt source 0
+981a0fc129 hw/riscv/hobgoblin: use cpu_type in a consistent manner
+777fd8be44 cmu: replace dot in class name
+abba942dd6 cmu: move instance init to realize
+8c67e0117b cmu: make cache line size configurable
+0fa526283a hw/riscv/hobgoblin: handle unsupported dumdtb option
+9c4e1761f1 hw/dma/xilinx_axidma: Check DMASR.HALTED to prevent infinite loop.
+0106a8651c Add support for simulating CMU TCMO sequences.
+d57ec12bd3 Change default CMU cache line size to 256bit to match fpga hardware default
+430d89c749 Enable L730 as default 32bit CPU for when Hobgoblin machine is used
+c7b5a0d23e Increase Hobgoblin SRAM to 1M inline with the hw platform
+c2d96eca4e riscv: hobgoblin: Switch timer to Xilinx timer
+b611b773f3 char: xilinx_uartlite: Correct interrupt behaviour
+99ae26ee74 char: xilinx_uartlite: Handle error conditions
+ec407ede38 char: xilinx_uartlite: Model hardware register read/write behaviour
+7e0b5b4697 hw/dma/xilinx_axidma: Report correct TX size in status
+34489b5cbf riscv: hobgoblin: Add second UART
+7d7486e105 Fix VCU118 memory sizes
+ff7f5139de hw/pci-host/xilinx: Add prefetchable memory region
+9991cbe344 Increase size of ID reg area.
+333636682b Add hobgoblin2 memory map
+ef79b72e14 Introduce additional V2 IRQ entries
+adac7a3e51 Add V2 Irq map
+fe22fdc824 Add helpers to access the IRQMap and memmep entries
+916f9ccf98 Use Helper macro to access IRQ map
+f851a2b9b0 Switch memmap to table version using helper
+73dff943df Update platformID handling to support Hobgoblin2
+06856204f1 Add PCIE to hobgoblin2 VCU118
+e6ff7f86fe Add map and irq version to machine initialisation
+49ebb04551 Add Hobgoblin V2 machines
+1635597477 riscv: hobgoblin: fix two warnings
+c581d5eef8 Update CMU register map to include new version fields
+f1f9986665 Add a codasip-prime machine type which maps to the hobgoblin_v2vcu118.
+7513a528ef feat: add devicetree creation for vcu118 hobgoblin machine
+cb2f5624fc riscv: hobgoblin: Remove unused irq_pcie phandle in generated DT
+8181ef41d6 riscv: hobgoblin: Include cache fields in generated DT
+77deef174a riscv: hobgoblin: Add placeholder phandles in the generated DT
+e9e51fb2b7 riscv: hobgoblin: Fix SPI gpio node in generated DT
+ec2e39ae35 riscv: hobgoblin: Re-indent create_fdt_ethernet [NFC]
+85e21df8eb riscv: hobgoblin: Use version specific interrupts in generated DT
+5e9e42ea2e riscv: hobgoblin: Introduce Ethernet PHY IRQs for generated DT
+0096a920a9 riscv: hobgoblin: Add PCIe "dma-noncoherent" property in generated DT
+3c26ef7082 riscv: hobgoblin: Use memmap for PCIe ranges property in generated DT
+d86cf136aa riscv: hobgoblin: Simplify UART in generated DT
+0fa0cdb7a9 target/riscv: Fix checking of reserved PTE bits for RISC-V
+bf2f10d03d target/riscv: Don't allow svnapot and svpbmt with CHERI ISAv9
+30eafa404c target/riscv: Update a730 properties after recent rename
+a215fde71a acpi: sync data/acpi/virt/SSDT.memhp with v7.0.0
+d10861a297 Update A730 properties with Zfhmin
+d295d7fb76 target/riscv: Add pte extenstions to A730 config
+5e366f8a39 hw/hobgoblin: Add svpbmt to the ISA string
+85074d1045 target/riscv: Enable zish4add extensions on Codasip A730
+d9bca43ff2 target/riscv: Add zicboz to default A730 support
+ba9d561901 target/mips: restore CHERI-MIPS --version output
+bb8b35aa26 target/riscv: Enable zbc extension on Codasip A730
+2e6bc04a20 target/riscv: Add support for mconfigptr
+3376f31b46 target/riscv: add cfg properties for Zc* extension
+05de9aebb9 target/riscv: add support for Zca extension
+7987fe82f3 target/riscv: add support for Zcf extension
+e763953424 target/riscv: add support for Zcd extension
+1a79b518cb target/riscv: add support for Zcb extension
+eac4e72375 target/riscv: expose properties for Zc* extension
+d645a3b29f target/riscv: Update check for Zca/Zcf/Zcd
+7083e5a455 hw/riscv: Expose Zc* extensions in hobgoblin device tree
+88a939128a disas/riscv.c: add disasm support for Zc*
+8852c44b45 Add the Zc* extensions to the A730 support
+f74bbbdde4 target/riscv: rvk: add cfg properties for zbk* and zk*
+b6dc712772 target/riscv: rvk: add support for zbkb extension
+da6c5b7ff7 disas/riscv.c: rvk: add disas support for Zbk* and Zk* instructions
+4cb9707cea target/riscv: rvk: expose zbk* and zk* properties
+b5f84a41c3 Add zbkb extension to A730 support
+289066255c target/riscv: Add Zihintpause support
+06a1309ec3 Add zihintpause to the codasip a730 device
+6b3cbfa2dc target/mips: Fix -Wmissing-prototypes
+5af7cddea2 tulip: Remove unused variable
+8185149785 rtl8139: Remove unused variable
+afa4d2f75f host-libusb: Remove unused variable
+ed50ca2eaa Add ISA strings for new extensions to Hobgoblin
+0c8c4d0329 hw/riscv: Use riscv_feature() in hobgoblin.c
+b3ae99fdf3 async: Suppress GCC13 false positive in aio_bh_poll()
+cc51f464cf target/riscv: Fix type of write_mask in riscv_csrrw_check
+a16bf62f08 target/mips: Fix -Wenum-int-mismatch warning
+38df191128 target/arm: Drop the arm_get_xreg helper to fix a GCC warning
+2c2bc40707 hw/ide/ahci: Do not pass 'ports' argument to ahci_realize()
+b234926b0f pc-bios/optionrom: detect -fno-pie
+1f869478d5 pc-bios/optionrom: compile with -Wno-array-bounds
+b94974f61d cheri: add assertion to fix GCC -Warray-bounds warning
+29391a1c80 target accel/tcg Fix uninitialised warnings
+58bbe19ee6 target/arm Fix uninitialised warnings
+e426891f9e github: Add a draft GitHub actions CI job
+f27f39f1fb target/arm: Fix another GCC -Warray-bounds warnings
+3d5d4ee3ad cheri: rewrite debug_cap to appease GCC 11 warnings
+0293ceb2e7 tests: Drop perl-Test-Harness from the CI containers / VMs
+7c3e0d3979 Remove Ubuntu 18.04 container support from the repository
+46db690c6e tests: add python3-venv to debian10.docker
+0d8eed6ee7 Try to fix make check-tcg by fixing debian10 dockerfile
+62ae64c4a4 Mark qemu-iotests as slow
+f5f13346ba github actions: enable support for large XML files
+fccf9ad26e target/riscv: Fix logging of RMW CSR operations
+7bc1f4a4c6 target/riscv: Drop custom logging of pmpcfg/pmpadd csrs
+fa0f3ffe7f target/riscv: Drop log_update from csr config structure
+94f4aca39c target/riscv: Reduce csr_ops diff to upstream
+8f4063f39d target/riscv: Fix predicate for stval2
+f286f27f74 target/riscv: Further reduce diff to upstream in csr_ops
+5a568ef754 hobgoblin: Fix building on systems where uint64_t is not unsigned long
+f9901e7441 build Add codasip internal gitlab.yml
+a918259c84 target/riscv: Fix CSR_STVAL2 and CSR_VSTVAL2 handling.
+9b46883d36 ci: Reduce permissions needed by publish-test-results (#9)
+3a7594207c target/riscv: Fix stval2 reporting on CHERI PTE faults.
+e204410c48 target/riscv: Fix CBO.INVAL ASR check to be for PCC not the given capability (#10)
+1e48bfcd78 ebpf: replace deprecated bpf_program__set_socket_filter
+a86ec3a609 target CI: Remove codasip CI (#11)
+d0b781d993 target/cheri-common: Fix the internal representation of the mode bit for RISCV CHERI Standard 0.9.3.
+1194d08ace target/cheri-common: Update the logging of capability mode bit
+9bb93ba6fe Align the CheriExecMode enum values with cheri-compressed-cap
+f25b982b5d github: improve portability of workflow
+4179f62797 github: update github workflows to use TCH runners
+68653a266d tcg-all: Make TARGET_SUPPORTS_MTTCG always defined
+7c651ee97b include/qemu: Add missing colon to function headers. Adds a colon to the function headers for the x variable, fixes a documents build failure.
+84bda65c85 target/riscv: Fix qtest regressions Qtest initialises CPU properties with 0 which can cause failures. Resolve the failures by :- 1. Force ext_cheri to be enabled on CHERI builds. 2. Only check cbo.._blcocksize when the related extension is enabled.
+a9eaa36115 tests/qtest: Increase timeout for QOM qtests
+33b0d1c6d8 qemu/osdep: Switch position of "extern" and "G_NORETURN"
+d55953884b target/riscv Fix 'maybe uninitialised' werror Building with werror enabled the rwm_sip gets flagged with a possibly unitialised variable using gcc 13. So initialise the variable to squash this.
+b617258f6a tests/qtest: Use g_mkdtemp()
+477a9f4914 tests/qtest: migration-test: Avoid using hardcoded /tmp
+abf7824544 tests/qtest: migration-test: Fix [-Werror=format-overflow=] build warning
+f398e47227 qtests: avoid printing comments before g_test_init()
+02c4316e9a qemu-iotests: Ignore indentation in Killed messages
+12d1e43eae 9pfs: Hack out some of the 9p-proxy code
+b99a3717fd 9pfs: Add FreeBSD support
+6b75104418 osdep: Undefine FSCALE definition to fix Solaris builds
+87a606a631 thread-posix.h: Undefine FSCALE to fix the FreeBSD build
+896e9143c5 Fix cpu_restore_state call in ARM CHERI header
+88274ec262 Fix cpu_restore_state call in RISC-V op_helper.c
+6be92effd4 Fix cpu_restore_state call in RISC-V CHERI helper
+db815076aa Fix format string warning in RISC-V cpu.c
+3b6233131b Fix Stage 2 translation bypass hang in ARM PTW
+a9bc471eeb target/arm: Fix CHERI attribute extraction for unpacked descriptors
+7cf1cb64c6 target/arm, accel/tcg: Fix PTW and TLB performance regressions after v7.2.0 rebase
+b2a94be939 accel/tcg: Restore CHERI fields comparison in tb_cmp after rebase
+e03aedbd90 target/arm: Correctly propagate stage 1 BTI guarded bit in a two-stage walk
+7efec8ee7b target/arm: Fix Secure Stage 2 PTW regime detection in ptw.c
+01a500a573 target/arm: Disable CF_PCREL for TARGET_CHERI
+054855fc23 target/arm: Register idau-interface unconditionally in cpu32.c
+fae14cf183 target/arm: Fix register decoding in LDAR/STLR/LDAPR
+d34ca57deb morello: only run tests with single-threaded TCG
+29c8119955 qom: morello: register morello interface type
+78f8be8fa2 arm: morello: only read CP registers after checks
+96d8938653 arm: morello: unzip files before spawning workers
+81e293e912 arm: morello: do not accept input in subprocess
+5a070ca509 arm: morello: restore gpr_reg_modified calls
+0b34a409f7 cheri: meson: migrate options for debugging
+be0bca3563 fixes for morello-qemu-tests
+3e39741bf9 target/arm: Fix JIT lazy decompression state tracking in CFromPtr

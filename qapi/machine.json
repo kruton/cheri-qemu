@@ -35,12 +35,13 @@
 # Since: 3.0
 ##
 { 'enum' : 'SysEmuTarget',
-  'data' : [ 'aarch64', 'alpha', 'arm', 'avr', 'hppa', 'i386',
-             'loongarch64', 'm68k', 'microblaze', 'microblazeel', 'mips', 'mips64',
+  'data' : [ 'aarch64', 'morello', 'alpha', 'arm', 'avr', 'hppa', 'i386',
+             'loongarch64', 'm68k', 'microblaze', 'microblazeel', 'mips', 'mips64', 'mips64cheri128',
              'mips64el', 'mipsel', 'or1k', 'ppc',
-             'sh4eb', 'sparc', 'sparc64', 'tricore',
              'ppc64', 'riscv32', 'riscv64', 'riscv32xcheri', 'riscv64xcheri',
+             'riscv32cheristd', 'riscv64cheristd',
              'rx', 's390x', 'sh4', 'sh4eb',
+             'sparc', 'sparc64', 'tricore',
              'x86_64', 'xtensa', 'xtensaeb' ] }
 
 ##

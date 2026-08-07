@@ -33,6 +33,8 @@
 #include "qemu/cpu-float.h"
 #include "qemu/timer.h"
 #include "standard-headers/asm-x86/kvm_para.h"
+#include "exec/log_instr.h"
+
 
 #define XEN_NR_VIRQS 24
 
@@ -2971,12 +2973,20 @@ static inline bool cpu_in_user_mode(CPUArchState *env)
 {
     return false; /* TODO: implement */
 }
+
 static inline unsigned cpu_get_asid(CPUArchState *env, target_ulong pc)
 {
     return 0; /* TODO: implement */
 }
+
 static inline char *cpu_get_mode_name(qemu_log_instr_cpu_mode_t mode) {
     return NULL; /* TODO: implement */
 }
+
+static inline target_ulong cpu_get_recent_pc(CPUArchState *env)
+{
+    return env->eip;
+}
 #endif
+
 #endif /* I386_CPU_H */

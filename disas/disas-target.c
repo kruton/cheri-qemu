@@ -97,3 +97,100 @@ char *plugin_disas(CPUState *cpu, const DisasContextBase *db,
     return g_string_free(ds, false);
 }
 #endif /* CONFIG_PLUGIN */
+
+#include "exec/cpu-common.h"
+
+static int
+virtual_read_memory(bfd_vma memaddr, bfd_byte *myaddr, int length,
+                    struct disassemble_info *info)
+{
+    CPUDebug *s = container_of(info, CPUDebug, info);
+    int r = cpu_memory_rw_debug(s->cpu, memaddr, myaddr, length, 0);
+    return r ? EIO : 0;
+}
+
+void target_disas_vaddr(FILE *out, CPUState *cpu, uint64_t vaddr, size_t size)
+{
+    uint64_t pc;
+    int count;
+    CPUDebug s;
+
+    // Ugly workaround to disassemble exactly one instruction
+    bool only_one_inst = size == (size_t)-1;
+    if (only_one_inst) {
+        size = 1;
+    }
+
+    disas_initialize_debug_target(&s, cpu);
+    s.info.read_memory_func = virtual_read_memory;
+    s.info.fprintf_func = fprintf;
+    s.info.stream = out;
+    s.info.buffer_vma = vaddr;
+    s.info.buffer_length = size;
+    s.info.show_opcodes = true;
+
+    if (s.info.cap_arch >= 0 && cap_disas_target(&s.info, vaddr, size)) {
+        return;
+    }
+
+    if (s.info.print_insn == NULL) {
+        s.info.print_insn = print_insn_od_target;
+    }
+
+    for (pc = vaddr; size > 0; pc += count, size -= count) {
+        fprintf(out, "0x%08" PRIx64 ":  ", pc);
+        count = s.info.print_insn(pc, &s.info);
+        fprintf(out, "\n");
+        if (count < 0 || only_one_inst) {
+            break;
+        }
+        if (size < count) {
+            fprintf(out,
+                    "Disassembler disagrees with translator over instruction "
+                    "decoding\n"
+                    "Please report this to qemu-devel@nongnu.org\n");
+            break;
+        }
+    }
+}
+
+void target_disas_buf(FILE *out, CPUState *cpu, void *code, size_t size,
+                      uint64_t vma, uint64_t max_insns)
+{
+    uint64_t pc;
+    uint64_t num_insns;
+    int count;
+    CPUDebug s;
+
+    disas_initialize_debug_target(&s, cpu);
+    s.info.read_memory_func = host_read_memory;
+    s.info.fprintf_func = fprintf;
+    s.info.stream = out;
+    s.info.buffer = code;
+    s.info.buffer_vma = vma;
+    s.info.buffer_length = size;
+
+    if (s.info.cap_arch >= 0 && cap_disas_target(&s.info, vma, size)) {
+        return;
+    }
+
+    if (s.info.print_insn == NULL) {
+        s.info.print_insn = print_insn_od_target;
+    }
+
+    for (pc = vma, num_insns = 0; size > 0 && num_insns < max_insns; pc += count, size -= count, num_insns++) {
+        fprintf(out, "0x%08" PRIx64 ":  ", pc);
+        count = s.info.print_insn(pc, &s.info);
+        fprintf(out, "\n");
+        if (count < 0)
+            break;
+        if (size < count) {
+            fprintf(out,
+                    "Disassembler disagrees with translator over instruction "
+                    "decoding\n"
+                    "Please report this to qemu-devel@nongnu.org\n");
+            break;
+        }
+    }
+}
+

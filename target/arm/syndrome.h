@@ -27,6 +27,7 @@
 
 #include "qemu/bitops.h"
 
+/* clang-format off */
 /* Valid Syndrome Register EC field values */
 enum arm_exception_class {
     EC_UNCATEGORIZED          = 0x00,
@@ -74,7 +75,14 @@ enum arm_exception_class {
     EC_AA32_BKPT              = 0x38,
     EC_VECTORCATCH            = 0x3a,
     EC_AA64_BKPT              = 0x3c,
+
+    /* See aarch64/exceptions/exceptions/AArch64.ExceptionClass */
+    /* Trapped access to Capability functionality */
+    EC_CAPABILITY_ACCESS      = 0x29,
+    /* Trapped MRS or MSR access to Capability system register */
+    EC_CAPABILITY_SYSREGTRAP  = 0x2a,
 };
+/* clang-format on */
 
 typedef enum {
     SME_ET_AccessTrap,
@@ -178,13 +186,33 @@ static inline uint32_t syn_aa32_bkpt(uint32_t imm16, bool is_16bit)
         | (is_16bit ? 0 : ARM_EL_IL);
 }
 
+static inline uint32_t syn_aa64_sysregtrap_impl(int op0, int op1, int op2,
+                                                int crn, int crm, int rt,
+                                                int isread, bool cap)
+{
+    return ((cap ? EC_CAPABILITY_SYSREGTRAP : EC_SYSTEMREGISTERTRAP)
+            << ARM_EL_EC_SHIFT) |
+           ARM_EL_IL | (op0 << 20) | (op2 << 17) | (op1 << 14) | (crn << 10) |
+           (rt << 5) | (crm << 1) | isread;
+}
+
+static inline uint32_t syn_aa64_sysregtrap_cap(int op0, int op1, int op2,
+                                               int crn, int crm, int rt,
+                                               int isread)
+{
+    return syn_aa64_sysregtrap_impl(op0, op1, op2, crn, crm, rt, isread, true);
+}
+
 static inline uint32_t syn_aa64_sysregtrap(int op0, int op1, int op2,
                                            int crn, int crm, int rt,
                                            int isread)
 {
-    return (EC_SYSTEMREGISTERTRAP << ARM_EL_EC_SHIFT) | ARM_EL_IL
-        | (op0 << 20) | (op2 << 17) | (op1 << 14) | (crn << 10) | (rt << 5)
-        | (crm << 1) | isread;
+    return syn_aa64_sysregtrap_impl(op0, op1, op2, crn, crm, rt, isread, false);
+}
+
+static inline uint32_t syn_aa64_capability_access(void)
+{
+    return (EC_CAPABILITY_ACCESS << ARM_EL_EC_SHIFT) | ARM_EL_IL;
 }
 
 static inline uint32_t syn_cp14_rt_trap(int cv, int cond, int opc1, int opc2,
@@ -322,6 +350,16 @@ static inline uint32_t syn_data_abort_with_iss(int same_el,
            | ARM_EL_ISV | (sas << 22) | (sse << 21) | (srt << 16)
            | (sf << 15) | (ar << 14)
            | (ea << 9) | (cm << 8) | (s1ptw << 7) | (wnr << 6) | fsc;
+}
+
+static inline uint32_t syn_sp_alignment(bool is_16bit)
+{
+    return (EC_SPALIGNMENT << ARM_EL_EC_SHIFT) | (is_16bit ? 0 : ARM_EL_IL);
+}
+
+static inline uint32_t syn_pc_alignment(bool is_16bit)
+{
+    return (EC_PCALIGNMENT << ARM_EL_EC_SHIFT) | (is_16bit ? 0 : ARM_EL_IL);
 }
 
 /*

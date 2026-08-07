@@ -275,9 +275,9 @@ void arm_deliver_fault(ARMCPU *cpu, vaddr addr,
 }
 
 /* Raise a data fault alignment exception for the specified virtual address */
-void arm_cpu_do_unaligned_access(CPUState *cs, vaddr vaddr,
-                                 MMUAccessType access_type,
-                                 int mmu_idx, uintptr_t retaddr)
+void G_NORETURN arm_cpu_do_unaligned_access(CPUState *cs, vaddr vaddr,
+                                               MMUAccessType access_type,
+                                               int mmu_idx, uintptr_t retaddr)
 {
     ARMCPU *cpu = ARM_CPU(cs);
     ARMMMUFaultInfo fi = {};
@@ -368,6 +368,9 @@ bool arm_cpu_tlb_fill_align(CPUState *cs, CPUTLBEntryFull *out, vaddr address,
                               &res, fi)) {
         res.f.extra.arm.pte_attrs = res.cacheattrs.attrs;
         res.f.extra.arm.shareability = res.cacheattrs.shareability;
+#ifdef TARGET_CHERI
+        res.f.attrs.tag_setting = access_type == MMU_DATA_CAP_STORE;
+#endif
         *out = res.f;
         return true;
     }
@@ -377,6 +380,13 @@ bool arm_cpu_tlb_fill_align(CPUState *cs, CPUTLBEntryFull *out, vaddr address,
 
     /* Now we have a real cpu fault. */
     cpu_restore_state(cs, ra);
+#ifdef TARGET_CHERI
+    if (access_type == MMU_DATA_CAP_STORE) {
+        access_type = MMU_DATA_STORE;
+    } else if (access_type == MMU_DATA_CAP_LOAD) {
+        access_type = MMU_DATA_LOAD;
+    }
+#endif
     arm_deliver_fault(cpu, address, access_type, mmu_idx, fi);
 }
 #else

@@ -1774,7 +1774,6 @@ ERST
                       "\n\t\t\t -b to specify dirty bitmap as method of calculation)",
         .cmd        = hmp_calc_dirty_rate,
     },
-
 SRST
 ``calc_dirty_rate`` *second*
   Start a round of dirty rate measurement with the period specified in *second*.
@@ -1812,6 +1811,19 @@ SRST
   Cancel dirty page rate limit on virtual CPU, the information about all the
   virtual CPU dirty limit status can be observed with ``info vcpu_dirty_limit``
   command.
+ERST
+
+    {
+        .name       = "cheri_trace_buffer_size",
+        .args_type  = "buffer_size:i",
+        .params     = "buffer_size",
+        .help       = "set instruction trace buffer size",
+        .cmd        = hmp_cheri_log_buffer,
+    },
+
+SRST
+``cheri_trace_buffer_size`` *buffer_size*
+  Set the instruction trace buffer size to the given number of entries..
 ERST
 
     {

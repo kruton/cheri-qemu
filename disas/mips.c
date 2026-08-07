@@ -123,6 +123,8 @@ see <http://www.gnu.org/licenses/>.  */
 #define OP_SH_DELTA		0
 #define OP_MASK_CDELTA          0x7ff
 #define OP_SH_CDELTA            0
+#define OP_MASK_CDELTA2         0xff
+#define OP_SH_CDELTA2           3
 #define OP_MASK_DELTA_R6        0x1ff
 #define OP_SH_DELTA_R6          7
 #define OP_MASK_FUNCT		0x3f
@@ -1302,25 +1304,54 @@ const struct mips_opcode mips_builtin_opcodes[] =
 {"cgetaddr", "t,+b",	0x480003ff, 0xffe007ff, 0,			0, I1},
 {"croundrepresentablelength", "t,d", 0x4800043f, 0xffe007ff, 0,			0, I1},
 {"crepresentablealignmentmask", "t,d", 0x4800047f, 0xffe007ff, 0,			0, I1},
+{"cgetflags", "t,+b", 0x480004bf, 0xffe007ff, 0,			0, I1},
+{"cgetpccincoffset", "+w,d", 0x480004ff, 0xffe007ff, 0,			0, I1},
 {"cgetpccsetaddr", "+w,d", 0x4800053f, 0xffe007ff, 0,			0, I1},
 
 {"csealentry", "+w,+b",	0x4800077f, 0xffe007ff, 0,			0, I1},
+{"cloadtags", "t,+b",	0x480007bf, 0xffe007ff, 0,			0, I1},
+
 /* New ISA: one-operand instructions */
 {"cgetpcc", "+w",	    0x480007ff, 0xffe0ffff, 0,			0, I1},
 {"cgetcause", "t",	    0x48000fff, 0xffe0ffff, 0,			0, I1},
 {"csetcause", "t",	    0x480017ff, 0xffe0ffff, 0,			0, I1},
 {"cjr",    "+w",	    0x48001fff, 0xffe0ffff, 0,			0, I1},
 
+/* New ISA: three-operand instructions */
+{"cseal",      "+w,+b,+v",  0x4800000b, 0xffe0003f, 0, 0, I1},
+{"cunseal",    "+w,+b,+v",  0x4800000c, 0xffe0003f, 0, 0, I1},
+{"candperm",   "+w,+b,m",   0x4800000d, 0xffe0003f, 0, 0, I1},
+{"csetoffset", "+w,+b,m",   0x4800000f, 0xffe0003f, 0, 0, I1},
 {"csetbounds", "+w,+b,m",   0x48000008, 0xffe0003f, 0, 0, I1},
+{"csetboundsexact", "+w,+b,m",   0x48000009, 0xffe0003f, 0, 0, I1},
+{"cincoffset", "+w,+b,m",   0x48000011, 0xffe0003f, 0, 0, I1},
+{"ctoptr",     "t,+b,+v",   0x48000012, 0xffe0003f, 0, 0, I1},
+{"cfromptr",   "+w,+b,m",   0x48000013, 0xffe0003f, 0, 0, I1},
+{"cmovz",      "+w,+b,+v",  0x4800001b, 0xffe0003f, 0, 0, I1},
+{"cmovn",      "+w,+b,+v",  0x4800001c, 0xffe0003f, 0, 0, I1},
+{"ceq",        "t,+b,+v",   0x48000014, 0xffe0003f, 0, 0, I1},
+{"cne",        "t,+b,+v",   0x48000015, 0xffe0003f, 0, 0, I1},
+{"clt",        "t,+b,+v",   0x48000016, 0xffe0003f, 0, 0, I1},
+{"cle",        "t,+b,+v",   0x48000017, 0xffe0003f, 0, 0, I1},
+{"cltu",       "t,+b,+v",   0x48000018, 0xffe0003f, 0, 0, I1},
+{"cleu",       "t,+b,+v",   0x48000019, 0xffe0003f, 0, 0, I1},
+{"cexeq",      "t,+b,+v",   0x4800001a, 0xffe0003f, 0, 0, I1},
 {"cbuildcap",  "+w,+b,+v",  0x4800001d, 0xffe0003f, 0, 0, I1},
 {"ccopytype",  "+w,+b,+v",  0x4800001e, 0xffe0003f, 0, 0, I1},
+{"ccseal",     "+w,+b,+v",  0x4800001f, 0xffe0003f, 0, 0, I1},
 {"ctestsubset","+w,+b,+v",  0x48000020, 0xffe0003f, 0, 0, I1},
 {"cnexeq",     "t,+b,+v",   0x48000021, 0xffe0003f, 0, 0, I1},
+{"csetaddr",   "+w,+b,m",   0x48000022, 0xffe0003f, 0, 0, I1},
+{"cgetandaddr", "t,+b,m",   0x48000023, 0xffe0003f, 0, 0, I1},
+{"candaddr",   "+w,+b,m",   0x48000024, 0xffe0003f, 0, 0, I1},
+
 {"cbez",      "+w,i",   0x4a200000, 0xffe00000, 0, 0, I1},
 {"cbnz",      "+w,i",   0x4a400000, 0xffe00000, 0, 0, I1},
+
 {"csetboundsimm", "+w,+b,+o9",   0x4a800000, 0xffe00000, 0, 0, I1},
 {"cincoffsetimm", "+w,+b,+o3",   0x4a600000, 0xffe00000, 0, 0, I1},
 {"creturn", "",               0x48a007ff, 0xffffffff, 0, 0, I1},
+
 {"cgetperm", "t,+b", 	0x48000000, 0xffe007ff, 0,			0, I1},
 {"cgettype", "t,+b",	0x48000001, 0xffe007ff, 0,			0, I1},
 {"cgetbase", "t,+b",	0x48000002, 0xffe007ff, 0,			0, I1},
@@ -1413,16 +1444,9 @@ const struct mips_opcode mips_builtin_opcodes[] =
 {"cswhi", "v,+Q(+w)",	0xe8000006, 0xfc00f807, 0,			0, I1},
 /* there is no csdhi */
 
-{"clld",  "v,d,+O(+w)", 0xc8000007, 0xfc000007, 0,			0, I1},
-{"cscd",  "v,d,+O(+w)", 0xe8000007, 0xfc000007, 0,			0, I1},
-{"clldr", "v,d(+w)",	0xc8000007, 0xfc0007ff, 0,			0, I1},
-{"cscdr", "v,d(+w)",	0xe8000007, 0xfc0007ff, 0,			0, I1},
-{"clldi", "v,+O(+w)",	0xc8000007, 0xfc00f807, 0,			0, I1},
-{"cscdi", "v,+O(+w)",	0xe8000007, 0xfc00f807, 0,			0, I1},
-
 {"cseal",  "+w,+b,+v",	0x48400000, 0xffe0003f, 0,			0, I1},
 {"cunseal","+w,+b,+v",	0x48600000, 0xffe0003f, 0,			0, I1},
-{"ccall",  "+w,+b",	0x48a00000, 0xffe007ff, 0,			0, I1},
+{"ccall",  "+w,+b,+o3",	0x48a00000, 0xffe00000, 0,			0, I1},
 {"creturn","",		0x48c00000, 0xffffffff, 0,			0, I1},
 {"cjalr",  "+w,+b",	0x48e00000, 0xffe007ff, 0,			0, I1},
 {"cjr",    "+b",	0x49000000, 0xffff07ff, 0,			0, I1},
@@ -1434,9 +1458,28 @@ const struct mips_opcode mips_builtin_opcodes[] =
 {"cle",    "t,+b,+v",	0x49c00003, 0xffe0003f, 0,			0, I1},
 {"cltu",   "t,+b,+v",	0x49c00004, 0xffe0003f, 0,			0, I1},
 {"cleu",   "t,+b,+v",	0x49c00005, 0xffe0003f, 0,			0, I1},
+{"cexeq",  "t,+b,+v",	0x49c00006, 0xffe0003f, 0,			0, I1},
+{"cnexeq", "t,+b,+v",	0x49c00007, 0xffe0003f, 0,			0, I1},
+
+{"cscb",  "t,m,+b",     0x4a000000, 0xffe0003f, 0,          0, I1},
+{"csch",  "t,m,+b",     0x4a000001, 0xffe0003f, 0,          0, I1},
+{"cscw",  "t,m,+b",     0x4a000002, 0xffe0003f, 0,          0, I1},
+{"cscd",  "t,m,+b",     0x4a000003, 0xffe0003f, 0,          0, I1},
+{"cscc",  "m,+w,+b",    0x4a000007, 0xffe0003f, 0,          0, I1},
+
+{"cllbu",  "t,+b",       0x4a000008, 0xffe007ff, 0,          0, I1},
+{"cllhu",  "t,+b",       0x4a000009, 0xffe007ff, 0,          0, I1},
+{"cllwu",  "t,+b",       0x4a00000a, 0xffe007ff, 0,          0, I1},
+{"clld",  "t,+b",       0x4a00000b, 0xffe007ff, 0,          0, I1},
+{"cllb", "t,+b",       0x4a00000c, 0xffe007ff, 0,          0, I1},
+{"cllh", "t,+b",       0x4a00000d, 0xffe007ff, 0,          0, I1},
+{"cllw", "t,+b",       0x4a00000e, 0xffe007ff, 0,          0, I1},
+{"cllc",  "+w,+b",      0x4a00000f, 0xffe007ff, 0,          0, I1},
+
 /* XXXAR: new experimental CHERI loads. Overlaps with daui, etc. */
 {"clcbi",    "+x,+o8(+w)",    0x74000000, 0xfc000000, 0,            0, I1},
 {"cscbi",    "+x,+o8(+w)",    0x78000000, 0xfc000000, 0,            0, I1},
+
 /* End of CHERI instructions */
 
 {"lwpc",    "s,+o2",    0xec080000, 0xfc180000, WR_d,                 0, I32R6},
@@ -4271,6 +4314,10 @@ set_default_mips_dis_options (struct disassemble_info *info)
       mips_cp0sel_names = chosen_arch->cp0sel_names;
       mips_cp0sel_names_len = chosen_arch->cp0sel_names_len;
       mips_hwr_names = chosen_arch->hwr_names;
+      // XXXAR: print sensible n64 register names for TARGET_CHERI
+      if (chosen_arch->isa & ISA_MIPS64) {
+        mips_gpr_names = mips_gpr_names_newabi;
+      }
     }
 #endif
 }
@@ -4628,9 +4675,21 @@ print_insn_args (const char *d,
                     }
                     break;
                 case '4': /* CHERI 11 bit, shift 1 */
+                    d++;
+                    delta = ((l >> OP_SH_CDELTA) & OP_MASK_CDELTA);
+                    if (delta > (OP_MASK_CDELTA >> 1)) {
+                        delta -= (OP_MASK_CDELTA + 1);
+                    }
                     delta = delta << 1;
+                    break;
                 case '5': /* CHERI 11 bit, shift 2 */
+                    d++;
+                    delta = ((l >> OP_SH_CDELTA) & OP_MASK_CDELTA);
+                    if (delta > (OP_MASK_CDELTA >> 1)) {
+                        delta -= (OP_MASK_CDELTA + 1);
+                    }
                     delta = delta << 2;
+                    break;
                 case '6': /* CHERI 11 bit, shift 3 */
                     d++;
                     delta = ((l >> OP_SH_CDELTA) & OP_MASK_CDELTA);
@@ -4642,16 +4701,23 @@ print_insn_args (const char *d,
                 case '7': /* CHERI 11 bit, shift 4 */
                     d++;
                     delta = ((l >> OP_SH_CDELTA) & OP_MASK_CDELTA);
+                    if (delta > (OP_MASK_CDELTA >> 1)) {
+                        delta -= (OP_MASK_CDELTA + 1);
                     }
+                    delta = delta << 4;
                     break;
                 case '8': /* CHERI 16 bit, shift 4 */
                     d++;
                     delta = ((l >> OP_SH_DELTA) & OP_MASK_DELTA);
                     if (delta > (OP_MASK_DELTA >> 1)) {
                         delta -= (OP_MASK_DELTA + 1);
+                    }
                     delta = delta << 4;
                     break;
                 case '9': /* CHERI 11 bit unsigned, shift 0 */
+                    d++;
+                    delta = ((l >> OP_SH_CDELTA) & OP_MASK_CDELTA);
+                    break;
                 default:
                     delta = (l >> OP_SH_DELTA_R6) & OP_MASK_DELTA_R6;
                     if (delta & 0x8000) {
@@ -4759,17 +4825,34 @@ print_insn_args (const char *d,
                     mips_gpr_names[(l >> OP_SH_GPR) & OP_MASK_GPR]);
             break;
 
+        case 'O':
             delta = ((l >> OP_SH_CDELTA2) & OP_MASK_CDELTA2);
             if (delta > (OP_MASK_CDELTA2 >> 1))
                 delta -= (OP_MASK_CDELTA2 + 1);
             (*info->fprintf_func) (info->stream, "%d", delta << 0);
             break;
+
         case 'P':
+            delta = ((l >> OP_SH_CDELTA2) & OP_MASK_CDELTA2);
+            if (delta > (OP_MASK_CDELTA2 >> 1))
+                delta -= (OP_MASK_CDELTA2 + 1);
             (*info->fprintf_func) (info->stream, "%d", delta << 1);
+            break;
+
         case 'Q':
+            delta = ((l >> OP_SH_CDELTA2) & OP_MASK_CDELTA2);
+            if (delta > (OP_MASK_CDELTA2 >> 1))
+                delta -= (OP_MASK_CDELTA2 + 1);
             (*info->fprintf_func) (info->stream, "%d", delta << 2);
+            break;
+
         case 'R':
+            delta = ((l >> OP_SH_CDELTA2) & OP_MASK_CDELTA2);
+            if (delta > (OP_MASK_CDELTA2 >> 1))
+                delta -= (OP_MASK_CDELTA2 + 1);
             (*info->fprintf_func) (info->stream, "%d", delta << 3);
+            break;
+
 	    default:
 	      /* xgettext:c-format */
 	      (*info->fprintf_func) (info->stream,

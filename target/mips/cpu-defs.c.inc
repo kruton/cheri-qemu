@@ -547,10 +547,32 @@ const mips_def_t mips_defs[] =
         .mmu_type = MMU_TYPE_R4000,
     },
 #if defined(TARGET_MIPS64)
+// 8 byte counter for CPU revision. Bump this every time there is major incompatible change
+// so that we can print a warning when booting CheriBSD with a too old QEMU
+#define CHERI_PROCESSOR_REVISION_COUNTER 0x6
+// Revision 1: initial QEMU-specific processor ID (around ISA v5 or v6)
+// Revision 2: ISA v7 (including CNULL and special-purpose CHERI registers)
+// Revision 3: ISA v7 + bugfixes + CCall without delay slot
+// Revision 4: Working CRAM/CRRL
+//    - No more delay slot in $pcc
+//    - Target $pcc permissions + range are now checked on jump rater than at
+//      the target which avoids unrepresentable $pcc
+//    - Clang now emits csetboundsimmediate with > 1024 and previous versions of
+//      QEMU would interpret that as a signed number, cast it to uint64_t and
+//      give a length violation. This avoids surprising crashes at runtime
+//    - Tons of branch-delay slot bugs
+// Revision 5:
+//    - Capability compares no longer include tag bit
+//    - Working sentry caps
+//    - CGetPCCIncOffset/CGetPCCSetAddr
+// Revision 6:
+//    - CBEZ/CBNZ only compares the address instead of the full capability
+#define CHERI_PROCESSOR_ID  0x0f << 16 | 0x04 << 8 | CHERI_PROCESSOR_REVISION_COUNTER
+
     {
         .name = "R4000",
 #if defined(TARGET_CHERI)
-        .CP0_PRid = 0x00008900,
+        .CP0_PRid = CHERI_PROCESSOR_ID,
 #else
         .CP0_PRid = 0x00000400,
 #endif
@@ -559,12 +581,16 @@ const mips_def_t mips_defs[] =
                        (2 << CP0C0_K0),
         /* Note: Config1 is only used internally, the R4000 has only Config0. */
 #if defined(TARGET_CHERI)
-        .CP0_Config1 = (1 << CP0C1_FP) | (47 << CP0C1_MMU) | 0x40,
+        .CP0_Config1 = (1 << CP0C1_FP) | (47 << CP0C1_MMU) | (1 << CP0C1_C2),
 #else
         .CP0_Config1 = (1 << CP0C1_FP) | (47 << CP0C1_MMU),
 #endif
         .CP0_LLAddr_rw_bitmask = 0xFFFFFFFF,
+#if defined(TARGET_CHERI)
+        .CP0_LLAddr_shift = 0,
+#else
         .CP0_LLAddr_shift = 4,
+#endif
         .SYNCI_Step = 16,
         .CCRes = 2,
 #if defined(TARGET_CHERI)
@@ -575,7 +601,11 @@ const mips_def_t mips_defs[] =
         /* The R4000 has a full 64bit FPU but doesn't use the fcr0 bits. */
         .CP1_fcr0 = (0x5 << FCR0_PRID) | (0x0 << FCR0_REV),
         .CP1_fcr31 = 0,
+#if defined(TARGET_CHERI)
+        .CP1_fcr31_rw_bitmask = 0x018FFFFF,
+#else
         .CP1_fcr31_rw_bitmask = 0x0183FFFF,
+#endif
         .SEGBITS = 40,
 #if defined(TARGET_CHERI)
         .PABITS = 40,
@@ -631,6 +661,7 @@ const mips_def_t mips_defs[] =
         .name = "5Kf",
 #if defined(TARGET_CHERI)
         /* cpu vendor = 0x0f, cpu impl = 0x04, cpu rev = 0x01 */
+        .CP0_PRid = CHERI_PROCESSOR_ID,
 #else /* ! TARGET_CHERI */
         .CP0_PRid = 0x00018100,
 #endif /* ! TARGET_CHERI */
@@ -638,21 +669,27 @@ const mips_def_t mips_defs[] =
                        (MMU_TYPE_R4000 << CP0C0_MT),
         .CP0_Config1 = MIPS_CONFIG1 | (1 << CP0C1_FP) | (31 << CP0C1_MMU) |
 #if defined(TARGET_CHERI)
+                       (1 << CP0C1_C2) |
+#endif /* ! TARGET_CHERI */
                        (1 << CP0C1_IS) | (4 << CP0C1_IL) | (1 << CP0C1_IA) |
                        (1 << CP0C1_DS) | (4 << CP0C1_DL) | (1 << CP0C1_DA) |
                        (1 << CP0C1_PC) | (1 << CP0C1_WR) | (1 << CP0C1_EP),
         .CP0_Config2 = MIPS_CONFIG2,
 #if defined(TARGET_CHERI)
         .CP0_Config3 = MIPS_CONFIG3 | (1 << CP0C3_ULRI) | (1 << CP0C3_BI) |
+                       (1 << CP0C3_BP) | (1 << CP0C3_MT),
 #else
         .CP0_Config3 = MIPS_CONFIG3,
 #endif
         .CP0_LLAddr_rw_bitmask = 0,
+#if defined(TARGET_CHERI)
+        .CP0_LLAddr_shift = 0,
 #else
         .CP0_LLAddr_shift = 4,
 #endif
         .SYNCI_Step = 32,
         .CCRes = 2,
+#if defined(TARGET_CHERI)
         .CP0_Status_rw_bitmask = 0x76F8FFFF,
 #else
         .CP0_Status_rw_bitmask = 0x36F8FFFF,
@@ -661,16 +698,57 @@ const mips_def_t mips_defs[] =
         .CP1_fcr0 = (1 << FCR0_D) | (1 << FCR0_S) |
                     (0x81 << FCR0_PRID) | (0x0 << FCR0_REV),
         .CP1_fcr31 = 0,
+#if defined(TARGET_CHERI)
+        .CP1_fcr31_rw_bitmask = 0xFF8FFFFF,
+#else
         .CP1_fcr31_rw_bitmask = 0xFF83FFFF,
+#endif
         .SEGBITS = 42,
         .PABITS = 36,
+#if defined(TARGET_CHERI)
         .insn_flags = CPU_MIPS64R2,
+#else
         .insn_flags = CPU_MIPS64R1,
+#endif
+        .mmu_type = MMU_TYPE_R4000,
+    },
+    {
+        .name = "BERI",
+        /* cpu vendor = 0x0f, cpu impl = 0x04, cpu rev = 0x01 */
+        .CP0_PRid = CHERI_PROCESSOR_ID,
         .CP0_Config0 = MIPS_CONFIG0 | (0x2 << CP0C0_AT) |
+                       (MMU_TYPE_R4000 << CP0C0_MT),
+        .CP0_Config1 = MIPS_CONFIG1 |
+#if defined(TARGET_CHERI)
+                       (1 << CP0C1_C2) |
+#endif /* ! TARGET_CHERI */
+                       (1 << CP0C1_FP) | (31 << CP0C1_MMU) |
                        (1 << CP0C1_IS) | (4 << CP0C1_IL) | (1 << CP0C1_IA) |
                        (1 << CP0C1_DS) | (4 << CP0C1_DL) | (1 << CP0C1_DA) |
                        (1 << CP0C1_PC) | (1 << CP0C1_WR) | (1 << CP0C1_EP),
+        .CP0_Config2 = MIPS_CONFIG2,
         .CP0_Config3 = MIPS_CONFIG3 | (1 << CP0C3_ULRI) | (1 << CP0C3_BI) |
+                       (1 << CP0C3_BP) | (1 << CP0C3_LPA) | (1 << CP0C3_MT),
+        .CP0_LLAddr_rw_bitmask = 0,
+        .CP0_LLAddr_shift = 0,
+        .SYNCI_Step = 32,
+        .CCRes = 2,
+#if defined(TARGET_CHERI)
+        .CP0_Status_rw_bitmask = 0x76F8FFFF,
+#else
+        .CP0_Status_rw_bitmask = 0x36F8FFFF,
+#endif
+        /* The 5Kf has F64 / L / W but doesn't use the fcr0 bits. */
+        .CP1_fcr0 = (1 << FCR0_F64) | (1 << FCR0_D) | (1 << FCR0_S) |
+                    (0x81 << FCR0_PRID) | (0x0 << FCR0_REV),
+        .CP1_fcr31 = 0,
+        .CP1_fcr31_rw_bitmask = 0xFF8FFFFF,
+        .SEGBITS = 42,
+        .PABITS = 40,
+        /* These flags are needed in addition to Config3.LPA for > 36 bits PA */
+        .CP0_PageGrain = (1 << CP0PG_ELPA),
+        .CP0_PageGrain_rw_bitmask = (1 << CP0PG_ELPA), /* TODO: should it be R/W? */
+        .insn_flags = CPU_MIPS64R2,
         .mmu_type = MMU_TYPE_R4000,
     },
     {

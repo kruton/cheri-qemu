@@ -1,6 +1,7 @@
 specific_ss.add(when: 'CONFIG_SYSTEM_ONLY', if_true: [files(
   'arch_init.c',
   'globals-target.c',
+  'physmem.c',
 )])
 
 system_ss.add(files(
@@ -21,7 +22,7 @@ system_ss.add(files(
   'ram-block-attributes.c',
   'memory_mapping.c',
   'memory.c',
-  'physmem.c',
+
   'qdev-monitor.c',
   'qtest.c',
   'rtc.c',

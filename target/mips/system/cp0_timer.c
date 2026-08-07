@@ -41,10 +41,17 @@ static void cpu_mips_timer_update(CPUMIPSState *env)
     uint32_t wait;
 
     now_ns = qemu_clock_get_ns(QEMU_CLOCK_VIRTUAL);
-    wait = env->CP0_Compare - cpu_mips_get_count_val(env);
-    /* Clamp interval to overflow if virtual time had not progressed */
-    if (!wait) {
+    if (env->CP0_Compare == UINT32_MAX) {
+        /* FreeBSD writes 0xffff ffff to CP0_Compare in clock_stop
+         * in sys/mips/mips/tick.c. Let's just treat this as the maximum timout
+         */
         wait = UINT32_MAX;
+    } else {
+        wait = env->CP0_Compare - cpu_mips_get_count_val(env);
+        /* Clamp interval to overflow if virtual time had not progressed */
+        if (!wait) {
+            wait = UINT32_MAX;
+        }
     }
     next_ns = now_ns + clock_ticks_to_ns(env->count_clock, wait);
     timer_mod(env->timer, next_ns);
@@ -144,4 +151,19 @@ void cpu_mips_clock_init(MIPSCPU *cpu)
     if (!kvm_enabled()) {
         env->timer = timer_new_ns(QEMU_CLOCK_VIRTUAL, &mips_timer_cb, env);
     }
+}
+
+static int64_t rtc_clock_adj = 0l;
+
+uint64_t cpu_mips_get_rtc64 (CPUMIPSState *env)
+{
+    int64_t now = qemu_clock_get_ns(QEMU_CLOCK_HOST);
+
+    return (uint64_t)(now + rtc_clock_adj);
+}
+
+void cpu_mips_set_rtc64 (CPUMIPSState *env, uint64_t time)
+{
+
+    rtc_clock_adj = time - qemu_clock_get_ns(QEMU_CLOCK_HOST);
 }

@@ -51,20 +51,40 @@
 #include "cpregs.h"
 #include "target/arm/cpu-qom.h"
 #include "target/arm/gtimer.h"
-
 #include "trace.h"
 
+#ifdef TARGET_CHERI
+
+const char *const cheri_gp_regnames[34] = {
+    "c0",  "c1",  "c2",  "c3",  "c4",  "c5",  "c6",         "c7",  "c8",
+    "c9",  "c10", "c11", "c12", "c13", "c14", "c15",        "c16", "c17",
+    "c18", "c19", "c20", "c21", "c22", "c23", "c24",        "c25", "c26",
+    "c27", "c28", "c29", "c30", "csp", "czr", "ctmp(error)"};
+
+const char *const cheri_gp_int_regnames[34] = {
+    "x0",  "x1",  "x2",  "x3",  "x4",  "x5",  "x6",         "x7",  "x8",
+    "x9",  "x10", "x11", "x12", "x13", "x14", "x15",        "x16", "x17",
+    "x18", "x19", "x20", "x21", "x22", "x23", "x24",        "x25", "x26",
+    "x27", "x28", "x29", "x30", "xsp", "xzr", "xtmp(error)"};
+
+#endif
+
+#ifdef CONFIG_TCG_LOG_INSTR
+const char *const aarch_cpu_mode_names[QEMU_LOG_INSTR_CPU_MODE_MAX] = {
     [AARCH_LOG_INSTR_CPU_EL0] = "EL0",
     [AARCH_LOG_INSTR_CPU_EL1] = "EL1",
     [AARCH_LOG_INSTR_CPU_EL2] = "EL2",
     [AARCH_LOG_INSTR_CPU_EL3] = "EL3",
+};
+#endif
+
 static void arm_cpu_set_pc(CPUState *cs, vaddr value)
 {
     ARMCPU *cpu = ARM_CPU(cs);
     CPUARMState *env = &cpu->env;
 
     if (is_a64(env)) {
-        env->pc = value;
+        set_aarch_reg_value(&env->pc, value);
         env->thumb = false;
     } else {
         env->regs[15] = value & ~1;
@@ -78,7 +98,7 @@ static vaddr arm_cpu_get_pc(CPUState *cs)
     CPUARMState *env = &cpu->env;
 
     if (is_a64(env)) {
-        return env->pc;
+        return get_aarch_reg_as_x(&env->pc);
     } else {
         return env->regs[15];
     }
@@ -96,7 +116,8 @@ void arm_cpu_synchronize_from_tb(CPUState *cs,
          * never possible for an AArch64 TB to chain to an AArch32 TB.
          */
         if (is_a64(env)) {
-            env->pc = tb->pc;
+            // LETODO: I dont know if this needs bounds checking
+            set_aarch_reg_value(&env->pc, tb->pc);
         } else {
             env->regs[15] = tb->pc;
         }
@@ -110,11 +131,23 @@ void arm_restore_state_to_opc(CPUState *cs,
     CPUARMState *env = cpu_env(cs);
 
     if (is_a64(env)) {
+#ifdef TARGET_CHERI
+        target_ulong new_pc;
         if (tb_cflags(tb) & CF_PCREL) {
-            env->pc = (env->pc & TARGET_PAGE_MASK) | data[0];
+            new_pc = (env->pc.cap._cr_cursor & TARGET_PAGE_MASK) | data[0];
         } else {
-            env->pc = data[0];
+            new_pc = data[0];
         }
+        assert(cap_is_in_bounds(_cheri_get_pcc_unchecked(env), new_pc, 4));
+        env->pc.cap._cr_cursor = new_pc;
+#else
+        if (tb_cflags(tb) & CF_PCREL) {
+            target_ulong new_pc = (env->pc & TARGET_PAGE_MASK) | data[0];
+            set_aarch_reg_to_x(env, &env->pc, new_pc);
+        } else {
+            set_aarch_reg_to_x(env, &env->pc, data[0]);
+        }
+#endif
         env->condexec_bits = 0;
         env->exception.syndrome = data[2] << ARM_INSN_START_WORD2_SHIFT;
     } else {
@@ -193,11 +226,27 @@ static void cp_reg_reset(gpointer key, gpointer value, gpointer opaque)
         return;
     }
 
+#ifdef TARGET_CHERI
+    if (cpreg_field_is_cap(ri)) {
+        if (ri->type & ARM_CP_CONST) {
             return;
         }
+        assert(ri->fieldoffset && "Unexpected capability cpreg without offset");
+        /*
+         * We ensure that all cap_register_t values are reset to a canonical
+         * capability rather than all zeroes. This ensures that values such
          * as pesbt and capreg_state are initialized correctly. The default
          * reset value is null unless has_special_capresetvalue is set.
+         */
+        if (ri->has_special_capresetvalue) {
+            CPREG_FIELDCAP(&cpu->env, ri) = ri->capresetvalue;
+        } else {
+            CPREG_FIELDCAP(&cpu->env, ri) = make_null_capability(&cpu->env);
+        }
         return;
+    }
+#endif
+
     /* A zero offset is never possible as it would be regs[0]
      * so we use it to indicate that reset is being handled elsewhere.
      * This is basically only used for fields in non-core coprocessors
@@ -227,13 +276,25 @@ static void cp_reg_check_reset(gpointer key, gpointer value,  gpointer opaque)
     }
 
 #ifdef TARGET_CHERI
+    /*
      * Check that all capability registers were initialized to a valid capability
+     * rather than just memset() to zero.
+     */
     if (cpreg_field_is_cap(ri)) {
         cap_register_t creg_old = read_raw_cp_reg_cap(&cpu->env, ri);
+        _Static_assert(CREG_FULLY_DECOMPRESSED != 0, "need nonzero value");
         if (creg_old.cr_extra != CREG_FULLY_DECOMPRESSED) {
+            error_report("Register %s was not initialized to a valid state",
+                         ri->name);
+            abort();
         }
+        cp_reg_reset(key, value, opaque);
+        cap_register_t creg_new = read_raw_cp_reg_cap(&cpu->env, ri);
+        assert(CAP_cc(raw_equal)(&creg_old, &creg_new));
         return;
+    }
 #endif
+
     oldvalue = read_raw_cp_reg(&cpu->env, ri);
     cp_reg_reset(key, value, opaque);
     newvalue = read_raw_cp_reg(&cpu->env, ri);
@@ -260,11 +321,24 @@ static void arm_cpu_reset_hold(Object *obj, ResetType type)
      * a canonical null capability.
      */
     for (size_t i = 0; i < ARRAY_SIZE(env->sp_el); i++) {
+        env->sp_el[i].cap = make_null_capability(env);
     }
     for (size_t i = 0; i < ARRAY_SIZE(env->elr_el); i++) {
+        env->elr_el[i].cap = make_null_capability(env);
+    }
+    /*
      * The following are marked as arm_cp_reset_ignore. However, they are before
      * end_reset_fields, so we should ensure that the value is canonical NULL
      * instead of all zeroes.
+     */
+    env->cp15.tpidrurw_s.cap = make_null_capability(env);
+    env->cp15.tpidrurw_ns.cap = make_null_capability(env);
+    env->cp15.tpidruro_s.cap = make_null_capability(env);
+    env->cp15.tpidruro_ns.cap = make_null_capability(env);
+    env->cp15.tpidrprw_s.cap = make_null_capability(env);
+    env->cp15.tpidrprw_ns.cap = make_null_capability(env);
+    env->cp15.vbar_s.cap = make_null_capability(env);
+    env->cp15.vbar_ns.cap = make_null_capability(env);
 #endif
 
     g_hash_table_foreach(cpu->cp_regs, cp_reg_reset, cpu);
@@ -359,7 +433,13 @@ static void arm_cpu_reset_hold(Object *obj, ResetType type)
 
         /* Sample rvbar at reset.  */
         env->cp15.rvbar = cpu->rvbar_prop;
+#ifdef TARGET_CHERI
+        reset_capregs(env);
+        set_max_perms_capability(env, &env->pc.cap, env->cp15.rvbar);
+#else
         env->pc = env->cp15.rvbar;
+#endif
+
 #endif
     } else {
 #if defined(CONFIG_USER_ONLY)
@@ -377,6 +457,7 @@ static void arm_cpu_reset_hold(Object *obj, ResetType type)
          */
         error_report("Morello does not support A32");
         abort();
+#else
         if (arm_feature(env, ARM_FEATURE_V8)) {
             env->cp15.rvbar = cpu->rvbar_prop;
             env->regs[15] = cpu->rvbar_prop;
@@ -888,12 +969,13 @@ static void aarch64_cpu_dump_state(CPUState *cs, FILE *f, int flags)
     const char *ns_status;
     bool sve;
 
-    qemu_fprintf(f, " PC=%016" PRIx64 " ", env->pc);
+    qemu_fprintf(f, " PC=%016" PRIx64 " ", (uint64_t)get_aarch_reg_as_x(&env->pc));
     for (i = 0; i < 32; i++) {
+        target_ulong reg = arm_get_a64_reg(env, i);
         if (i == 31) {
-            qemu_fprintf(f, " SP=%016" PRIx64 "\n", env->xregs[i]);
+            qemu_fprintf(f, " SP=%016" PRIx64 "\n", (uint64_t)reg);
         } else {
-            qemu_fprintf(f, "X%02d=%016" PRIx64 "%s", i, env->xregs[i],
+            qemu_fprintf(f, "X%02d=%016" PRIx64 "%s", i, (uint64_t)reg,
                          (i + 2) % 3 ? " " : "\n");
         }
     }
@@ -1231,6 +1313,9 @@ static const Property arm_cpu_has_dsp_property =
 static const Property arm_cpu_has_mpu_property =
             DEFINE_PROP_BOOL("has-mpu", ARMCPU, has_mpu, true);
 
+static Property arm_cpu_mpidr_mt_property =
+            DEFINE_PROP_BOOL("mpidr_mt", ARMCPU, mpidr_mt, false);
+
 /* This is like DEFINE_PROP_UINT32 but it doesn't set the default value,
  * because the CPU initfn will have already set cpu->pmsav7_dregion to
  * the right value for that particular CPU type, and we don't want
@@ -1351,6 +1436,9 @@ static void arm_cpu_propagate_feature_implications(ARMCPU *cpu)
     if (arm_feature(&cpu->env, ARM_FEATURE_AARCH64)) {
         no_aa32 = !cpu_isar_feature(aa64_aa32, cpu);
     }
+#ifdef TARGET_CHERI
+    no_aa32 = true;
+#endif
 
     if (arm_feature(env, ARM_FEATURE_V7VE)) {
         /*
@@ -1560,6 +1648,8 @@ static void arm_cpu_post_init(Object *obj)
         kvm_arm_add_vcpu_properties(cpu);
     }
 
+    qdev_property_add_static(DEVICE(obj), &arm_cpu_mpidr_mt_property);
+
     if (arm_feature(&cpu->env, ARM_FEATURE_AARCH64) &&
         cpu_isar_feature(aa64_mte, cpu)) {
         object_property_add_link(obj, "tag-memory",
@@ -1663,7 +1753,7 @@ static void arm_cpu_realizefn(DeviceState *dev, Error **errp)
     CPUARMState *env = &cpu->env;
     Error *local_err = NULL;
 
-#if defined(CONFIG_TCG) && !defined(CONFIG_USER_ONLY)
+#if defined(CONFIG_TCG) && !defined(CONFIG_USER_ONLY) && !defined(TARGET_CHERI)
     /* Use pc-relative instructions in system-mode */
     tcg_cflags_set(cs, CF_PCREL);
 #endif

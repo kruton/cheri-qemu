@@ -1,4 +1,5 @@
 BasedOnStyle: LLVM
+ColumnLimit: 80
 IndentWidth: 4
 UseTab: Never
 BreakBeforeBraces: Linux
@@ -8,10 +9,15 @@ AllowShortCaseLabelsOnASingleLine: false
 AllowShortBlocksOnASingleLine: Empty
 AllowShortFunctionsOnASingleLine: Empty
 AllowShortLoopsOnASingleLine: false
-IndentCaseLabels: false
-ColumnLimit: 80
-SortIncludes: false
 AllowShortLambdasOnASingleLine: Inline
 AlwaysBreakBeforeMultilineStrings: false
 BreakStringLiterals: true
+IndentCaseLabels: false
+#IndentCaseBlocks: true <-- not supported on older clang-formats
+Cpp11BracedListStyle: false
 PointerAlignment: Right
+SortIncludes: false
+StatementMacros:
+  - type_init
+ForEachMacros:
+- CPU_FOREACH

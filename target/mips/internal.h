@@ -10,9 +10,12 @@
 
 #include "exec/memattrs.h"
 #ifdef CONFIG_TCG
+#include "qemu/log.h"
+#include "exec/log_instr.h"
 #include "tcg/tcg-internal.h"
 #endif
 #include "cpu.h"
+
 
 /*
  * MMU types, the first four entries have the same layout as the
@@ -87,12 +90,26 @@ struct mips_def_t {
 
 extern const char regnames[32][3];
 extern const char fregnames[32][4];
+extern const char regnames_HI[4][4];
+extern const char regnames_LO[4][4];
+extern const char mips_cop0_regnames[32*8][32];
+#ifdef TARGET_CHERI
+extern const char mips_cheri_hw_regnames[32][10];
+#endif
 
 extern const struct mips_def_t mips_defs[];
 extern const int mips_defs_number;
 
+#ifdef TARGET_CHERI
 #include "cheri_utils.h"
+
+int mips_gdb_get_cheri_reg(CPUState *cs, GByteArray *buf, int n);
+int mips_gdb_set_cheri_reg(CPUState *cs, uint8_t *mem_buf, int n);
 static inline bool cheri_have_access_sysregs(CPUArchState *env);
+#endif
+int mips_gdb_get_sys_reg(CPUState *cs, GByteArray *buf, int n);
+int mips_gdb_set_sys_reg(CPUState *cs, uint8_t *mem_buf, int n);
+
 int mips_cpu_gdb_read_register(CPUState *cpu, GByteArray *buf, int reg);
 int mips_cpu_gdb_write_register(CPUState *cpu, uint8_t *buf, int reg);
 
@@ -105,8 +122,12 @@ int mips_cpu_gdb_write_register(CPUState *cpu, uint8_t *buf, int reg);
 #if !defined(CONFIG_USER_ONLY)
 
 enum {
+#ifdef TARGET_CHERI
+    TLBRET_S = -5,
+#else
     TLBRET_XI = -6,
     TLBRET_RI = -5,
+#endif /* TARGET_CHERI */
     TLBRET_DIRTY = -4,
     TLBRET_INVALID = -3,
     TLBRET_NOMATCH = -2,
@@ -132,10 +153,19 @@ struct r4k_tlb_t {
     unsigned int V1:1;
     unsigned int D0:1;
     unsigned int D1:1;
+#if defined(TARGET_CHERI)
+    unsigned int L0:1;
+    unsigned int L1:1;
+    unsigned int S0:1;
+    unsigned int S1:1;
+    unsigned int CLG0:1;
+    unsigned int CLG1:1;
+#else
     unsigned int XI0:1;
     unsigned int XI1:1;
     unsigned int RI0:1;
     unsigned int RI1:1;
+#endif /* TARGET_CHERI */
     unsigned int EHINV:1;
     uint64_t PFN[2];
 };
@@ -145,8 +175,8 @@ struct CPUMIPSTLBContext {
     uint32_t tlb_in_use;
     int (*map_address)(CPUMIPSState *env, hwaddr *physical, int *prot,
                        target_ulong address, MMUAccessType access_type);
-    void (*helper_tlbwi)(CPUMIPSState *env);
-    void (*helper_tlbwr)(CPUMIPSState *env);
+    void (*helper_tlbwi)(CPUMIPSState *env, uintptr_t retpc);
+    void (*helper_tlbwr)(CPUMIPSState *env, uintptr_t retpc);
     void (*helper_tlbp)(CPUMIPSState *env);
     void (*helper_tlbr)(CPUMIPSState *env);
     void (*helper_tlbinv)(CPUMIPSState *env);
@@ -217,9 +247,13 @@ void cpu_mips_store_compare(CPUMIPSState *env, uint32_t value);
 void cpu_mips_start_count(CPUMIPSState *env);
 void cpu_mips_stop_count(CPUMIPSState *env);
 
+
+uint64_t cpu_mips_get_rtc64 (CPUMIPSState *env);
+void cpu_mips_set_rtc64 (CPUMIPSState *env, uint64_t value);
+
 static inline void mips_env_set_pc(CPUMIPSState *env, target_ulong value)
 {
-    env->active_tc.PC = value & ~(target_ulong)1;
+    mips_update_pc(env, value & ~(target_ulong)1, /*can_be_unrepresentable=*/false);
     if (value & 1) {
         env->hflags |= MIPS_HFLAG_M16;
     } else {
@@ -300,13 +334,48 @@ static inline int mips_vp_active(CPUMIPSState *env)
 }
 
 static inline bool can_access_cp0(CPUArchState *env) {
+    if (((env->CP0_Status & (1 << CP0St_CU0)) &&
+        !(env->insn_flags & ISA_MIPS_R6)) ||
+        !(env->hflags & MIPS_HFLAG_KSU)) {
+#ifdef TARGET_CHERI
+        // For CHERI we need to check PCC.perms before enabling access to cp0 features.
+        if (!cheri_have_access_sysregs(env)) {
+            /* qemu_log_mask(CPU_LOG_INSTR, "Kernel mode but no ASR!\n"); */
+            return false;
+        }
+#endif
+        return true; // plain MIPS can always access system registers.
+    }
+    return false;
+}
+
+static inline void update_cp0_access_for_pc(CPUArchState *env) {
+    if (can_access_cp0(env)) {
+        if ((env->hflags & MIPS_HFLAG_CP0) == 0) {
+            qemu_maybe_log_instr_extra(env, "%s: restoring access to CP0 since "
+                "$pcc has ASR permission\n", __func__);
+            env->hflags |= MIPS_HFLAG_CP0;
+        }
+    } else {
+        if ((env->hflags & MIPS_HFLAG_CP0)) {
+            qemu_maybe_log_instr_extra(env, "%s: removing access to CP0 since "
+                "$pcc does not have ASR permission\n", __func__);
+            env->hflags &= ~MIPS_HFLAG_CP0;
+        }
+    }
+}
+
 static inline void compute_hflags(CPUMIPSState *env)
 {
     env->hflags &= ~(MIPS_HFLAG_COP1X | MIPS_HFLAG_64 | MIPS_HFLAG_CP0 |
                      MIPS_HFLAG_F64 | MIPS_HFLAG_FPU | MIPS_HFLAG_KSU |
                      MIPS_HFLAG_AWRAP | MIPS_HFLAG_DSP | MIPS_HFLAG_DSP_R2 |
                      MIPS_HFLAG_DSP_R3 | MIPS_HFLAG_SBRI | MIPS_HFLAG_MSA |
-                     MIPS_HFLAG_FRE | MIPS_HFLAG_ELPA | MIPS_HFLAG_ERL);
+                     MIPS_HFLAG_FRE | MIPS_HFLAG_ELPA |
+#ifdef TARGET_CHERI
+                     MIPS_HFLAG_COP2X |
+#endif /* TARGET_CHERI */
+                     MIPS_HFLAG_ERL);
     if (env->CP0_Status & (1 << CP0St_ERL)) {
         env->hflags |= MIPS_HFLAG_ERL;
     }
@@ -339,9 +408,7 @@ static inline void compute_hflags(CPUMIPSState *env)
         }
     }
 #endif
-    if (((env->CP0_Status & (1 << CP0St_CU0)) &&
-         !(env->insn_flags & ISA_MIPS_R6)) ||
-        !(env->hflags & MIPS_HFLAG_KSU)) {
+    if (can_access_cp0(env)) {
         env->hflags |= MIPS_HFLAG_CP0;
     }
     if (env->CP0_Status & (1 << CP0St_CU1)) {
@@ -350,6 +417,11 @@ static inline void compute_hflags(CPUMIPSState *env)
     if (env->CP0_Status & (1 << CP0St_FR)) {
         env->hflags |= MIPS_HFLAG_F64;
     }
+#ifdef TARGET_CHERI
+    if (env->CP0_Status & (1 << CP0St_CU2)) {
+        env->hflags |= MIPS_HFLAG_COP2X;
+    }
+#endif /* TARGET_CHERI */
     if (((env->hflags & MIPS_HFLAG_KSU) != MIPS_HFLAG_KM) &&
         (env->CP0_Config5 & (1 << CP0C5_SBRI))) {
         env->hflags |= MIPS_HFLAG_SBRI;
@@ -383,9 +455,18 @@ static inline void compute_hflags(CPUMIPSState *env)
 
     }
     if (env->insn_flags & ISA_MIPS_R2) {
+#ifdef TARGET_CHERI
+        /* COP1X enables CP1X instructions such as MADD.S, and is
+           orthogonal to whether the FPU is in 64-bit mode. In MIPS32,
+           the COP1Xto whether the FPU is in 64-bit mode. In MIPS32, the
+           COP1X instructions are always available when the FPU is
+           enabled. */
+        env->hflags |= MIPS_HFLAG_COP1X;
+#else /* ! TARGET_CHERI */
         if (env->active_fpu.fcr0 & (1 << FCR0_F64)) {
             env->hflags |= MIPS_HFLAG_COP1X;
         }
+#endif /* ! TARGET_CHERI */
     } else if (env->insn_flags & ISA_MIPS_R1) {
         if (env->hflags & MIPS_HFLAG_64) {
             env->hflags |= MIPS_HFLAG_COP1X;
@@ -418,17 +499,80 @@ static inline void compute_hflags(CPUMIPSState *env)
     }
 }
 
+static inline void check_hwrena(CPUMIPSState *env, int reg, uintptr_t pc) {
+    if ((env->hflags & MIPS_HFLAG_CP0) || (env->CP0_HWREna & (1 << reg))) {
+        return;
     }
+    do_raise_exception(env, EXCP_RI, pc);
+}
+
 #ifdef TARGET_CHERI
+static inline void cpu_mips_store_capcause(CPUMIPSState *env, uint16_t reg_num,
+        uint16_t exc_code)
 {
+
+    env->CP2_CapCause =
+        (exc_code << 8) | (env->capcause_reg_already_set ? env->reg_if_exception
+                                                         : (reg_num & 0xff));
+    env->capcause_reg_already_set = false;
+}
+
+static inline void cpu_mips_store_capcause_reg(CPUMIPSState *env,
+                                               uint16_t reg_num)
+{
+    env->reg_if_exception = reg_num & 0xff;
+    env->capcause_reg_already_set = true;
+}
+
+static inline void cpu_mips_clear_capcause_reg(CPUMIPSState *env)
+{
+    env->capcause_reg_already_set = false;
+}
+
+static inline G_NORETURN void do_raise_c0_exception_impl(CPUMIPSState *env,
+        uint16_t cause, uint64_t badvaddr, uintptr_t pc)
+{
+    env->CP0_BadVAddr = badvaddr;
+    do_raise_exception(env, cause, pc);
+}
+
+void cheri_dump_state(CPUState *cs, FILE *f, fprintf_function cpu_fprintf, int flags);
+
+#define do_raise_c2_exception(env, cause, reg) \
+  do_raise_c2_exception_impl(env, cause, reg, _host_return_address)
+#define do_raise_c0_exception(env, cause, reg) \
+  do_raise_c0_exception_impl(env, cause, reg, _host_return_address)
+
+#endif /* TARGET_CHERI */
+
 static inline target_ulong get_CP0_EPC(CPUMIPSState *env)
+{
+#ifdef TARGET_CHERI
     return (uint64_t)cap_get_offset(&env->active_tc.CHWR.EPCC);
 #else
     return env->CP0_EPC;
 #endif
+}
+
 static inline target_ulong get_CP0_ErrorEPC(CPUMIPSState *env)
+{
+#ifdef TARGET_CHERI
     return (uint64_t)cap_get_offset(&env->active_tc.CHWR.ErrorEPCC);
+#else
     return env->CP0_ErrorEPC;
+#endif
+}
+
 void set_CP0_EPC(CPUMIPSState *env, target_ulong value);
 void set_CP0_ErrorEPC(CPUMIPSState *env, target_ulong value);
+#ifdef CONFIG_TCG_LOG_INSTR
+void r4k_dump_tlb(CPUMIPSState *env, int idx);
+#endif
+void do_hexdump(GString *strbuf, uint8_t* buffer, target_ulong length,
+                target_ulong vaddr);
+
+#ifdef TARGET_CHERI
+#include "cheri-helper-utils.h"
+#endif
+
 #endif

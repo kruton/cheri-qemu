@@ -207,6 +207,7 @@ static bool do_vsetvl(DisasContext *s, int rd, int rs1, TCGv s2)
     finalize_rvv_inst(s);
 
     gen_update_pc(s, s->cur_insn_len);
+    /* CHERI PCC bounds check done on next ifetch. */
     lookup_and_goto_ptr(s);
     s->base.is_jmp = DISAS_NORETURN;
     return true;
@@ -226,6 +227,7 @@ static bool do_vsetivli(DisasContext *s, int rd, TCGv s1, TCGv s2)
     gen_set_gpr(s, rd, dst);
     finalize_rvv_inst(s);
     gen_update_pc(s, s->cur_insn_len);
+    /* CHERI PCC bounds check done on next ifetch. */
     lookup_and_goto_ptr(s);
     s->base.is_jmp = DISAS_NORETURN;
 
@@ -1204,12 +1206,12 @@ static bool ldst_whole_trans(uint32_t vd, uint32_t rs1, uint32_t nf,
             for (int i = 0; i < size; i += 8) {
                 addr = get_address(s, rs1, i);
                 if (is_load) {
-                    tcg_gen_qemu_ld_i64(t8, addr, s->mem_idx,
+                    gen_ddc_interposed_ld_i64(s, t8, NULL, addr, s->mem_idx,
                             MO_LE | MO_64 | atomicity);
                     tcg_gen_st_i64(t8, tcg_env, vreg_ofs(s, vd) + i);
                 } else {
                     tcg_gen_ld_i64(t8, tcg_env, vreg_ofs(s, vd) + i);
-                    tcg_gen_qemu_st_i64(t8, addr, s->mem_idx,
+                    gen_ddc_interposed_st_i64(s, t8, NULL, addr, s->mem_idx,
                             MO_LE | MO_64 | atomicity);
                 }
                 if (i == size - 8) {
@@ -1222,12 +1224,12 @@ static bool ldst_whole_trans(uint32_t vd, uint32_t rs1, uint32_t nf,
             for (int i = 0; i < size; i += 4) {
                 addr = get_address(s, rs1, i);
                 if (is_load) {
-                    tcg_gen_qemu_ld_i32(t4, addr, s->mem_idx,
+                    gen_ddc_interposed_ld_i32(s, t4, NULL, addr, s->mem_idx,
                             MO_LE | MO_32 | atomicity);
                     tcg_gen_st_i32(t4, tcg_env, vreg_ofs(s, vd) + i);
                 } else {
                     tcg_gen_ld_i32(t4, tcg_env, vreg_ofs(s, vd) + i);
-                    tcg_gen_qemu_st_i32(t4, addr, s->mem_idx,
+                    gen_ddc_interposed_st_i32(s, t4, NULL, addr, s->mem_idx,
                             MO_LE | MO_32 | atomicity);
                 }
                 if (i == size - 4) {
@@ -3696,7 +3698,9 @@ static bool trans_vrgather_vx(DisasContext *s, arg_rmrr *a)
         if (a->rs1 == 0) {
             vec_element_loadi(s, dest, a->rs2, 0, false);
         } else {
-            vec_element_loadx(s, dest, a->rs2, cpu_gpr[a->rs1], vlmax);
+            TCGv trs1 = tcg_temp_new();
+            gen_get_gpr(s, trs1, a->rs1);
+            vec_element_loadx(s, dest, a->rs2, trs1, vlmax);
         }
 
         tcg_gen_gvec_dup_i64(s->sew, vreg_ofs(s, a->rd),

@@ -23,7 +23,12 @@
  */
 #include "qemu/osdep.h"
 #include "qemu/host-utils.h"
-#include "exec/cpu-common.h"
+#include "cpu.h"
+#include "exec/cputlb.h"
+#include "exec/translation-block.h"
+#include "exec/page-protection.h"
+#include "exec/tb-flush.h"
+#include "tcg/tcg.h"
 #include "exec/helper-proto-common.h"
 #include "accel/tcg/getpc.h"
 

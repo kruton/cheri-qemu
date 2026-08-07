@@ -26,6 +26,7 @@
 #include "qemu/osdep.h"
 #include "qemu/ctype.h"
 #include "qemu/cutils.h"
+#include "qemu/log.h"
 #include "qemu/module.h"
 #include "qemu/error-report.h"
 #include "qemu/target-info.h"
@@ -1704,6 +1705,12 @@ static void handle_query_supported(GArray *params, void *user_ctx)
 #endif
     }
 
+#ifndef CONFIG_USER_ONLY
+    if (first_cpu->cc->memory_readcap_debug) {
+        g_string_append(gdbserver_state.str_buf, ";qXfer:capa:read+");
+    }
+#endif
+
     g_string_append(gdbserver_state.str_buf, ";vContSupported+;multiprocess+");
 
     if (extra_query_flags) {
@@ -1913,6 +1920,14 @@ static const GdbCmdParseEntry gdb_gen_query_table[] = {
         .cmd_startswith = true,
         .schema = "l,l0"
      },
+#endif
+#ifndef CONFIG_USER_ONLY
+    {
+        .handler = gdb_handle_query_xfer_capa_read,
+        .cmd = "Xfer:capa:read:",
+        .cmd_startswith = 1,
+        .schema = "L:l,l0"
+    },
 #endif
     {
         .handler = gdb_handle_query_xfer_exec_file,
@@ -2309,6 +2324,14 @@ static int gdb_handle_packet(const char *line_buf)
 
 void gdb_set_stop_cpu(CPUState *cpu)
 {
+    if (!gdbserver_state.init) {
+        FILE *logfile = qemu_log_trylock();
+        qemu_log_mask(CPU_LOG_INSTR | CPU_LOG_INT | CPU_LOG_EXEC, "Reached breakpoint!\n");
+        error_report("No debugger is attached");  /* XXX should drop into
+                                                     monitor? */
+        qemu_log_unlock(logfile);
+        exit(-1);
+    }
     GDBProcess *p = gdb_get_cpu_process(cpu);
 
     if (!p->attached) {

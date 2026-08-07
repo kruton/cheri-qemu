@@ -147,12 +147,12 @@ static const VMStateDescription vmstate_trng = {
     },
 };
 
-static void trng_class_init(ObjectClass *klass, void *data)
+static void trng_class_init(ObjectClass *klass, const void *data)
 {
     DeviceClass *dc = DEVICE_CLASS(klass);
 
     dc->desc = "Codasip True Random Number Generator";
-    dc->reset = trng_reset;
+    device_class_set_legacy_reset(dc, trng_reset);
     dc->vmsd = &vmstate_trng;
 }
 

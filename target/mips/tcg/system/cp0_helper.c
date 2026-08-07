@@ -28,11 +28,84 @@
 #include "qemu/host-utils.h"
 #include "exec/helper-proto.h"
 #include "exec/cputlb.h"
+#include "exec/translation-block.h"
+#include "exec/page-protection.h"
+#include "exec/tb-flush.h"
+#include "exec/cputlb.h"
+#include "exec/log_instr.h"
+#include "system/cpus.h"
+#include "system/runstate.h"
 #include "exec/target_page.h"
 
+/*
+ * Names of coprocessor 0 registers.
  */
+const char mips_cop0_regnames[32*8][32] = {
+/*0*/   {"Index"},        {"MVPControl"},   {"MVPConf0"},     {"MVPConf1"},
+        {0},              {0},              {0},              {0},
+/*1*/   {"Random"},       {"VPEControl"},   {"VPEConf0"},     {"VPEConf1"},
+        {"YQMask"},       {"VPESchedule"},  {"VPEScheFBack"}, {"VPEOpt"},
+/*2*/   {"EntryLo0"},     {"TCStatus"},     {"TCBind"},       {"TCRestart"},
+        {"TCHalt"},       {"TCContext"},    {"TCSchedule"},   {"TCScheFBack"},
 /*3*/   {"EntryLo1"},     {0},              {0},              {0},
+        {0},              {0},              {0},              {"TCOpt"},
+/*4*/   {"Context"},      {"ContextConfig"}, {"UserLocal"},    {"XContextConfig"},
+        {0},              {0},              {0},              {0},
+/*5*/   {"PageMask"},     {"PageGrain"},    {"SegCtl0"},      {"SegCtl1"},
+        {"SegCtl2"},      {0},              {0},              {0},
+/*6*/   {"Wired"},        {"SRSConf0"},     {"SRSConf1"},     {"SRSConf2"},
+        {"SRSConf3"},     {"SRSConf4"},     {0},              {0},
+/*7*/   {"HWREna"},       {0},              {0},              {0},
+        {0},              {0},              {0},              {0},
 /*8*/   {"BadVAddr"},     {"BadInstr"},     {"BadInstrP"},    {0},
+        {0},              {0},              {0},              {0},
+/*9*/   {"Count"},        {0},              {0},              {0},
+        {0},              {0},              {0},              {0},
+/*10*/  {"EntryHi"},      {0},              {0},              {0},
+        {0},              {"MSAAccess"},    {"MSASave"},      {"MSARequest"},
+/*11*/  {"Compare"},      {0},              {0},              {0},
+        {0},              {0},              {0},              {0},
+/*12*/  {"Status"},       {"IntCtl"},       {"SRSCtl"},       {"SRSMap"},
+        {"ViewIPL"},      {"SRSMap2"},      {0},              {0},
+/*13*/  {"Cause"},        {0},              {0},              {0},
+        {"ViewRIPL"},     {"NestedExc"},    {0},              {0},
+/*14*/  {"EPC"},          {0},              {"NestedEPC"},    {0},
+        {0},              {0},              {0},              {0},
+/*15*/  {"PRId"},         {"EBase"},        {"CDMMBase"},     {"CMGCRBase"},
+        {0},              {0},              {0},              {0},
+/*16*/  {"Config"},       {"Config1"},      {"Config2"},      {"Config3"},
+        {"Config4"},      {"Config5"},      {"Config6"},      {"Config7"},
+/*17*/  {"LLAddr"},       {"internal_lladdr (virtual)"}, {"internal_llval"}, {0},
+        {0},              {0},              {0},              {0},
+/*18*/  {"WatchLo"},      {"WatchLo1"},     {"WatchLo2"},     {"WatchLo3"},
+        {"WatchLo4"},     {"WatchLo5"},     {"WatchLo6"},     {"WatchLo7"},
+/*19*/  {"WatchHi"},      {"WatchHi1"},     {"WatchHi2"},     {"WatchHi3"},
+        {"WatchHi4"},     {"WatchHi5"},     {"WatchHi6"},     {"WatchHi7"},
+/*20*/  {"XContext"},     {0},              {0},              {0},
+        {0},              {0},              {0},              {0},
+/*21*/  {0},              {0},              {0},              {0},
+        {0},              {0},              {0},              {0},
+/*22*/  {0},              {0},              {0},              {0},
+        {0},              {0},              {0},              {0},
+/*23*/  {"Debug"},        {"TraceControl"}, {"TraceControl2"}, {"UserTraceData"},
+        {"TraceIBPC"},    {"TraceDBPC"},    {"Debug2"},       {0},
+/*24*/  {"DEPC"},         {0},              {"TraceControl3"}, {"UserTraceData2"},
+        {0},              {0},              {0},              {0},
+/*25*/  {"PerfCnt"},      {"PerfCnt1"},     {"PerfCnt2"},     {"PerfCnt3"},
+        {"PerfCnt4"},     {"PerfCnt5"},     {"PerfCnt6"},     {"PerfCnt7"},
+/*26*/  {"ErrCtl"},       {0},              {0},              {0},
+        {0},              {0},              {0},              {0},
+/*27*/  {"CacheErr"},     {0},              {0},              {0},
+        {0},              {0},              {0},              {0},
+/*28*/  {"ITagLo"},       {"IDataLo"},      {"DTagLo"},       {"DDataLo"},
+        {"L23TagLo"},     {"L23DataLo"},    {0},              {0},
+/*29*/  {"ITagHi"},       {"IDataHi"},      {"DTagHi"},       {0},
+        {0},              {"L23DataHi"},    {0},              {0},
+/*30*/  {"ErrorEPC"},     {0},              {0},              {0},
+        {0},              {0},              {0},              {0},
+/*31*/  {"DESAVE"},       {0},              {"KScratch1"},    {"KScratch2"},
+        {"KScratch3"},    {"KScratch4"},    {"KScratch5"},    {"KScratch6"},
+};
 
 /* SMP helpers.  */
 static bool mips_vpe_is_wfi(MIPSCPU *c)
@@ -286,7 +359,7 @@ target_ulong helper_mftc0_tcbind(CPUMIPSState *env)
 
 target_ulong helper_mfc0_tcrestart(CPUMIPSState *env)
 {
-    return env->active_tc.PC;
+    return PC_ADDR(env);
 }
 
 target_ulong helper_mftc0_tcrestart(CPUMIPSState *env)
@@ -295,8 +368,11 @@ target_ulong helper_mftc0_tcrestart(CPUMIPSState *env)
     CPUMIPSState *other = mips_cpu_map_tc(env, &other_tc);
 
     if (other_tc == other->current_tc) {
-        return other->active_tc.PC;
+        return PC_ADDR(other);
     } else {
+#ifdef TARGET_CHERI
+        return other->tcs[other_tc].PCC._cr_cursor;
+#else
         return other->tcs[other_tc].PC;
 #endif
     }
@@ -459,7 +535,7 @@ target_ulong helper_mftc0_debug(CPUMIPSState *env)
 #if defined(TARGET_MIPS64)
 target_ulong helper_dmfc0_tcrestart(CPUMIPSState *env)
 {
-    return env->active_tc.PC;
+    return PC_ADDR(env);
 }
 
 target_ulong helper_dmfc0_tchalt(CPUMIPSState *env)
@@ -504,8 +580,28 @@ target_ulong helper_dmfc0_watchhi(CPUMIPSState *env, uint32_t sel)
 
 #endif /* TARGET_MIPS64 */
 
+#ifdef CONFIG_TCG_LOG_INSTR
 /*
+ * Log Cop0 register updates.
  */
+#define log_instr_cop0_update(env, cp0_reg, cp0_sel, value)                    \
+    do {                                                                       \
+        if (qemu_log_instr_enabled(env)) {                                     \
+            qemu_log_instr_reg(env, mips_cop0_regnames[cp0_reg * 8 + cp0_sel], \
+                               value, cp0_reg * 8 + cp0_sel, LRI_CSR_ACCESS);  \
+        }                                                                      \
+    } while (0)
+
+#define log_instr_cop0_unsupported(env, msg) do {               \
+        if (qemu_log_instr_enabled(env)) {                      \
+            qemu_log_instr_extra(env, msg);                     \
+        }                                                       \
+    } while (0)
+#else
+#define log_instr_cop0_update(env, cp0_reg, cp0_sel, value)
+#define log_instr_cop0_unsupported(env, msg)
+#endif
+
 void helper_mtc0_index(CPUMIPSState *env, target_ulong arg1)
 {
     uint32_t index_p = env->CP0_Index & 0x80000000;
@@ -515,6 +611,7 @@ void helper_mtc0_index(CPUMIPSState *env, target_ulong arg1)
             index_p |= arg1 & 0x80000000;
         }
         env->CP0_Index = index_p | tlb_index;
+        log_instr_cop0_update(env, CP0_REGISTER_00, 0, env->CP0_Index);
     }
 }
 
@@ -535,6 +632,7 @@ void helper_mtc0_mvpcontrol(CPUMIPSState *env, target_ulong arg1)
     /* TODO: Enable/disable shared TLB, enable/disable VPEs. */
 
     env->mvp->CP0_MVPControl = newval;
+    log_instr_cop0_update(env, CP0_REGISTER_00, 1, env->mvp->CP0_MVPControl);
 }
 
 void helper_mtc0_vpecontrol(CPUMIPSState *env, target_ulong arg1)
@@ -554,6 +652,7 @@ void helper_mtc0_vpecontrol(CPUMIPSState *env, target_ulong arg1)
     /* TODO: Enable/disable TCs. */
 
     env->CP0_VPEControl = newval;
+    log_instr_cop0_update(env, CP0_REGISTER_01, 1, env->CP0_VPEControl);
 }
 
 void helper_mttc0_vpecontrol(CPUMIPSState *env, target_ulong arg1)
@@ -570,6 +669,7 @@ void helper_mttc0_vpecontrol(CPUMIPSState *env, target_ulong arg1)
     /* TODO: Enable/disable TCs.  */
 
     other->CP0_VPEControl = newval;
+    log_instr_cop0_update(env, CP0_REGISTER_01, 1, env->CP0_VPEControl);
 }
 
 target_ulong helper_mftc0_vpecontrol(CPUMIPSState *env)
@@ -604,6 +704,7 @@ void helper_mtc0_vpeconf0(CPUMIPSState *env, target_ulong arg1)
     /* TODO: TC exclusive handling due to ERL/EXL. */
 
     env->CP0_VPEConf0 = newval;
+    log_instr_cop0_update(env, CP0_REGISTER_01, 2, newval);
 }
 
 void helper_mttc0_vpeconf0(CPUMIPSState *env, target_ulong arg1)
@@ -618,6 +719,7 @@ void helper_mttc0_vpeconf0(CPUMIPSState *env, target_ulong arg1)
 
     /* TODO: TC exclusive handling due to ERL/EXL.  */
     other->CP0_VPEConf0 = newval;
+    log_instr_cop0_update(env, CP0_REGISTER_01, 2, newval);
 }
 
 void helper_mtc0_vpeconf1(CPUMIPSState *env, target_ulong arg1)
@@ -636,17 +738,20 @@ void helper_mtc0_vpeconf1(CPUMIPSState *env, target_ulong arg1)
     /* TODO: Handle FPU (CP1) binding. */
 
     env->CP0_VPEConf1 = newval;
+    log_instr_cop0_update(env, CP0_REGISTER_01, 3, newval);
 }
 
 void helper_mtc0_yqmask(CPUMIPSState *env, target_ulong arg1)
 {
     /* Yield qualifier inputs not implemented. */
     env->CP0_YQMask = 0x00000000;
+    log_instr_cop0_update(env, CP0_REGISTER_01, 4, env->CP0_YQMask);
 }
 
 void helper_mtc0_vpeopt(CPUMIPSState *env, target_ulong arg1)
 {
     env->CP0_VPEOpt = arg1 & 0x0000ffff;
+    log_instr_cop0_update(env, CP0_REGISTER_01, 7, env->CP0_VPEOpt);
 }
 
 #define MTC0_ENTRYLO_MASK(env) ((env->PAMask >> 6) & 0x3FFFFFFF)
@@ -656,18 +761,49 @@ void helper_mtc0_entrylo0(CPUMIPSState *env, target_ulong arg1)
     /* 1k pages not implemented */
     target_ulong rxi = arg1 & (env->CP0_PageGrain & (3u << CP0PG_XIE));
     env->CP0_EntryLo0 = (arg1 & MTC0_ENTRYLO_MASK(env))
+#if defined(TARGET_CHERI)
+                        | (rxi << (CP0EnLo_L - 30));
+#else
                         | (rxi << (CP0EnLo_XI - 30));
 #endif
+    log_instr_cop0_update(env, CP0_REGISTER_02, 0, env->CP0_EntryLo0);
 }
 
 #if defined(TARGET_MIPS64)
+#ifdef TARGET_CHERI
+#define DMTC0_ENTRYLO_MASK(env) ((env->PAMask >> 6) \
+                                    | (1ull << CP0EnLo_CLG) \
+                                    | (1ull << CP0EnLo_S) \
+                                    | (1ull << CP0EnLo_L))
+#else
 #define DMTC0_ENTRYLO_MASK(env) (env->PAMask >> 6)
+#endif /* TARGET_CHERI */
 
 void helper_dmtc0_entrylo0(CPUMIPSState *env, uint64_t arg1)
 {
     uint64_t rxi = arg1 & ((env->CP0_PageGrain & (3ull << CP0PG_XIE)) << 32);
     env->CP0_EntryLo0 = (arg1 & DMTC0_ENTRYLO_MASK(env)) | rxi;
+    log_instr_cop0_update(env, CP0_REGISTER_02, 0, env->CP0_EntryLo0);
 }
+#endif
+
+#ifdef TARGET_CHERI
+
+void helper_mtc0_capfilter_lo(CPUMIPSState *env, target_ulong arg1)
+{
+    env->cheri_capfilter_lo = arg1;
+}
+
+void helper_mtc0_capfilter_hi(CPUMIPSState *env, target_ulong arg1)
+{
+    env->cheri_capfilter_hi = arg1;
+}
+
+void helper_mtc0_capfilter_perms(CPUMIPSState *env, target_ulong arg1)
+{
+    env->cheri_capfilter_perms = arg1;
+}
+
 #endif
 
 void helper_mtc0_tcstatus(CPUMIPSState *env, target_ulong arg1)
@@ -679,6 +815,7 @@ void helper_mtc0_tcstatus(CPUMIPSState *env, target_ulong arg1)
 
     env->active_tc.CP0_TCStatus = newval;
     sync_c0_tcstatus(env, env->current_tc, newval);
+    log_instr_cop0_update(env, CP0_REGISTER_02, 1, env->active_tc.CP0_TCStatus);
 }
 
 void helper_mttc0_tcstatus(CPUMIPSState *env, target_ulong arg1)
@@ -692,6 +829,7 @@ void helper_mttc0_tcstatus(CPUMIPSState *env, target_ulong arg1)
         other->tcs[other_tc].CP0_TCStatus = arg1;
     }
     sync_c0_tcstatus(other, other_tc, arg1);
+    log_instr_cop0_update(env, CP0_REGISTER_02, 1, arg1);
 }
 
 void helper_mtc0_tcbind(CPUMIPSState *env, target_ulong arg1)
@@ -704,6 +842,7 @@ void helper_mtc0_tcbind(CPUMIPSState *env, target_ulong arg1)
     }
     newval = (env->active_tc.CP0_TCBind & ~mask) | (arg1 & mask);
     env->active_tc.CP0_TCBind = newval;
+    log_instr_cop0_update(env, CP0_REGISTER_02, 2, newval);
 }
 
 void helper_mttc0_tcbind(CPUMIPSState *env, target_ulong arg1)
@@ -723,14 +862,17 @@ void helper_mttc0_tcbind(CPUMIPSState *env, target_ulong arg1)
         newval = (other->tcs[other_tc].CP0_TCBind & ~mask) | (arg1 & mask);
         other->tcs[other_tc].CP0_TCBind = newval;
     }
+    log_instr_cop0_update(env, CP0_REGISTER_02, 2, newval);
 }
 
 void helper_mtc0_tcrestart(CPUMIPSState *env, target_ulong arg1)
 {
+    mips_update_pc(env, arg1, /*can_be_unrepresentable=*/false);
     env->active_tc.CP0_TCStatus &= ~(1 << CP0TCSt_TDS);
     env->CP0_LLAddr = 0;
     env->lladdr = 0;
     /* MIPS16 not implemented. */
+    log_instr_cop0_update(env, CP0_REGISTER_02, 3, arg1);
 }
 
 void helper_mttc0_tcrestart(CPUMIPSState *env, target_ulong arg1)
@@ -739,18 +881,19 @@ void helper_mttc0_tcrestart(CPUMIPSState *env, target_ulong arg1)
     CPUMIPSState *other = mips_cpu_map_tc(env, &other_tc);
 
     if (other_tc == other->current_tc) {
-        other->active_tc.PC = arg1;
+        mips_update_pc(other, arg1, /*can_be_unrepresentable=*/false);
         other->active_tc.CP0_TCStatus &= ~(1 << CP0TCSt_TDS);
         other->CP0_LLAddr = 0;
         other->lladdr = 0;
         /* MIPS16 not implemented. */
     } else {
-        other->tcs[other_tc].PC = arg1;
+        mips_update_pc_impl(&other->tcs[other_tc], arg1, /*can_be_unrepresentable=*/false);
         other->tcs[other_tc].CP0_TCStatus &= ~(1 << CP0TCSt_TDS);
         other->CP0_LLAddr = 0;
         other->lladdr = 0;
         /* MIPS16 not implemented. */
     }
+    log_instr_cop0_update(env, CP0_REGISTER_02, 3, arg1);
 }
 
 void helper_mtc0_tchalt(CPUMIPSState *env, target_ulong arg1)
@@ -758,6 +901,7 @@ void helper_mtc0_tchalt(CPUMIPSState *env, target_ulong arg1)
     MIPSCPU *cpu = env_archcpu(env);
 
     env->active_tc.CP0_TCHalt = arg1 & 0x1;
+    log_instr_cop0_update(env, CP0_REGISTER_02, 4, arg1);
 
     /* TODO: Halt TC / Restart (if allocated+active) TC. */
     if (env->active_tc.CP0_TCHalt & 1) {
@@ -780,17 +924,21 @@ void helper_mttc0_tchalt(CPUMIPSState *env, target_ulong arg1)
     } else {
         other->tcs[other_tc].CP0_TCHalt = arg1;
     }
+    log_instr_cop0_update(env, CP0_REGISTER_02, 4, arg1);
 
+    bql_lock();
     if (arg1 & 1) {
         mips_tc_sleep(other_cpu, other_tc);
     } else {
         mips_tc_wake(other_cpu, other_tc);
     }
+    bql_unlock();
 }
 
 void helper_mtc0_tccontext(CPUMIPSState *env, target_ulong arg1)
 {
     env->active_tc.CP0_TCContext = arg1;
+    log_instr_cop0_update(env, CP0_REGISTER_02, 5, arg1);
 }
 
 void helper_mttc0_tccontext(CPUMIPSState *env, target_ulong arg1)
@@ -803,11 +951,13 @@ void helper_mttc0_tccontext(CPUMIPSState *env, target_ulong arg1)
     } else {
         other->tcs[other_tc].CP0_TCContext = arg1;
     }
+    log_instr_cop0_update(env, CP0_REGISTER_02, 5, arg1);
 }
 
 void helper_mtc0_tcschedule(CPUMIPSState *env, target_ulong arg1)
 {
     env->active_tc.CP0_TCSchedule = arg1;
+    log_instr_cop0_update(env, CP0_REGISTER_02, 6, arg1);
 }
 
 void helper_mttc0_tcschedule(CPUMIPSState *env, target_ulong arg1)
@@ -820,11 +970,13 @@ void helper_mttc0_tcschedule(CPUMIPSState *env, target_ulong arg1)
     } else {
         other->tcs[other_tc].CP0_TCSchedule = arg1;
     }
+    log_instr_cop0_update(env, CP0_REGISTER_02, 6, arg1);
 }
 
 void helper_mtc0_tcschefback(CPUMIPSState *env, target_ulong arg1)
 {
     env->active_tc.CP0_TCScheFBack = arg1;
+    log_instr_cop0_update(env, CP0_REGISTER_02, 7, arg1);
 }
 
 void helper_mttc0_tcschefback(CPUMIPSState *env, target_ulong arg1)
@@ -837,6 +989,7 @@ void helper_mttc0_tcschefback(CPUMIPSState *env, target_ulong arg1)
     } else {
         other->tcs[other_tc].CP0_TCScheFBack = arg1;
     }
+    log_instr_cop0_update(env, CP0_REGISTER_02, 7, arg1);
 }
 
 void helper_mtc0_entrylo1(CPUMIPSState *env, target_ulong arg1)
@@ -849,6 +1002,7 @@ void helper_mtc0_entrylo1(CPUMIPSState *env, target_ulong arg1)
 #else
                         | (rxi << (CP0EnLo_XI - 30));
 #endif
+    log_instr_cop0_update(env, CP0_REGISTER_03, 0, env->CP0_EntryLo1);
 }
 
 #if defined(TARGET_MIPS64)
@@ -856,12 +1010,14 @@ void helper_dmtc0_entrylo1(CPUMIPSState *env, uint64_t arg1)
 {
     uint64_t rxi = arg1 & ((env->CP0_PageGrain & (3ull << CP0PG_XIE)) << 32);
     env->CP0_EntryLo1 = (arg1 & DMTC0_ENTRYLO_MASK(env)) | rxi;
+    log_instr_cop0_update(env, CP0_REGISTER_03, 0, env->CP0_EntryLo1);
 }
 #endif
 
 void helper_mtc0_context(CPUMIPSState *env, target_ulong arg1)
 {
     env->CP0_Context = (env->CP0_Context & 0x007FFFFF) | (arg1 & ~0x007FFFFF);
+    log_instr_cop0_update(env, CP0_REGISTER_04, 0, env->CP0_Context);
 }
 
 void helper_mtc0_memorymapid(CPUMIPSState *env, target_ulong arg1)
@@ -869,6 +1025,7 @@ void helper_mtc0_memorymapid(CPUMIPSState *env, target_ulong arg1)
     int32_t old;
     old = env->CP0_MemoryMapID;
     env->CP0_MemoryMapID = (int32_t) arg1;
+    log_instr_cop0_update(env, CP0_REGISTER_04, 5, arg1);
     /* If the MemoryMapID changes, flush qemu's TLB.  */
     if (old != env->CP0_MemoryMapID) {
         cpu_mips_tlb_flush(env);
@@ -893,6 +1050,7 @@ uint32_t compute_pagemask(uint32_t val)
 void helper_mtc0_pagemask(CPUMIPSState *env, target_ulong arg1)
 {
     env->CP0_PageMask = compute_pagemask(arg1);
+    log_instr_cop0_update(env, CP0_REGISTER_05, 0, env->CP0_PageMask);
 }
 
 void helper_mtc0_pagegrain(CPUMIPSState *env, target_ulong arg1)
@@ -901,6 +1059,7 @@ void helper_mtc0_pagegrain(CPUMIPSState *env, target_ulong arg1)
     /* 1k pages not implemented */
     env->CP0_PageGrain = (arg1 & env->CP0_PageGrain_rw_bitmask) |
                          (env->CP0_PageGrain & ~env->CP0_PageGrain_rw_bitmask);
+    log_instr_cop0_update(env, CP0_REGISTER_05, 1, env->CP0_PageGrain);
     compute_hflags(env);
     restore_pamask(env);
 }
@@ -910,6 +1069,7 @@ void helper_mtc0_segctl0(CPUMIPSState *env, target_ulong arg1)
     CPUState *cs = env_cpu(env);
 
     env->CP0_SegCtl0 = arg1 & CP0SC0_MASK;
+    log_instr_cop0_update(env, CP0_REGISTER_05, 2, env->CP0_SegCtl0);
     tlb_flush(cs);
 }
 
@@ -918,6 +1078,7 @@ void helper_mtc0_segctl1(CPUMIPSState *env, target_ulong arg1)
     CPUState *cs = env_cpu(env);
 
     env->CP0_SegCtl1 = arg1 & CP0SC1_MASK;
+    log_instr_cop0_update(env, CP0_REGISTER_05, 3, env->CP0_SegCtl1);
     tlb_flush(cs);
 }
 
@@ -926,6 +1087,7 @@ void helper_mtc0_segctl2(CPUMIPSState *env, target_ulong arg1)
     CPUState *cs = env_cpu(env);
 
     env->CP0_SegCtl2 = arg1 & CP0SC2_MASK;
+    log_instr_cop0_update(env, CP0_REGISTER_05, 4, env->CP0_SegCtl2);
     tlb_flush(cs);
 }
 
@@ -989,6 +1151,7 @@ void helper_mtc0_pwfield(CPUMIPSState *env, target_ulong arg1)
                 (old_ptew << CP0PF_PTEW);
     }
 #endif
+    log_instr_cop0_update(env, CP0_REGISTER_05, 6, env->CP0_PWField);
 }
 
 void helper_mtc0_pwsize(CPUMIPSState *env, target_ulong arg1)
@@ -998,6 +1161,7 @@ void helper_mtc0_pwsize(CPUMIPSState *env, target_ulong arg1)
 #else
     env->CP0_PWSize = arg1 & 0x3FFFFFFF;
 #endif
+    log_instr_cop0_update(env, CP0_REGISTER_05, 7, env->CP0_PWSize);
 }
 
 void helper_mtc0_wired(CPUMIPSState *env, target_ulong arg1)
@@ -1009,6 +1173,7 @@ void helper_mtc0_wired(CPUMIPSState *env, target_ulong arg1)
     } else {
         env->CP0_Wired = arg1 % env->tlb->nb_tlb;
     }
+    log_instr_cop0_update(env, CP0_REGISTER_06, 0, env->CP0_Wired);
 }
 
 void helper_mtc0_pwctl(CPUMIPSState *env, target_ulong arg1)
@@ -1019,36 +1184,47 @@ void helper_mtc0_pwctl(CPUMIPSState *env, target_ulong arg1)
 #else
     env->CP0_PWCtl = (arg1 & 0x800000FF);
 #endif
+    log_instr_cop0_update(env, CP0_REGISTER_06, 6, env->CP0_PWCtl);
 }
 
 void helper_mtc0_srsconf0(CPUMIPSState *env, target_ulong arg1)
 {
     env->CP0_SRSConf0 |= arg1 & env->CP0_SRSConf0_rw_bitmask;
+    log_instr_cop0_update(env, CP0_REGISTER_06, 1, env->CP0_SRSConf0);
 }
 
 void helper_mtc0_srsconf1(CPUMIPSState *env, target_ulong arg1)
 {
     env->CP0_SRSConf1 |= arg1 & env->CP0_SRSConf1_rw_bitmask;
+    log_instr_cop0_update(env, CP0_REGISTER_06, 2, env->CP0_SRSConf1);
 }
 
 void helper_mtc0_srsconf2(CPUMIPSState *env, target_ulong arg1)
 {
     env->CP0_SRSConf2 |= arg1 & env->CP0_SRSConf2_rw_bitmask;
+    log_instr_cop0_update(env, CP0_REGISTER_06, 3, env->CP0_SRSConf2);
 }
 
 void helper_mtc0_srsconf3(CPUMIPSState *env, target_ulong arg1)
 {
     env->CP0_SRSConf3 |= arg1 & env->CP0_SRSConf3_rw_bitmask;
+    log_instr_cop0_update(env, CP0_REGISTER_06, 4, env->CP0_SRSConf3);
 }
 
 void helper_mtc0_srsconf4(CPUMIPSState *env, target_ulong arg1)
 {
     env->CP0_SRSConf4 |= arg1 & env->CP0_SRSConf4_rw_bitmask;
+    log_instr_cop0_update(env, CP0_REGISTER_06, 5, env->CP0_SRSConf4);
 }
 
 void helper_mtc0_hwrena(CPUMIPSState *env, target_ulong arg1)
 {
     uint32_t mask = 0x0000000F;
+
+#define STATCOUNTERS_HWRENA_MASK 0x7FF0
+    if (is_beri_or_cheri(env)) {
+        mask |= STATCOUNTERS_HWRENA_MASK;
+    }
 
     if ((env->CP0_Config1 & (1 << CP0C1_PC)) &&
         (env->insn_flags & ISA_MIPS_R6)) {
@@ -1068,12 +1244,15 @@ void helper_mtc0_hwrena(CPUMIPSState *env, target_ulong arg1)
     }
 
     env->CP0_HWREna = arg1 & mask;
+    log_instr_cop0_update(env, CP0_REGISTER_07, 0, env->CP0_HWREna);
 }
 
 void helper_mtc0_count(CPUMIPSState *env, target_ulong arg1)
 {
     cpu_mips_store_count(env, arg1);
+    log_instr_cop0_update(env, CP0_REGISTER_09, 0, env->CP0_Count);
 }
+
 
 void helper_mtc0_entryhi(CPUMIPSState *env, target_ulong arg1)
 {
@@ -1097,17 +1276,21 @@ void helper_mtc0_entryhi(CPUMIPSState *env, target_ulong arg1)
     }
     mask &= env->SEGMask;
 #endif
+
+    mask |= CP0EnHi_CLG_MASK;
+
     old = env->CP0_EntryHi;
     val = (arg1 & mask) | (old & ~mask);
     env->CP0_EntryHi = val;
     if (ase_mt_available(env)) {
         sync_c0_entryhi(env, env->current_tc);
     }
-    /* If the ASID changes, flush qemu's TLB.  */
-    if ((old & env->CP0_EntryHi_ASID_mask) !=
-        (val & env->CP0_EntryHi_ASID_mask)) {
+    /* If the ASID or CLG changes, flush qemu's TLB.  */
+    target_ulong tlb_flush_mask = env->CP0_EntryHi_ASID_mask | CP0EnHi_CLG_MASK;
+    if ((old & tlb_flush_mask) != (val & tlb_flush_mask)) {
         tlb_flush(env_cpu(env));
     }
+    log_instr_cop0_update(env, CP0_REGISTER_10, 0, env->CP0_EntryHi);
 }
 
 void helper_mttc0_entryhi(CPUMIPSState *env, target_ulong arg1)
@@ -1117,11 +1300,13 @@ void helper_mttc0_entryhi(CPUMIPSState *env, target_ulong arg1)
 
     other->CP0_EntryHi = arg1;
     sync_c0_entryhi(other, other_tc);
+    log_instr_cop0_update(env, CP0_REGISTER_10, 0, env->CP0_EntryHi);
 }
 
 void helper_mtc0_compare(CPUMIPSState *env, target_ulong arg1)
 {
     cpu_mips_store_compare(env, arg1);
+    log_instr_cop0_update(env, CP0_REGISTER_11, 0, env->CP0_Compare);
 }
 
 void helper_mtc0_status(CPUMIPSState *env, target_ulong arg1)
@@ -1131,6 +1316,7 @@ void helper_mtc0_status(CPUMIPSState *env, target_ulong arg1)
     old = env->CP0_Status;
     cpu_mips_store_status(env, arg1);
     val = env->CP0_Status;
+    log_instr_cop0_update(env, CP0_REGISTER_12, 0, env->CP0_Status);
 
     if (qemu_loglevel_mask(CPU_LOG_EXEC)) {
         qemu_log("Status %08x (%08x) => %08x (%08x) Cause %08x",
@@ -1159,44 +1345,52 @@ void helper_mtc0_status(CPUMIPSState *env, target_ulong arg1)
 
 void helper_mttc0_status(CPUMIPSState *env, target_ulong arg1)
 {
+    bql_lock();
     int other_tc = env->CP0_VPEControl & (0xff << CP0VPECo_TargTC);
     uint32_t mask = env->CP0_Status_rw_bitmask & ~0xf1000018;
     CPUMIPSState *other = mips_cpu_map_tc(env, &other_tc);
 
     other->CP0_Status = (other->CP0_Status & ~mask) | (arg1 & mask);
     sync_c0_status(env, other, other_tc);
+    log_instr_cop0_update(env, CP0_REGISTER_12, 0, env->CP0_Status);
+    bql_unlock();
 }
 
 void helper_mtc0_intctl(CPUMIPSState *env, target_ulong arg1)
 {
     env->CP0_IntCtl = (env->CP0_IntCtl & ~0x000003e0) | (arg1 & 0x000003e0);
+    log_instr_cop0_update(env, CP0_REGISTER_12, 1, env->CP0_IntCtl);
 }
 
 void helper_mtc0_srsctl(CPUMIPSState *env, target_ulong arg1)
 {
     uint32_t mask = (0xf << CP0SRSCtl_ESS) | (0xf << CP0SRSCtl_PSS);
     env->CP0_SRSCtl = (env->CP0_SRSCtl & ~mask) | (arg1 & mask);
+    log_instr_cop0_update(env, CP0_REGISTER_12, 2, env->CP0_SRSCtl);
 }
 
 void helper_mtc0_cause(CPUMIPSState *env, target_ulong arg1)
 {
     cpu_mips_store_cause(env, arg1);
+    log_instr_cop0_update(env, CP0_REGISTER_13, 0, env->CP0_Cause);
 }
 
 void helper_mttc0_cause(CPUMIPSState *env, target_ulong arg1)
 {
+    bql_lock();
     int other_tc = env->CP0_VPEControl & (0xff << CP0VPECo_TargTC);
     CPUMIPSState *other = mips_cpu_map_tc(env, &other_tc);
 
     cpu_mips_store_cause(other, arg1);
+    log_instr_cop0_update(env, CP0_REGISTER_13, 0, env->CP0_Cause);
+    bql_unlock();
 }
 
-target_ulong helper_mftc0_epc(CPUMIPSState *env)
-{
+target_ulong helper_mftc0_epc(CPUMIPSState *env) {
     int other_tc = env->CP0_VPEControl & (0xff << CP0VPECo_TargTC);
     CPUMIPSState *other = mips_cpu_map_tc(env, &other_tc);
 
-    return other->CP0_EPC;
+    return get_CP0_EPC(other);
 }
 
 target_ulong helper_mftc0_ebase(CPUMIPSState *env)
@@ -1214,6 +1408,7 @@ void helper_mtc0_ebase(CPUMIPSState *env, target_ulong arg1)
         mask |= ~0x3FFFFFFF;
     }
     env->CP0_EBase = (env->CP0_EBase & ~mask) | (arg1 & mask);
+    log_instr_cop0_update(env, CP0_REGISTER_15, 1, env->CP0_EBase);
 }
 
 void helper_mttc0_ebase(CPUMIPSState *env, target_ulong arg1)
@@ -1225,6 +1420,7 @@ void helper_mttc0_ebase(CPUMIPSState *env, target_ulong arg1)
         mask |= ~0x3FFFFFFF;
     }
     other->CP0_EBase = (other->CP0_EBase & ~mask) | (arg1 & mask);
+    log_instr_cop0_update(env, CP0_REGISTER_15, 1, other->CP0_EBase);
 }
 
 target_ulong helper_mftc0_configx(CPUMIPSState *env, target_ulong idx)
@@ -1249,12 +1445,14 @@ target_ulong helper_mftc0_configx(CPUMIPSState *env, target_ulong idx)
 void helper_mtc0_config0(CPUMIPSState *env, target_ulong arg1)
 {
     env->CP0_Config0 = (env->CP0_Config0 & 0x81FFFFF8) | (arg1 & 0x00000007);
+    log_instr_cop0_update(env, CP0_REGISTER_16, 0, env->CP0_Config0);
 }
 
 void helper_mtc0_config2(CPUMIPSState *env, target_ulong arg1)
 {
     /* tertiary/secondary caches not implemented */
     env->CP0_Config2 = (env->CP0_Config2 & 0x8FFF0FFF);
+    log_instr_cop0_update(env, CP0_REGISTER_16, 2, env->CP0_Config2);
 }
 
 void helper_mtc0_config3(CPUMIPSState *env, target_ulong arg1)
@@ -1262,6 +1460,7 @@ void helper_mtc0_config3(CPUMIPSState *env, target_ulong arg1)
     if (env->insn_flags & ASE_MICROMIPS) {
         env->CP0_Config3 = (env->CP0_Config3 & ~(1 << CP0C3_ISA_ON_EXC)) |
                            (arg1 & (1 << CP0C3_ISA_ON_EXC));
+        log_instr_cop0_update(env, CP0_REGISTER_16, 3, env->CP0_Config3);
     }
 }
 
@@ -1269,12 +1468,14 @@ void helper_mtc0_config4(CPUMIPSState *env, target_ulong arg1)
 {
     env->CP0_Config4 = (env->CP0_Config4 & (~env->CP0_Config4_rw_bitmask)) |
                        (arg1 & env->CP0_Config4_rw_bitmask);
+    log_instr_cop0_update(env, CP0_REGISTER_16, 4, env->CP0_Config4);
 }
 
 void helper_mtc0_config5(CPUMIPSState *env, target_ulong arg1)
 {
     env->CP0_Config5 = (env->CP0_Config5 & (~env->CP0_Config5_rw_bitmask)) |
                        (arg1 & env->CP0_Config5_rw_bitmask);
+    log_instr_cop0_update(env, CP0_REGISTER_16, 5, env->CP0_Config5);
     env->CP0_EntryHi_ASID_mask = (env->CP0_Config5 & (1 << CP0C5_MI)) ?
             0x0 : (env->CP0_Config4 & (1 << CP0C4_AE)) ? 0x3ff : 0xff;
     compute_hflags(env);
@@ -1285,6 +1486,7 @@ void helper_mtc0_lladdr(CPUMIPSState *env, target_ulong arg1)
     target_long mask = env->CP0_LLAddr_rw_bitmask;
     arg1 = arg1 << env->CP0_LLAddr_shift;
     env->CP0_LLAddr = (env->CP0_LLAddr & ~mask) | (arg1 & mask);
+    log_instr_cop0_update(env, CP0_REGISTER_17, 0, env->CP0_LLAddr);
 }
 
 #define MTC0_MAAR_MASK(env) \
@@ -1292,14 +1494,17 @@ void helper_mtc0_lladdr(CPUMIPSState *env, target_ulong arg1)
 
 void helper_mtc0_maar(CPUMIPSState *env, target_ulong arg1)
 {
-    env->CP0_MAAR[env->CP0_MAARI] = arg1 & MTC0_MAAR_MASK(env);
+    target_ulong newval = arg1 & MTC0_MAAR_MASK(env);
+    env->CP0_MAAR[env->CP0_MAARI] = newval;
+    log_instr_cop0_update(env, CP0_REGISTER_17, 1, newval);
 }
 
 void helper_mthc0_maar(CPUMIPSState *env, target_ulong arg1)
 {
-    env->CP0_MAAR[env->CP0_MAARI] =
-        (((uint64_t) arg1 << 32) & MTC0_MAAR_MASK(env)) |
+    target_ulong newval = (((uint64_t) arg1 << 32) & MTC0_MAAR_MASK(env)) |
         (env->CP0_MAAR[env->CP0_MAARI] & 0x00000000ffffffffULL);
+    env->CP0_MAAR[env->CP0_MAARI] = newval;
+    log_instr_cop0_update(env, CP0_REGISTER_17, 1, newval);
 }
 
 void helper_mtc0_maari(CPUMIPSState *env, target_ulong arg1)
@@ -1318,6 +1523,7 @@ void helper_mtc0_maari(CPUMIPSState *env, target_ulong arg1)
      * Other than the all ones, if the value written is not supported,
      * then INDEX is unchanged from its previous value.
      */
+    log_instr_cop0_update(env, CP0_REGISTER_17, 2, env->CP0_MAARI);
 }
 
 void helper_mtc0_watchlo(CPUMIPSState *env, target_ulong arg1, uint32_t sel)
@@ -1326,7 +1532,9 @@ void helper_mtc0_watchlo(CPUMIPSState *env, target_ulong arg1, uint32_t sel)
      * Watch exceptions for instructions, data loads, data stores
      * not implemented.
      */
-    env->CP0_WatchLo[sel] = (arg1 & ~0x7);
+    target_ulong newval = (arg1 & ~0x7);
+    env->CP0_WatchLo[sel] = newval;
+    log_instr_cop0_update(env, CP0_REGISTER_18, sel, newval);
 }
 
 void helper_mtc0_watchhi(CPUMIPSState *env, target_ulong arg1, uint32_t sel)
@@ -1338,23 +1546,28 @@ void helper_mtc0_watchhi(CPUMIPSState *env, target_ulong arg1, uint32_t sel)
     }
     env->CP0_WatchHi[sel] = m_bit | (arg1 & mask);
     env->CP0_WatchHi[sel] &= ~(env->CP0_WatchHi[sel] & arg1 & 0x7);
+    log_instr_cop0_update(env, CP0_REGISTER_19, sel, env->CP0_WatchHi[sel]);
 }
 
 void helper_mthc0_watchhi(CPUMIPSState *env, target_ulong arg1, uint32_t sel)
 {
     env->CP0_WatchHi[sel] = ((uint64_t) (arg1) << 32) |
                             (env->CP0_WatchHi[sel] & 0x00000000ffffffffULL);
+    log_instr_cop0_update(env, CP0_REGISTER_19, sel, env->CP0_WatchHi[sel]);
 }
 
 void helper_mtc0_xcontext(CPUMIPSState *env, target_ulong arg1)
 {
     target_ulong mask = (1ULL << (env->SEGBITS - 7)) - 1;
-    env->CP0_XContext = (env->CP0_XContext & mask) | (arg1 & ~mask);
+    target_ulong newval = (env->CP0_XContext & mask) | (arg1 & ~mask);
+    env->CP0_XContext = newval;
+    log_instr_cop0_update(env, CP0_REGISTER_20, 0, newval);
 }
 
 void helper_mtc0_framemask(CPUMIPSState *env, target_ulong arg1)
 {
     env->CP0_Framemask = arg1; /* XXX */
+    log_instr_cop0_update(env, CP0_REGISTER_21, 0, arg1);
 }
 
 void helper_mtc0_debug(CPUMIPSState *env, target_ulong arg1)
@@ -1365,6 +1578,14 @@ void helper_mtc0_debug(CPUMIPSState *env, target_ulong arg1)
     } else {
         env->hflags &= ~MIPS_HFLAG_DM;
     }
+    log_instr_cop0_update(env, CP0_REGISTER_23, 0, env->CP0_Debug);
+    // On BERI this shuts down the CPU
+    qemu_system_shutdown_request(SHUTDOWN_CAUSE_GUEST_SHUTDOWN);
+    qemu_system_powerdown_request();
+    // The shutdown request will only be handled once we exit the current
+    // translation block so we need to stop the CPU and then exit the current TB
+    cpu_stop_current();
+    cpu_loop_exit_noexc(env_cpu(env));
 }
 
 void helper_mttc0_debug(CPUMIPSState *env, target_ulong arg1)
@@ -1382,11 +1603,13 @@ void helper_mttc0_debug(CPUMIPSState *env, target_ulong arg1)
     other->CP0_Debug = (other->CP0_Debug &
                      ((1 << CP0DB_SSt) | (1 << CP0DB_Halt))) |
                      (arg1 & ~((1 << CP0DB_SSt) | (1 << CP0DB_Halt)));
+    log_instr_cop0_update(env, CP0_REGISTER_23, 0, other->CP0_Debug);
 }
 
 void helper_mtc0_performance0(CPUMIPSState *env, target_ulong arg1)
 {
     env->CP0_Performance0 = arg1 & 0x000007ff;
+    log_instr_cop0_update(env, CP0_REGISTER_25, 0, env->CP0_Performance0);
 }
 
 void helper_mtc0_errctl(CPUMIPSState *env, target_ulong arg1)
@@ -1396,6 +1619,7 @@ void helper_mtc0_errctl(CPUMIPSState *env, target_ulong arg1)
     int32_t itc = env->itc_tag ? (arg1 & (1 << CP0EC_ITC)) : 0;
 
     env->CP0_ErrCtl = wst | spr | itc;
+    log_instr_cop0_update(env, CP0_REGISTER_26, 0, env->CP0_ErrCtl);
 
     if (itc && !wst && !spr) {
         env->hflags |= MIPS_HFLAG_ITC_CACHE;
@@ -1416,21 +1640,25 @@ void helper_mtc0_taglo(CPUMIPSState *env, target_ulong arg1)
     } else {
         env->CP0_TagLo = arg1 & 0xFFFFFCF6;
     }
+    log_instr_cop0_update(env, CP0_REGISTER_28, 1, env->CP0_TagLo);
 }
 
 void helper_mtc0_datalo(CPUMIPSState *env, target_ulong arg1)
 {
     env->CP0_DataLo = arg1; /* XXX */
+    log_instr_cop0_update(env, CP0_REGISTER_28, 0, arg1);
 }
 
 void helper_mtc0_taghi(CPUMIPSState *env, target_ulong arg1)
 {
     env->CP0_TagHi = arg1; /* XXX */
+    log_instr_cop0_update(env, CP0_REGISTER_29, 1, arg1);
 }
 
 void helper_mtc0_datahi(CPUMIPSState *env, target_ulong arg1)
 {
     env->CP0_DataHi = arg1; /* XXX */
+    log_instr_cop0_update(env, CP0_REGISTER_29, 0, arg1);
 }
 
 /* MIPS MT functions */
@@ -1504,6 +1732,7 @@ void helper_mttgpr(CPUMIPSState *env, target_ulong arg1, uint32_t sel)
     } else {
         other->tcs[other_tc].gpr[sel] = arg1;
     }
+    log_instr_cop0_unsupported(env, "mttr to GPR logging unsupported\n");
 }
 
 void helper_mttlo(CPUMIPSState *env, target_ulong arg1, uint32_t sel)
@@ -1516,6 +1745,7 @@ void helper_mttlo(CPUMIPSState *env, target_ulong arg1, uint32_t sel)
     } else {
         other->tcs[other_tc].LO[sel] = arg1;
     }
+    log_instr_cop0_unsupported(env, "mttr to LO logging unsupported\n");
 }
 
 void helper_mtthi(CPUMIPSState *env, target_ulong arg1, uint32_t sel)
@@ -1528,6 +1758,7 @@ void helper_mtthi(CPUMIPSState *env, target_ulong arg1, uint32_t sel)
     } else {
         other->tcs[other_tc].HI[sel] = arg1;
     }
+    log_instr_cop0_unsupported(env, "mttr to HI logging unsupported\n");
 }
 
 void helper_mttacx(CPUMIPSState *env, target_ulong arg1, uint32_t sel)
@@ -1540,6 +1771,7 @@ void helper_mttacx(CPUMIPSState *env, target_ulong arg1, uint32_t sel)
     } else {
         other->tcs[other_tc].ACX[sel] = arg1;
     }
+    log_instr_cop0_unsupported(env, "mttr to ACX logging unsupported\n");
 }
 
 void helper_mttdsp(CPUMIPSState *env, target_ulong arg1)
@@ -1552,6 +1784,7 @@ void helper_mttdsp(CPUMIPSState *env, target_ulong arg1)
     } else {
         other->tcs[other_tc].DSPControl = arg1;
     }
+    log_instr_cop0_unsupported(env, "mttr to DSPControl logging unsupported\n");
 }
 
 /* MIPS MT functions */

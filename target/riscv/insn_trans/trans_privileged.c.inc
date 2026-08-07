@@ -99,6 +99,7 @@ static bool trans_sret(DisasContext *ctx, arg_sret *a)
         translator_io_start(&ctx->base);
         gen_update_pc(ctx, 0);
         gen_helper_sret(cpu_pc, tcg_env);
+        gen_mark_pc_updated();
         exit_tb(ctx); /* no chaining */
         ctx->base.is_jmp = DISAS_NORETURN;
     } else {
@@ -117,6 +118,7 @@ static bool trans_mret(DisasContext *ctx, arg_mret *a)
     translator_io_start(&ctx->base);
     gen_update_pc(ctx, 0);
     gen_helper_mret(cpu_pc, tcg_env);
+    gen_mark_pc_updated();
     exit_tb(ctx); /* no chaining */
     ctx->base.is_jmp = DISAS_NORETURN;
     return true;
@@ -156,6 +158,7 @@ static bool trans_sfence_vma(DisasContext *ctx, arg_sfence_vma *a)
 #ifndef CONFIG_USER_ONLY
     decode_save_opc(ctx, 0);
     gen_helper_tlb_flush(tcg_env);
+    gen_set_pc_imm(ctx, ctx->pc_succ_insn);
     tcg_gen_exit_tb(NULL, 0);
     ctx->base.is_jmp = DISAS_NORETURN;
     return true;

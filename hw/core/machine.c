@@ -1091,6 +1091,9 @@ static bool create_default_memdev(MachineState *ms, const char *path,
     if (!object_property_set_int(obj, "size", ms->ram_size, errp)) {
         goto out;
     }
+    if (!object_property_set_bool(obj, "cheri-tags", true, errp)) {
+        goto out;
+    }
     object_property_add_child(object_get_objects_root(), mc->default_ram_id,
                               obj);
     /* Ensure backend's memory region name is equal to mc->default_ram_id */
@@ -1552,6 +1555,7 @@ MemoryRegion *machine_consume_memdev(MachineState *machine,
     vmstate_register_ram_global(ret);
     return ret;
 }
+
 
 const char *machine_class_default_cpu_type(MachineClass *mc)
 {

@@ -20,8 +20,12 @@
 #ifndef ARM_CPU_H
 #define ARM_CPU_H
 
+#ifdef TARGET_CHERI
+#ifndef TARGET_MORELLO
+#error "Morello should be the only arm CHERI"
 #endif
 #endif
+
 #include "kvm-consts.h"
 #include "qemu/cpu-float.h"
 #include "hw/registerfields.h"
@@ -31,7 +35,10 @@
 #include "exec/cpu-interrupt.h"
 #include "exec/gdbstub.h"
 #include "exec/page-protection.h"
+#include "accel/tcg/cpu-mmu-index.h"
 #include "qapi/qapi-types-common.h"
+
+
 #include "target/arm/multiprocessing.h"
 #include "target/arm/gtimer.h"
 #include "target/arm/cpu-sysregs.h"
@@ -183,8 +190,24 @@ typedef struct ARMPACKey {
     uint64_t lo, hi;
 } ARMPACKey;
 
+#ifdef TARGET_CHERI
+#include "cheri-lazy-capregs-types.h"
 typedef aligned_cap_register_t AARCH_REG_TYPE;
+#else
 typedef uint64_t AARCH_REG_TYPE;
+#endif
+
+#ifdef TARGET_CHERI
+#define N_BANK_WITH_RESTRICTED 5
+#else
+#define N_BANK_WITH_RESTRICTED 4
+#endif
+
+extern const char * const arm32_regnames[16];
+#ifdef TARGET_AARCH64
+extern const char * const arm64_regnames[32];
+#endif
+
 /* See the commentary above the TBFLAG field definitions.  */
 typedef struct CPUARMTBFlags {
     uint32_t flags;
@@ -269,8 +292,24 @@ typedef struct CPUArchState {
      * instead of having a complicated union.
      */
     /* Regs for A64 mode.  */
+#ifdef TARGET_CHERI
+    struct GPCapRegs gpcapregs;
+    /* There was a choice here as to whether users of DDC should be indexing
+     * DDCs, or we should cache the current one and change it on exception. SP
+     * is swapped on exception, and doing so requires fewer global TCG vars, so
+     * is what we are doing here. */
+    AARCH_REG_TYPE DDC_current;
+    // Holds DDCs 0 through 3 then restricted 0
+    AARCH_REG_TYPE DDCs[N_BANK_WITH_RESTRICTED];
+#else
     uint64_t xregs[32];
-    uint64_t pc;
+#endif
+
+#ifdef CONFIG_DEBUG_TCG
+    target_ulong _pc_is_current;
+#endif
+
+    AARCH_REG_TYPE pc;
     /* PSTATE isn't an architectural register for ARMv8. However, it is
      * convenient for us to assemble the underlying state into a 64 bit format
      * identical to the architectural format used for the SPSR. (This is also
@@ -289,6 +328,11 @@ typedef struct CPUArchState {
     bool thumb;   /* True if CPU is in thumb mode; cpsr[5] */
 
     /* Cached TBFLAGS state.  See below for which bits are included.  */
+#ifdef TARGET_CHERI
+    /* On CHERI, we have another set of 32 flags, which will cache some of as
+     * well */
+    uint32_t chflags;
+#endif
     CPUARMTBFlags hflags;
 
     /* Frequently accessed CPSR bits are stored separately for efficiency.
@@ -318,8 +362,13 @@ typedef struct CPUArchState {
     uint64_t daif; /* exception masks, in the bits they are in PSTATE */
     uint64_t svcr; /* PSTATE.{SM,ZA} in the bits they are in SVCR */
 
-    uint64_t elr_el[4]; /* AArch64 exception link regs  */
-    uint64_t sp_el[4]; /* AArch64 banked stack pointers */
+    AARCH_REG_TYPE elr_el[4]; /* AArch64 exception link regs  */
+    AARCH_REG_TYPE sp_el[N_BANK_WITH_RESTRICTED];  /* AArch64 banked stack pointers */
+
+#ifdef TARGET_CHERI
+    uint64_t CCTLR_el[4];
+    AARCH_REG_TYPE cid_el0;
+#endif
 
     /* System control coprocessor (cp15) */
     struct {
@@ -475,12 +524,13 @@ typedef struct CPUArchState {
         uint64_t mair2_el[4];
         union { /* vector base address register */
             struct {
-                uint64_t _unused_vbar;
-                uint64_t vbar_ns;
-                uint64_t hvbar;
-                uint64_t vbar_s;
+                AARCH_REG_TYPE _unused_vbar;
+                AARCH_REG_TYPE vbar_ns;
+                AARCH_REG_TYPE hvbar;
+                AARCH_REG_TYPE vbar_s;
             };
-            uint64_t vbar_el[4];
+            // cvbar on cheri platforms. vbar corresponds to the cursor.
+            AARCH_REG_TYPE vbar_el[4];
         };
         uint32_t mvbar; /* (monitor) vector base address register */
         uint64_t rvbar; /* rvbar sampled from rvbar property at reset */
@@ -499,22 +549,25 @@ typedef struct CPUArchState {
         };
         union { /* User RW Thread register. */
             struct {
-                uint64_t tpidrurw_ns;
-                uint64_t tpidrprw_ns;
-                uint64_t htpidr;
-                uint64_t _tpidr_el3;
+                AARCH_REG_TYPE tpidrurw_ns;
+                AARCH_REG_TYPE tpidrprw_ns;
+                AARCH_REG_TYPE htpidr;
+                AARCH_REG_TYPE _tpidr_el3;
+#ifdef TARGET_CHERI
+                AARCH_REG_TYPE rtpidr_el0;
+#endif
             };
-            uint64_t tpidr_el[4];
+            AARCH_REG_TYPE tpidr_el[N_BANK_WITH_RESTRICTED];
         };
         uint64_t tpidr2_el0;
         /* The secure banks of these registers don't map anywhere */
-        uint64_t tpidrurw_s;
-        uint64_t tpidrprw_s;
-        uint64_t tpidruro_s;
+        AARCH_REG_TYPE tpidrurw_s;
+        AARCH_REG_TYPE tpidrprw_s;
+        AARCH_REG_TYPE tpidruro_s;
 
         union { /* User RO Thread register. */
-            uint64_t tpidruro_ns;
-            uint64_t tpidrro_el[1];
+            AARCH_REG_TYPE tpidruro_ns;
+            AARCH_REG_TYPE tpidrro_el[1];
         };
         uint64_t c14_cntfrq; /* Counter Frequency register */
         uint64_t c14_cntkctl; /* Timer Control register */
@@ -656,6 +709,10 @@ typedef struct CPUArchState {
         uint64_t vaddress; /* virtual addr associated with exception, if any */
         uint32_t fsr; /* AArch32 format fault status register info */
         uint32_t target_el; /* EL the exception should be targeted for */
+#ifdef TARGET_CHERI
+        // Set if a capability fault was caused by a cache instruction
+        uint8_t cm;
+#endif
     } exception;
 
     /* Information associated with an SError */
@@ -715,6 +772,15 @@ typedef struct CPUArchState {
      * semantics of these fields are baked into the migration format.
      */
     uint64_t exclusive_high;
+#ifdef TARGET_CHERI
+    // For CAP sized atomics exclusive_high is used as a pesbt, but we also need
+    // a tag. We need a second set for store/load pair. None of these are
+    // currently need as globals because they are only used by helpers.
+    uint32_t exclusive_tag;
+    uint64_t exclusive_val2;
+    uint64_t exclusive_high2;
+    uint32_t exclusive_tag2;
+#endif
 
     struct {
         ARMPACKey apia;
@@ -811,6 +877,22 @@ typedef struct CPUArchState {
 #else /* CONFIG_USER_ONLY */
     /* For usermode syscall translation.  */
     bool eabi;
+#endif /* CONFIG_USER_ONLY */
+
+#ifdef TARGET_CHERI
+    uint64_t chcr_el2;
+    uint64_t cscr_el3;
+
+    // Some statcounters:
+    uint64_t statcounters_cap_read;
+    uint64_t statcounters_cap_read_tagged;
+    uint64_t statcounters_cap_write;
+    uint64_t statcounters_cap_write_tagged;
+
+    uint64_t statcounters_imprecise_setbounds;
+    uint64_t statcounters_unrepresentable_caps;
+#endif
+#ifdef CONFIG_USER_ONLY
     /* Linux syscall tagged address support */
     bool tagged_addr_enable;
 #endif /* CONFIG_USER_ONLY */
@@ -1044,6 +1126,11 @@ struct ArchCPU {
 
     /* Uniprocessor system with MP extensions */
     bool mp_is_up;
+
+    /* Performance of processors at the lowest affinity level is
+     * very interdependent.
+     */
+    bool mpidr_mt;
 
     /* True if we tried kvm_arm_host_cpu_features() during CPU instance_init
      * and the probe failed (so we need to report the error in realize)
@@ -1304,7 +1391,7 @@ uint32_t sve_vqm1_for_el_sm(CPUARMState *env, int el, bool sm);
 /* Likewise, but using @sm = PSTATE.SM. */
 uint32_t sve_vqm1_for_el(CPUARMState *env, int el);
 
-static inline bool is_a64(CPUARMState *env)
+static inline bool is_a64(const CPUARMState *env)
 {
 #ifdef TARGET_CHERI
     // Morello does not support 32-bit, so might as well optimise everything away
@@ -1531,6 +1618,7 @@ void pmu_init(ARMCPU *cpu);
 #define PSTATE_UAO (1U << 23)
 #define PSTATE_DIT (1U << 24)
 #define PSTATE_TCO (1U << 25)
+#define PSTATE_C64 (1U << 26)
 #define PSTATE_V (1U << 28)
 #define PSTATE_C (1U << 29)
 #define PSTATE_Z (1U << 30)
@@ -2399,6 +2487,90 @@ static inline bool arm_sctlr_b(CPUARMState *env)
 
 uint64_t arm_sctlr(CPUARMState *env, int el);
 
+#include "cpu_cheri.h"
+#include "cheri-lazy-capregs.h"
+#include "exec/log_instr.h"
+
+static inline QEMU_ALWAYS_INLINE target_ulong arm_get_a64_reg(CPUARMState *env,
+                                                              int regnum)
+{
+#ifdef TARGET_CHERI
+    return get_capreg_cursor(env, regnum);
+#else
+    return env->xregs[regnum];
+#endif
+}
+
+/* Set an AArch32 register by number and log the changed value. */
+static inline void arm_set_a64_reg(CPUARMState *env, int regnum,
+                                   target_ulong value)
+{
+#ifndef TARGET_AARCH64
+    g_assert_not_reached(); /* Should have checked is_a64() */
+#else
+#ifdef TARGET_CHERI
+    update_capreg_to_intval(env, regnum, value);
+#else
+    env->xregs[regnum] = value;
+    qemu_log_instr_reg(env, arm64_regnames[regnum], value, regnum,
+                       LRI_GPR_ACCESS);
+#endif
+#endif
+}
+
+/* Set an AArch32 register by number and log the changed value. */
+static inline void arm_set_a32_reg(CPUARMState *env, int regnum,
+                                   target_ulong value)
+{
+    env->regs[regnum] = value;
+    qemu_log_instr_reg(env, arm32_regnames[regnum], value, regnum,
+                       LRI_GPR_ACCESS);
+}
+
+// Increment a register preserving any other fields.
+static inline void increment_aarch_reg(AARCH_REG_TYPE *aarch_reg,
+                                       target_ulong inc)
+{
+#ifdef TARGET_CHERI
+    cap_increment_offset(&aarch_reg->cap, inc);
+#else
+    *aarch_reg += inc;
+#endif
+}
+
+// Set a registers value preserving any other fields.
+static inline void set_aarch_reg_value(AARCH_REG_TYPE *aarch_reg,
+                                       target_ulong val)
+{
+#ifdef TARGET_CHERI
+    cap_set_cursor(&aarch_reg->cap, val);
+#else
+    *aarch_reg = val;
+#endif
+}
+
+// Set a value as if it were an X register (use get_xreg for the GP register
+// file).
+static inline void set_aarch_reg_to_x(CPUARMState *env,
+                                      AARCH_REG_TYPE *aarch_reg,
+                                      target_ulong val)
+{
+#ifdef TARGET_CHERI
+    aarch_reg->cap = make_capability_from_int(env, val);
+#else
+    *aarch_reg = val;
+#endif
+}
+
+// Get a registers value with X width (use set_xreg for the GP register file).
+static inline target_ulong get_aarch_reg_as_x(AARCH_REG_TYPE *aarch_reg)
+{
+#ifdef TARGET_CHERI
+    return aarch_reg->cap._cr_cursor;
+#else
+    return *aarch_reg;
+#endif
+}
 /*
  * We have more than 32-bits worth of state per TB, so we split the data
  * between tb->flags and tb->cs_base, which is otherwise unused for ARM.
@@ -2434,8 +2606,42 @@ FIELD(TBFLAG_ANY, PSTATE__IL, 11, 1)
 FIELD(TBFLAG_ANY, FGT_ACTIVE, 12, 1)
 FIELD(TBFLAG_ANY, FGT_SVC, 13, 1)
 
+#ifdef TARGET_CHERI
+
+#define CxCR_SETTAG (1 << 0)
+
+#define CCTLR_TGEN0 (1 << 0) // Only at EL > 0
+#define CCTLR_TGEN1 (1 << 1) // Only at 3 > EL > 0
+
+// Add DDC base to access
+#define CCTLR_DDCBO (1 << 2)
+// Add PCC base to access
+#define CCTLR_PCCBO (1 << 3)
+// Base for ADRDP (DDC vs C28)
+#define CCTLR_ADRDPB (1 << 4)
+#define CCTRL_C64E (1 << 5) // Only at EL > 0
+#define CCTLR_PERMVCT (1 << 6)
+// If one then branch to sealed/restricted MUST be sentries
+#define CCTLR_SBL (1 << 7)
+
+#define CCTLR_DEFINED_START 2
+
+FIELD(TBFLAG_CHERI, CCTLR, 0, 6) // The 6 defined bits from CCTLR at all levels
+FIELD(TBFLAG_CHERI, PSTATE_C64, 6, 1) // The PSTATE.C64 bit
+FIELD(TBFLAG_CHERI, EXECUTIVE, 7, 1)  // pcc.perms.executive
+FIELD(TBFLAG_CHERI, SYSTEM, 8, 1)     // pcc.perms.system
+FIELD(TBFLAG_CHERI, SETTAG, 9, 1)
 // 1 if capability instructions are trapped
 FIELD(TBFLAG_CHERI, CAP_ENABLED, 10, 1)
+// These flags really belongs in TBFLAG_ANY, but there is no room. If upstream
+// wants this feature, then they can move some bits around
+FIELD(TBFLAG_CHERI, SCTLRSA, 11, 1)
+#define TBFLAG_END(flag) (R_##flag##_SHIFT + R_##flag##_LENGTH)
+#define TBFLAG_CHERI_SIZE TBFLAG_END(TBFLAG_CHERI_SCTLRSA)
+_Static_assert(TBFLAG_CHERI_SIZE <= 32, "");
+
+#endif /* TARGET_CHERI */
+
 /*
  * Bit usage when in AArch32 state, both A- and M-profile.
  */
@@ -2539,6 +2745,14 @@ FIELD(TBFLAG_A64, GCSSTR_EL, 43, 2)
 #define EX_TBFLAG_A32(IN, WHICH)   FIELD_EX32(IN.flags2, TBFLAG_A32, WHICH)
 #define EX_TBFLAG_M32(IN, WHICH)   FIELD_EX32(IN.flags2, TBFLAG_M32, WHICH)
 #define EX_TBFLAG_AM32(IN, WHICH)  FIELD_EX32(IN.flags2, TBFLAG_AM32, WHICH)
+
+extern void aarch_cpu_get_tb_cpu_state(CPUARMState *env, vaddr *pc,
+                                       uint64_t *cs_base,
+                                       target_ulong *pcc_base,
+                                       target_ulong *pcc_top,
+                                       uint32_t *cheri_flags, uint32_t *pflags);
+// Ugly macro hack to avoid having to modify cpu_get_tb_cpu_state in all targets
+#define cpu_get_tb_cpu_state_ext aarch_cpu_get_tb_cpu_state
 
 /**
  * sve_vq
@@ -2674,21 +2888,323 @@ extern const uint64_t pred_esz_masks[5];
 #define LOG2_TAG_GRANULE 4
 #define TAG_GRANULE      (1 << LOG2_TAG_GRANULE)
 
+#ifdef TARGET_CHERI
+static inline bool cheri_is_executive(CPUARMState *env)
 {
+    return FIELD_EX32(env->chflags, TBFLAG_CHERI, EXECUTIVE) != 0;
 }
+
 // restricted is not executive. Decided it might make things more readable to
 // have this.
 static inline bool cheri_is_restricted(CPUARMState *env)
+{
     return !cheri_is_executive(env);
 }
+
+static inline bool cheri_is_system(CPUARMState *env)
+{
+    return FIELD_EX32(env->chflags, TBFLAG_CHERI, SYSTEM) != 0;
+}
+#endif
+
+static inline int aarch64_get_bank_index(CPUARMState *env, int el)
+{
+#ifdef TARGET_CHERI
+    if (!cheri_is_executive(env)) {
+        return 4;
+    }
+#endif
+    return ((env->pstate & PSTATE_SP) ? el : 0);
+}
+
+// DDC is always swapped at the times SP is, so it makes sense to have just one
+// function
+// TODO maybe rename these now they also control DDC.
+
+static inline void aarch64_save_sp(CPUARMState *env, int el)
+{
+    int index = aarch64_get_bank_index(env, el);
+
+#ifdef TARGET_CHERI
+    env->sp_el[index].cap = *get_readonly_capreg(env, 31);
+    cheri_debug_assert(env->sp_el[index].cap.cr_extra ==
+                       CREG_FULLY_DECOMPRESSED);
+    env->DDCs[index] = env->DDC_current;
+    cheri_debug_assert(env->DDCs[index].cap.cr_extra ==
+                       CREG_FULLY_DECOMPRESSED);
+#else
+    env->sp_el[index] = env->xregs[31];
+#endif
+}
+
+static inline void aarch64_restore_sp(CPUARMState *env, int el)
+{
+    int index = aarch64_get_bank_index(env, el);
+#ifdef TARGET_CHERI
+    cheri_debug_assert(env->sp_el[index].cap.cr_extra ==
+                       CREG_FULLY_DECOMPRESSED);
+    update_capreg(env, 31, &env->sp_el[index].cap);
+    env->DDC_current = env->DDCs[index];
+#ifdef CONFIG_TCG_LOG_INSTR
+    qemu_log_instr_dbg_cap(env, "DDC", &env->DDC_current.cap);
+#endif
+#else
+    env->xregs[31] = env->sp_el[index];
+#endif
+}
+
+#include "cpu-features.h"
+
+/* Return the effective value of SCR_EL3.RW */
+static inline bool arm_scr_rw_eff(CPUARMState *env)
+{
+    /*
+     * SCR_EL3.RW has an effective value of 1 if:
+     *  - we are NS and EL2 is implemented but doesn't support AArch32
+     *  - we are S and EL2 is enabled (in which case it must be AArch64)
+     */
+    ARMCPU *cpu = env_archcpu(env);
+
+    if (env->cp15.scr_el3 & SCR_RW) {
         return true;
+    }
+    if (env->cp15.scr_el3 & SCR_NS) {
+        return arm_feature(env, ARM_FEATURE_EL2) &&
+            !cpu_isar_feature(aa64_aa32_el2, cpu);
+    } else {
+        return env->cp15.scr_el3 & SCR_EEL2;
+    }
+}
+
+/* Return true if the specified exception level is running in AArch64 state. */
+static inline bool arm_el_is_aa64(CPUARMState *env, int el)
+{
+#ifdef TARGET_CHERI
+    // Morello always a64
+    return true;
+#else
+    /*
+     * This isn't valid for EL0 (if we're in EL0, is_a64() is what you want,
+     * and if we're not in EL0 then the state of EL0 isn't well defined.)
+     */
+    assert(el >= 1 && el <= 3);
+    bool aa64 = arm_feature(env, ARM_FEATURE_AARCH64);
+
+    /*
+     * The highest exception level is always at the maximum supported
+     * register width, and then lower levels have a register width controlled
+     * by bits in the SCR or HCR registers.
+     */
     if (el == 3) {
+        return aa64;
+    }
+
+    if (arm_feature(env, ARM_FEATURE_EL3)) {
+        aa64 = aa64 && arm_scr_rw_eff(env);
+    }
+
+    if (el == 2) {
+        return aa64;
+    }
+
+    if (arm_is_el2_enabled(env)) {
+        aa64 = aa64 && (env->cp15.hcr_el2 & HCR_RW);
+    }
+
+    return aa64;
+#endif
+}
+
+/*
+ * Return the current Exception Level (as per ARMv8; note that this differs
+ * from the ARMv7 Privilege Level).
+ */
+static inline int arm_current_el(CPUARMState *env)
+{
+    if (arm_feature(env, ARM_FEATURE_M)) {
+        return arm_v7m_is_handler_mode(env) ||
+            !(env->v7m.control[env->v7m.secure] & 1);
+    }
+
+    if (is_a64(env)) {
+        return extract32(env->pstate, 2, 2);
+    }
+
+    switch (env->uncached_cpsr & 0x1f) {
+    case ARM_CPU_MODE_USR:
+        return 0;
+    case ARM_CPU_MODE_HYP:
+        return 2;
+    case ARM_CPU_MODE_MON:
+        return 3;
+    default:
+        if (arm_is_secure(env) && !arm_el_is_aa64(env, 3)) {
+            /* If EL3 is 32-bit then all secure privileged modes run in EL3 */
+            return 3;
+        }
+
+        return 1;
+    }
+}
+
+#ifdef CONFIG_TCG_LOG_INSTR
+static inline bool cpu_in_user_mode(CPUArchState *env)
+{
+    return arm_current_el(env) == 0;
+}
+
+static inline unsigned cpu_get_asid(CPUArchState *env, target_ulong pc)
+{
+
+    uint64_t ttbr;
+    if (cpu_mmu_index(env_cpu(env), 0) == ARMMMUIdx_Stage2) {
+        ttbr = env->cp15.vttbr_el2;
+    } else {
+        int el = arm_current_el(env);
+        int maskshift = extract32(env->cp15.tcr_el[el], 0, 3);
+        uint32_t mask = ~(((uint32_t)0xffffffffu) >> maskshift);
+        if (!(pc & mask)) {
+            ttbr = env->cp15.ttbr0_el[el];
+        } else {
+            ttbr = env->cp15.ttbr1_el[el];
+        }
+    }
+
+    return (ttbr >> 48) & 0xFF;
+}
+
+#define AARCH_LOG_INSTR_CPU_EL0 QEMU_LOG_INSTR_CPU_USER
+#define AARCH_LOG_INSTR_CPU_EL1 QEMU_LOG_INSTR_CPU_SUPERVISOR
+#define AARCH_LOG_INSTR_CPU_EL2 QEMU_LOG_INSTR_CPU_HYPERVISOR
+#define AARCH_LOG_INSTR_CPU_EL3 QEMU_LOG_INSTR_CPU_TARGET1
+extern const char *const aarch_cpu_mode_names[];
+
+static inline qemu_log_instr_cpu_mode_t
+arm_el_to_logging_mode(CPUArchState *env, int el)
+{
+    switch (el) {
+    case 0:
+        return AARCH_LOG_INSTR_CPU_EL0;
+    case 1:
+        return AARCH_LOG_INSTR_CPU_EL1;
+    case 2:
+        return AARCH_LOG_INSTR_CPU_EL2;
+    case 3:
+        return AARCH_LOG_INSTR_CPU_EL3;
+    default:
+        return QEMU_LOG_INSTR_CPU_MODE_MAX - 1;
+    }
+}
+
+static inline const char *cpu_get_mode_name(qemu_log_instr_cpu_mode_t mode)
+{
+    if (aarch_cpu_mode_names[mode])
+        return aarch_cpu_mode_names[mode];
+    return "<invalid>";
+}
+
+static inline target_ulong cpu_get_recent_pc(CPUArchState *env)
+{
+#ifdef TARGET_CHERI
+    return env->pc.cap._cr_cursor;
+#else
+    return is_a64(env) ? env->pc : env->regs[15];
+#endif
+}
+
+
+static inline bool pc_is_current(CPUArchState *env)
+{
+#ifdef CONFIG_DEBUG_TCG
+    return env->_pc_is_current;
+#else
+    return true;
+#endif
+}
+
+#endif // CONFIG_TCG_LOG_INSTR
+
+#ifdef TARGET_CHERI
+
+#include "internals.h"
+
+static bool is_el2_enabled(CPUARMState *env, int el)
+{
+    return arm_feature(env, ARM_FEATURE_EL2) &&
+           (!arm_feature(env, ARM_FEATURE_EL3) || (env->cp15.scr_el3 & SCR_NS));
+}
+
+static bool arm_is_tag_setting_disabled(CPUARMState *env, int el)
+{
+
     if (el < 2) {
         if (is_el2_enabled(env, el) && (env->chcr_el2 & CxCR_SETTAG))
+            return true;
         else if (arm_feature(env, ARM_FEATURE_EL3) &&
                  (env->cscr_el3 & CxCR_SETTAG))
+            return true;
     } else if (el == 2) {
         if (arm_feature(env, ARM_FEATURE_EL3) && (env->cscr_el3 & CxCR_SETTAG))
+            return true;
+    }
+
     return false;
+}
+
+static inline uint32_t arm_rebuild_chflags_el(CPUARMState *env, int el)
+{
+    // Must also fit in the general cheri flags
+    _Static_assert(TBFLAG_CHERI_SIZE + TB_FLAG_CHERI_SPARE_INDEX_START + 1 < 32,
+                   "");
+    uint32_t chflags = (env->CCTLR_el[el] >> CCTLR_DEFINED_START);
+    if (env->pstate & PSTATE_C64) {
+        chflags = FIELD_DP32(chflags, TBFLAG_CHERI, PSTATE_C64, 1);
+    }
+    if (cap_has_perms(_cheri_get_pcc_unchecked(env), CAP_PERM_EXECUTIVE)) {
+        chflags = FIELD_DP32(chflags, TBFLAG_CHERI, EXECUTIVE, 1);
+    }
+    if (cap_has_perms(_cheri_get_pcc_unchecked(env), CAP_ACCESS_SYS_REGS)) {
+        chflags = FIELD_DP32(chflags, TBFLAG_CHERI, SYSTEM, 1);
+    }
+    if (arm_is_tag_setting_disabled(env, el)) {
+        chflags = FIELD_DP32(chflags, TBFLAG_CHERI, SETTAG, 1);
+    }
+    if (get_cap_enabled_target_exception_level_el(env, el) == -1) {
+        chflags = FIELD_DP32(chflags, TBFLAG_CHERI, CAP_ENABLED, 1);
+    }
+    uint64_t sctlr = arm_sctlr(env, el);
+    if ((el == 0) ? (sctlr & SCTLR_SA0) : (sctlr & SCTLR_SA)) {
+        chflags = FIELD_DP32(chflags, TBFLAG_CHERI, SCTLRSA, 1);
+    }
+
+    uint32_t chflags_changed = env->chflags ^ chflags;
+    env->chflags = chflags;
+
+    if (FIELD_EX32(chflags_changed, TBFLAG_CHERI, PSTATE_C64)) {
+        qemu_maybe_log_instr_extra(env, "New C64 state: %s\n",
+                                   FIELD_EX32(chflags, TBFLAG_CHERI, PSTATE_C64)
+                                       ? "Enabled"
+                                       : "Disabled");
+    }
+    if (FIELD_EX32(chflags_changed, TBFLAG_CHERI, EXECUTIVE)) {
+        qemu_maybe_log_instr_extra(env, "New executive state: %s\n",
+                                   FIELD_EX32(chflags, TBFLAG_CHERI, EXECUTIVE)
+                                       ? "Enabled"
+                                       : "Disabled");
+    }
+    if (FIELD_EX32(chflags_changed, TBFLAG_CHERI, CAP_ENABLED)) {
+        qemu_maybe_log_instr_extra(
+            env, "New cap enabled state: %s\n",
+            FIELD_EX32(chflags, TBFLAG_CHERI, CAP_ENABLED) ? "Enabled"
+                                                           : "Disabled");
+    }
+    return chflags;
+}
+
+static inline uint32_t arm_rebuild_chflags(CPUARMState *env)
+{
+    return arm_rebuild_chflags_el(env, arm_current_el(env));
+}
 #endif
+
 #endif /* ARM_CPU_H */

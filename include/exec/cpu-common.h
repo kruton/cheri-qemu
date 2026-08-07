@@ -150,6 +150,12 @@ typedef int (RAMBlockIterFunc)(RAMBlock *rb, void *opaque);
 
 int qemu_ram_foreach_block(RAMBlockIterFunc func, void *opaque);
 
+/*
+ * len is length in address space, buffer at 'ptr' has one extra byte
+ * per aligned capability for each tag
+ */
+int cpu_memory_readcap_debug(CPUState *cpu, vaddr addr, void *ptr,
+                             size_t len);
 /* vl.c */
 void list_cpus(void);
 

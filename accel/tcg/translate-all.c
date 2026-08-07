@@ -40,6 +40,13 @@
 
 TBContext tb_ctx;
 
+#ifdef CONFIG_DEBUG_TCG
+TCGv _pc_is_current;
+#endif
+#ifdef TARGET_CHERI
+TCGv ddc_interposition;
+#endif
+
 /*
  * Encode VAL as a signed leb128 sequence at P.
  * Return P incremented past the encoded value.
@@ -307,6 +314,9 @@ TranslationBlock *tb_gen_code(CPUState *cpu, TCGTBCPUState s)
         tb->pc = s.pc;
     }
     tb->cs_base = s.cs_base;
+    tb->pcc_base = s.pcc_base;
+    tb->pcc_top = s.pcc_top;
+    tb->cheri_flags = s.cheri_flags;
     tb->flags = s.flags;
     tb->cflags = s.cflags;
     tb_set_page_addr0(tb, phys_pc);
@@ -559,7 +569,6 @@ void tb_check_watchpoint(CPUState *cpu, uintptr_t retaddr)
         CPUArchState *env = cpu_env(cpu);
         TCGTBCPUState s = cpu->cc->tcg_ops->get_tb_cpu_state(cpu);
         tb_page_addr_t addr = get_page_addr_code(env, s.pc);
-
         if (addr != -1) {
             tb_invalidate_phys_range(cpu, addr, addr);
         }

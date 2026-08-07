@@ -28,6 +28,28 @@
 #include "qemu/bitops.h"
 #include "internals.h"
 #include "qemu/crc32c.h"
+#ifdef TARGET_CHERI
+#include "cheri-lazy-capregs.h"
+
+#define GET_XREG(env, reg) get_without_decompress_cursor(env, reg)
+#define SET_XREG_INT(env, reg, val) update_capreg_to_intval(env, reg, val)
+
+static inline void set_xreg_addr_cheri(CPUARMState *env, int reg, uint64_t addr)
+{
+    const cap_register_t *source = get_readonly_capreg(env, reg);
+    bool clear_tag = !is_representable_cap_with_addr(source, addr);
+    update_capreg_cursor_from(env, reg, source, reg, addr, clear_tag);
+}
+#define SET_XREG_ADDR(env, reg, addr) set_xreg_addr_cheri(env, reg, addr)
+
+#else
+
+#define GET_XREG(env, reg) (env->xregs[reg])
+#define SET_XREG_INT(env, reg, val) (env->xregs[reg] = (val))
+#define SET_XREG_ADDR(env, reg, addr) (env->xregs[reg] = (addr))
+
+#endif
+
 #include "exec/cpu-common.h"
 #include "accel/tcg/cpu-ldst.h"
 #include "accel/tcg/helper-retaddr.h"
@@ -38,6 +60,13 @@
 #include "qemu/atomic128.h"
 #include "fpu/softfloat.h"
 #include <zlib.h> /* for crc32 */
+#include "exec/log_instr.h"
+
+#ifdef TARGET_CHERI
+#include "cheri-helper-utils.h"
+#include "cheri_tagmem.h"
+#endif
+
 #ifdef CONFIG_USER_ONLY
 #include "user/page-protection.h"
 #endif
@@ -433,6 +462,7 @@ uint64_t HELPER(crc32c_64)(uint64_t acc, uint64_t val, uint32_t bytes)
     return crc32c(acc, buf, bytes) ^ 0xffffffff;
 }
 
+
 /*
  * AdvSIMD half-precision
  */
@@ -691,6 +721,8 @@ void HELPER(exception_return)(CPUARMState *env, uint64_t new_pc)
     bql_unlock();
 
     if (!return_to_aa64) {
+        ASSERT_IF_CHERI();
+
         env->aarch64 = false;
         /* We do a raw CPSR write because aarch64_sync_64_to_32()
          * will sort the register banks out for us, and we've already
@@ -714,12 +746,36 @@ void HELPER(exception_return)(CPUARMState *env, uint64_t new_pc)
     } else {
         int tbii;
 
+#ifdef TARGET_CHERI
+        bool cap_return = is_access_to_capabilities_enabled_at_el(env, cur_el);
+        bool no_system = !cheri_have_access_sysregs(env);
+
+        if (!cap_return ||
+            !is_access_to_capabilities_enabled_at_el(env, new_el))
+            spsr &= ~PSTATE_C64;
+
+        if (cap_return) {
+            env->pc = env->elr_el[cur_el];
+            if (no_system)
+                env->pc.cap.cr_tag = 0;
+        }
+
+        if (!cap_is_unsealed(&env->pc.cap)) {
+            env->pc.cap.cr_tag = 0;
+        }
+#endif
+
         env->aarch64 = true;
         spsr &= aarch64_pstate_valid_mask(&cpu->isar);
         pstate_write(env, spsr);
+        qemu_log_instr_dbg_reg(env, "CPSR", spsr);
         if (!arm_singlestep_active(env)) {
             env->pstate &= ~PSTATE_SS;
         }
+
+#ifdef TARGET_CHERI
+        arm_rebuild_chflags_el(env, new_el);
+#endif
         aarch64_restore_sp(env, new_el);
         helper_rebuild_hflags_a64(env, new_el);
 
@@ -740,11 +796,17 @@ void HELPER(exception_return)(CPUARMState *env, uint64_t new_pc)
                 new_pc = extract64(new_pc, 0, 56);
             }
         }
-        env->pc = new_pc;
 
-        qemu_log_mask(CPU_LOG_INT, "Exception return from AArch64 EL%d to "
-                      "AArch64 EL%d PC 0x%" PRIx64 "\n",
-                      cur_el, new_el, env->pc);
+        set_aarch_reg_value(&env->pc, new_pc);
+
+        qemu_maybe_log_instr_extra(
+            env, "Exception return from EL%d to EL%d. PSTATE: 0x%x\n", cur_el,
+            new_el, pstate_read(env));
+
+        qemu_log_mask(CPU_LOG_INT,
+                      "Exception return from AArch64 EL%d to "
+                      "AArch64 EL%d PC 0x%" PRIx64 " CPSR %" PRIx64 "\n",
+                      cur_el, new_el, get_aarch_reg_as_x(&env->pc), spsr);
     }
 
     /*
@@ -752,6 +814,9 @@ void HELPER(exception_return)(CPUARMState *env, uint64_t new_pc)
      * el0_a64 is return_to_aa64, else el0_a64 is ignored.
      */
     aarch64_sve_change_el(env, cur_el, new_el, return_to_aa64);
+
+    qemu_log_instr_mode_switch(env, arm_el_to_logging_mode(env, new_el),
+                               get_aarch_reg_as_x(&env->pc));
 
     bql_lock();
     arm_call_el_change_hook(cpu);
@@ -768,20 +833,24 @@ illegal_return:
      * no change to exception level, execution state or stack pointer
      */
     env->pstate |= PSTATE_IL;
-    env->pc = new_pc;
+    // LETODO
+    ASSERT_IF_CHERI();
+    set_aarch_reg_to_x(env, &env->pc, new_pc);
     spsr &= PSTATE_NZCV | PSTATE_DAIF | PSTATE_ALLINT;
     spsr |= pstate_read(env) & ~(PSTATE_NZCV | PSTATE_DAIF | PSTATE_ALLINT);
     pstate_write(env, spsr);
+    qemu_log_instr_dbg_reg(env, "CPSR", spsr);
     if (!arm_singlestep_active(env)) {
         env->pstate &= ~PSTATE_SS;
     }
     helper_rebuild_hflags_a64(env, cur_el);
     qemu_log_mask(LOG_GUEST_ERROR, "Illegal exception return at EL%d: "
-                  "resuming execution at 0x%" PRIx64 "\n", cur_el, env->pc);
+                  "resuming execution at 0x%" PRIx64 "\n", cur_el,
+                  get_aarch_reg_as_x(&env->pc));
 }
 #endif /* !CONFIG_USER_ONLY */
 
-void HELPER(dc_zva)(CPUARMState *env, uint64_t vaddr_in)
+void HELPER(dc_zva)(CPUARMState *env, target_ulong vaddr_in)
 {
     uintptr_t ra = GETPC();
 
@@ -826,9 +895,35 @@ void HELPER(dc_zva)(CPUARMState *env, uint64_t vaddr_in)
     }
 #endif
 
+#ifdef TARGET_CHERI
+    assert(blocklen == ((1 << CAP_TAG_GET_MANY_SHFT) * CHERI_CAP_SIZE));
+    // NB: Because this isn't setting any tags, no exception should be possible.
+    // The only reason for passing the register number is for exceptions,
+    // so the fact we pass -1 here should be fine.
+    cheri_tag_set_many(env, 0, vaddr, -1, NULL, GETPC());
+#endif
+
     set_helper_retaddr(ra);
     memset(mem, 0, blocklen);
     clear_helper_retaddr();
+}
+
+void G_NORETURN helper_alignment_fault_exception(CPUArchState *env,
+                                                    uint64_t addr)
+{
+    GET_HOST_RETPC();
+    arm_cpu_do_unaligned_access(env_cpu(env), addr, MMU_DATA_STORE,
+                                cpu_mmu_index(env_cpu(env), false),
+                                _host_return_address);
+}
+
+void G_NORETURN helper_sp_alignment_exception(CPUArchState *env)
+{
+    env->exception.vaddress = 0;
+    uint32_t syn = syn_sp_alignment(false);
+    // Possibly should not use EXCP_DATA_ABORT, but alignment faults are handled
+    // very similarly.
+    raise_exception(env, EXCP_DATA_ABORT, syn, exception_target_el(env));
 }
 
 void HELPER(unaligned_access)(CPUARMState *env, uint64_t addr,
@@ -1085,7 +1180,7 @@ static uint64_t arm_reg_or_xzr(CPUARMState *env, int reg)
      * Runtime equivalent of cpu_reg() -- return the CPU register value,
      * for contexts when index 31 means XZR (not SP).
      */
-    return reg == 31 ? 0 : env->xregs[reg];
+    return reg == 31 ? 0 : GET_XREG(env, reg);
 }
 
 /*
@@ -1110,8 +1205,8 @@ static void do_setp(CPUARMState *env, uint32_t syndrome, uint32_t mtedesc,
     int rn = mops_sizereg(syndrome);
     uint8_t data = arm_reg_or_xzr(env, rs);
     uint32_t memidx = FIELD_EX32(mtedesc, MTEDESC, MIDX);
-    uint64_t toaddr = env->xregs[rd];
-    uint64_t setsize = env->xregs[rn];
+    uint64_t toaddr = GET_XREG(env, rd);
+    uint64_t setsize = GET_XREG(env, rn);
     uint64_t stagesetsize, step;
 
     check_mops_enabled(env, ra);
@@ -1131,16 +1226,16 @@ static void do_setp(CPUARMState *env, uint32_t syndrome, uint32_t mtedesc,
 
     stagesetsize = MIN(setsize, page_limit(toaddr));
     while (stagesetsize) {
-        env->xregs[rd] = toaddr;
-        env->xregs[rn] = setsize;
+        SET_XREG_ADDR(env, rd, toaddr);
+        SET_XREG_INT(env, rn, setsize);
         step = stepfn(env, toaddr, stagesetsize, data, memidx, &mtedesc, ra);
         toaddr += step;
         setsize -= step;
         stagesetsize -= step;
     }
     /* Insn completed, so update registers to the Option A format */
-    env->xregs[rd] = toaddr + setsize;
-    env->xregs[rn] = -setsize;
+    SET_XREG_ADDR(env, rd, toaddr + setsize);
+    SET_XREG_INT(env, rn, -setsize);
 
     /* Set NZCV = 0000 to indicate we are an Option A implementation */
     env->NF = 0;
@@ -1168,8 +1263,8 @@ static void do_setm(CPUARMState *env, uint32_t syndrome, uint32_t mtedesc,
     int rs = mops_srcreg(syndrome);
     int rn = mops_sizereg(syndrome);
     uint8_t data = arm_reg_or_xzr(env, rs);
-    uint64_t toaddr = env->xregs[rd] + env->xregs[rn];
-    uint64_t setsize = -env->xregs[rn];
+    uint64_t toaddr = GET_XREG(env, rd) + GET_XREG(env, rn);
+    uint64_t setsize = -GET_XREG(env, rn);
     uint32_t memidx = FIELD_EX32(mtedesc, MTEDESC, MIDX);
     uint64_t step, stagesetsize;
 
@@ -1179,7 +1274,7 @@ static void do_setm(CPUARMState *env, uint32_t syndrome, uint32_t mtedesc,
      * We're allowed to NOP out "no data to copy" before the consistency
      * checks; we choose to do so.
      */
-    if (env->xregs[rn] == 0) {
+    if (GET_XREG(env, rn) == 0) {
         return;
     }
 
@@ -1206,7 +1301,7 @@ static void do_setm(CPUARMState *env, uint32_t syndrome, uint32_t mtedesc,
         toaddr += step;
         setsize -= step;
         stagesetsize -= step;
-        env->xregs[rn] = -setsize;
+        SET_XREG_INT(env, rn, -setsize);
         if (stagesetsize > 0 && unlikely(cpu_loop_exit_requested(cs))) {
             cpu_loop_exit_restore(cs, ra);
         }
@@ -1231,8 +1326,8 @@ static void do_sete(CPUARMState *env, uint32_t syndrome, uint32_t mtedesc,
     int rs = mops_srcreg(syndrome);
     int rn = mops_sizereg(syndrome);
     uint8_t data = arm_reg_or_xzr(env, rs);
-    uint64_t toaddr = env->xregs[rd] + env->xregs[rn];
-    uint64_t setsize = -env->xregs[rn];
+    uint64_t toaddr = GET_XREG(env, rd) + GET_XREG(env, rn);
+    uint64_t setsize = -GET_XREG(env, rn);
     uint32_t memidx = FIELD_EX32(mtedesc, MTEDESC, MIDX);
     uint64_t step;
 
@@ -1269,7 +1364,7 @@ static void do_sete(CPUARMState *env, uint32_t syndrome, uint32_t mtedesc,
         step = stepfn(env, toaddr, setsize, data, memidx, &mtedesc, ra);
         toaddr += step;
         setsize -= step;
-        env->xregs[rn] = -setsize;
+        SET_XREG_INT(env, rn, -setsize);
     }
 }
 
@@ -1461,9 +1556,9 @@ static void do_cpyp(CPUARMState *env, uint32_t syndrome, uint32_t wdesc,
     uint32_t rmemidx = FIELD_EX32(rdesc, MTEDESC, MIDX);
     uint32_t wmemidx = FIELD_EX32(wdesc, MTEDESC, MIDX);
     bool forwards = true;
-    uint64_t toaddr = env->xregs[rd];
-    uint64_t fromaddr = env->xregs[rs];
-    uint64_t copysize = env->xregs[rn];
+    uint64_t toaddr = GET_XREG(env, rd);
+    uint64_t fromaddr = GET_XREG(env, rs);
+    uint64_t copysize = GET_XREG(env, rn);
     uint64_t stagecopysize, step;
 
     check_mops_enabled(env, ra);
@@ -1501,9 +1596,9 @@ static void do_cpyp(CPUARMState *env, uint32_t syndrome, uint32_t wdesc,
         stagecopysize = MIN(copysize, page_limit(toaddr));
         stagecopysize = MIN(stagecopysize, page_limit(fromaddr));
         while (stagecopysize) {
-            env->xregs[rd] = toaddr;
-            env->xregs[rs] = fromaddr;
-            env->xregs[rn] = copysize;
+            SET_XREG_ADDR(env, rd, toaddr);
+            SET_XREG_ADDR(env, rs, fromaddr);
+            SET_XREG_INT(env, rn, copysize);
             step = copy_step(env, toaddr, fromaddr, stagecopysize,
                              wmemidx, rmemidx, &wdesc, &rdesc, ra);
             toaddr += step;
@@ -1512,9 +1607,9 @@ static void do_cpyp(CPUARMState *env, uint32_t syndrome, uint32_t wdesc,
             stagecopysize -= step;
         }
         /* Insn completed, so update registers to the Option A format */
-        env->xregs[rd] = toaddr + copysize;
-        env->xregs[rs] = fromaddr + copysize;
-        env->xregs[rn] = -copysize;
+        SET_XREG_ADDR(env, rd, toaddr + copysize);
+        SET_XREG_ADDR(env, rs, fromaddr + copysize);
+        SET_XREG_INT(env, rn, -copysize);
     } else {
         /*
          * In a reverse copy the to and from addrs in Xs and Xd are the start
@@ -1526,7 +1621,7 @@ static void do_cpyp(CPUARMState *env, uint32_t syndrome, uint32_t wdesc,
         stagecopysize = MIN(copysize, page_limit_rev(toaddr));
         stagecopysize = MIN(stagecopysize, page_limit_rev(fromaddr));
         while (stagecopysize) {
-            env->xregs[rn] = copysize;
+            SET_XREG_INT(env, rn, copysize);
             step = copy_step_rev(env, toaddr, fromaddr, stagecopysize,
                                  wmemidx, rmemidx, &wdesc, &rdesc, ra);
             copysize -= step;
@@ -1538,7 +1633,7 @@ static void do_cpyp(CPUARMState *env, uint32_t syndrome, uint32_t wdesc,
          * Insn completed, so update registers to the Option A format.
          * For a reverse copy this is no different to the CPYP input format.
          */
-        env->xregs[rn] = copysize;
+        SET_XREG_INT(env, rn, copysize);
     }
 
     /* Set NZCV = 0000 to indicate we are an Option A implementation */
@@ -1576,25 +1671,25 @@ static void do_cpym(CPUARMState *env, uint32_t syndrome, uint32_t wdesc,
     check_mops_enabled(env, ra);
 
     /* We choose to NOP out "no data to copy" before consistency checks */
-    if (env->xregs[rn] == 0) {
+    if (GET_XREG(env, rn) == 0) {
         return;
     }
 
     check_mops_wrong_option(env, syndrome, ra);
 
     if (move) {
-        forwards = (int64_t)env->xregs[rn] < 0;
+        forwards = (int64_t)GET_XREG(env, rn) < 0;
     }
 
     if (forwards) {
-        toaddr = env->xregs[rd] + env->xregs[rn];
-        fromaddr = env->xregs[rs] + env->xregs[rn];
-        copysize = -env->xregs[rn];
+        toaddr = GET_XREG(env, rd) + GET_XREG(env, rn);
+        fromaddr = GET_XREG(env, rs) + GET_XREG(env, rn);
+        copysize = -GET_XREG(env, rn);
     } else {
-        copysize = env->xregs[rn];
+        copysize = GET_XREG(env, rn);
         /* This toaddr and fromaddr point to the *last* byte to copy */
-        toaddr = env->xregs[rd] + copysize - 1;
-        fromaddr = env->xregs[rs] + copysize - 1;
+        toaddr = GET_XREG(env, rd) + copysize - 1;
+        fromaddr = GET_XREG(env, rs) + copysize - 1;
     }
 
     if (!mte_checks_needed(fromaddr, rdesc)) {
@@ -1614,7 +1709,7 @@ static void do_cpym(CPUARMState *env, uint32_t syndrome, uint32_t wdesc,
             toaddr += step;
             fromaddr += step;
             copysize -= step;
-            env->xregs[rn] = -copysize;
+            SET_XREG_INT(env, rn, -copysize);
             if (copysize >= TARGET_PAGE_SIZE &&
                 unlikely(cpu_loop_exit_requested(cs))) {
                 cpu_loop_exit_restore(cs, ra);
@@ -1627,7 +1722,7 @@ static void do_cpym(CPUARMState *env, uint32_t syndrome, uint32_t wdesc,
             toaddr -= step;
             fromaddr -= step;
             copysize -= step;
-            env->xregs[rn] = copysize;
+            SET_XREG_INT(env, rn, copysize);
             if (copysize >= TARGET_PAGE_SIZE &&
                 unlikely(cpu_loop_exit_requested(cs))) {
                 cpu_loop_exit_restore(cs, ra);
@@ -1663,25 +1758,25 @@ static void do_cpye(CPUARMState *env, uint32_t syndrome, uint32_t wdesc,
     check_mops_enabled(env, ra);
 
     /* We choose to NOP out "no data to copy" before consistency checks */
-    if (env->xregs[rn] == 0) {
+    if (GET_XREG(env, rn) == 0) {
         return;
     }
 
     check_mops_wrong_option(env, syndrome, ra);
 
     if (move) {
-        forwards = (int64_t)env->xregs[rn] < 0;
+        forwards = (int64_t)GET_XREG(env, rn) < 0;
     }
 
     if (forwards) {
-        toaddr = env->xregs[rd] + env->xregs[rn];
-        fromaddr = env->xregs[rs] + env->xregs[rn];
-        copysize = -env->xregs[rn];
+        toaddr = GET_XREG(env, rd) + GET_XREG(env, rn);
+        fromaddr = GET_XREG(env, rs) + GET_XREG(env, rn);
+        copysize = -GET_XREG(env, rn);
     } else {
-        copysize = env->xregs[rn];
+        copysize = GET_XREG(env, rn);
         /* This toaddr and fromaddr point to the *last* byte to copy */
-        toaddr = env->xregs[rd] + copysize - 1;
-        fromaddr = env->xregs[rs] + copysize - 1;
+        toaddr = GET_XREG(env, rd) + copysize - 1;
+        fromaddr = GET_XREG(env, rs) + copysize - 1;
     }
 
     if (!mte_checks_needed(fromaddr, rdesc)) {
@@ -1705,7 +1800,7 @@ static void do_cpye(CPUARMState *env, uint32_t syndrome, uint32_t wdesc,
             toaddr += step;
             fromaddr += step;
             copysize -= step;
-            env->xregs[rn] = -copysize;
+            SET_XREG_INT(env, rn, -copysize);
         }
     } else {
         while (copysize > 0) {
@@ -1714,7 +1809,7 @@ static void do_cpye(CPUARMState *env, uint32_t syndrome, uint32_t wdesc,
             toaddr -= step;
             fromaddr -= step;
             copysize -= step;
-            env->xregs[rn] = copysize;
+            SET_XREG_INT(env, rn, copysize);
         }
     }
 }
@@ -1755,7 +1850,7 @@ void HELPER(guarded_page_check)(CPUARMState *env)
      * the beginning of a block, so PC is always up-to-date and
      * no unwind is required.
      */
-    if (is_guarded_page(env, env->pc, 0)) {
+    if (is_guarded_page(env, get_aarch_reg_as_x(&env->pc), 0)) {
         raise_exception(env, EXCP_UDEF, syn_btitrap(env->btype),
                         exception_target_el(env));
     }

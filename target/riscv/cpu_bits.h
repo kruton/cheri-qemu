@@ -169,6 +169,13 @@
 #define CSR_MTVAL           0x343
 #define CSR_MIP             0x344
 
+#ifdef TARGET_CHERI
+/* Machine trap setup,scratch and handling capabilities*/
+#define CSR_MTVECC          CSR_MTVEC
+#define CSR_MSCRATCHC       CSR_MSCRATCH
+#define CSR_MEPCC           CSR_MEPC
+#endif
+
 /* Machine-Level Window to Indirectly Accessed Registers (AIA) */
 #define CSR_MISELECT        0x350
 #define CSR_MIREG           0x351
@@ -226,6 +233,7 @@
 #define CSR_SSCRATCHC       CSR_SSCRATCH
 #define CSR_SEPCC           CSR_SEPC
 #endif
+
 /* Sstc supervisor CSRs */
 #define CSR_STIMECMP        0x14D
 #define CSR_STIMECMPH       0x15D
@@ -305,10 +313,17 @@
 #define CSR_VSIP            0x244
 #define CSR_VSATP           0x280
 
+#ifdef TARGET_CHERI
 #define CSR_VSTVECC         CSR_VSTVEC
 #define CSR_VSSCRATCHC      CSR_VSSCRATCH
 #define CSR_VSEPCC          CSR_VSEPC
+#endif
+
+#ifdef TARGET_CHERI_RISCV_STD_093
 #define CSR_STVAL2          0x14b
+#define CSR_VSTVAL2         0x24b
+#endif
+
 /* Sstc virtual CSRs */
 #define CSR_VSTIMECMP       0x24D
 #define CSR_VSTIMECMPH      0x25D
@@ -476,11 +491,25 @@
 /* Debug Mode Registers */
 #define CSR_DCSR            0x7b0
 #define CSR_DPC             0x7b1
+#define CSR_DSCRATCH0       0x7b2
 #define CSR_DSCRATCH1       0x7b3
+
 #ifdef TARGET_CHERI
+/*
+ * CHERI Debug mode capability CSRs.
+ * Note: Qemu does not implement debug mode (Qemu's gdbserver uses Qemu's
+ * internal mechanisms for stopping a vm or setting breakpoints), so there is
+ * no internal storage or access mechanism for these registers.
+ */
 #define CSR_DPCC            CSR_DPC
 #define CSR_DSCRATCH0C      CSR_DSCRATCH0
+#define CSR_DSCRATCH1C      CSR_DSCRATCH1
+#define CSR_DDDC            0x7bc
+#define CSR_DINFC           0x7bd
+
+/* CHERI default data capability */
 #define CSR_DDC             0x416
+
 /* CHERI thread ID registers*/
 #define CSR_MTID            0x780
 #define CSR_MTIDC           CSR_MTID
@@ -490,8 +519,16 @@
 #define CSR_VSTIDC          CSR_VSTID
 #define CSR_UTID            0x480
 #define CSR_UTIDC           CSR_UTID
+
+#ifdef TARGET_CHERI_RISCV_V9
+/* Fake CSR numbers for the legacy *TDC registers */
+#define CSR_MTDC  0xBFF /* last M-mode custom read-write index */
+#define CSR_STDC  0x9FF /* last S-mode custom read-write index */
+#define CSR_VSTDC 0xAFF /* last VS-mode custom read-write index */
+#define CSR_PCC   0xCFF /* last unprivileged custom read-only index */
 #endif
-#define CSR_MTID           0x780
+
+#endif
 
 /* Non CHERI Zstidc defines for the zstidc registers */
 #define CSR_MTID           0x780
@@ -630,6 +667,19 @@
 #define CSR_MHPMCOUNTER30H  0xb9e
 #define CSR_MHPMCOUNTER31H  0xb9f
 
+#ifdef TARGET_CHERI
+#define CSR_UCCSR           0x8C0
+#define CSR_SCCSR           0x9C0
+#define CSR_MCCSR           0xBC0
+
+/* See Capability Control and Status Registers (CCSRs) in CHERI ISA spec. */
+#define XCCSR_ENABLE        0x1 /* Capability extensions enabled */
+#define XCCSR_DIRTY         0x2 /* Capability register written */
+#define SCCSR_SGCLG         0x4 /* Supervisor Global Cap Load Generation */
+#define SCCSR_UGCLG         0x8 /* User Global Cap Load Generation */
+#define XCCSR_NO_RELOCATION 0x40000000 /* CHERI without DDC/PCC relocation. */
+#define XCCSR_TAG_CLEARING  0x80000000 /* CHERI has tag-clearing semantics. */
+#endif
 #define CSR_SCOUNTOVF       0xda0
 
 /* Crypto Extension */
@@ -671,8 +721,17 @@
 #define MSTATUS64_SD        0x8000000000000000ULL
 #define MSTATUSH128_SD      0x8000000000000000ULL
 
+#if defined(TARGET_CHERI_RISCV_STD_093)
+#define MSTATUS64_UCRG      BIT_ULL(61)
+#endif
+
 #define MISA32_MXL          0xC0000000
 #define MISA64_MXL          0xC000000000000000ULL
+#ifdef TARGET_RISCV32
+#define MISA_MXL            MISA32_MXL
+#elif defined(TARGET_RISCV64)
+#define MISA_MXL            MISA64_MXL
+#endif
 
 typedef enum {
     MXL_RV32  = 1,
@@ -698,6 +757,10 @@ typedef enum {
 
 #define SSTATUS32_SD        0x80000000
 #define SSTATUS64_SD        0x8000000000000000ULL
+
+#if defined(TARGET_CHERI_RISCV_STD_093)
+#define SSTATUS64_UCRG      BIT_ULL(61)
+#endif
 
 /* hstatus CSR bits */
 #define HSTATUS_VSBE         0x00000020
@@ -740,6 +803,12 @@ typedef enum {
 #define SATP64_ASID         0x0FFFF00000000000ULL
 #define SATP64_PPN          0x00000FFFFFFFFFFFULL
 
+#ifdef TARGET_RISCV32
+#define SATP_ASID           SATP32_ASID
+#elif defined(TARGET_RISCV64)
+#define SATP_ASID           SATP64_ASID
+#endif
+
 /* RNMI mnstatus CSR mask */
 #define MNSTATUS_NMIE       0x00000008
 #define MNSTATUS_MNPV       0x00000080
@@ -764,13 +833,29 @@ typedef enum {
 #define PTE_A               0x040 /* Accessed */
 #define PTE_D               0x080 /* Dirty */
 #define PTE_SOFT            0x300 /* Reserved for Software */
+#if defined(TARGET_CHERI_RISCV_V9)
+/* PBMT and NAPOT bits are incompatible with CHERI ISAv9 */
+#define PTE_ATTR 0 /* All attributes bits */
+#else
 #define PTE_PBMT            0x6000000000000000ULL /* Page-based memory types */
 #define PTE_N               0x8000000000000000ULL /* NAPOT translation */
-#define PTE_RESERVED(svrsw60t59b)    \
-    (svrsw60t59b ? 0x07C0000000000000ULL : 0x1FC0000000000000ULL) /* Reserved bits */
 #define PTE_ATTR            (PTE_N | PTE_PBMT) /* All attributes bits */
+#endif
+#if defined(TARGET_CHERI_RISCV_V9) && !defined(TARGET_RISCV32)
 #define PTE_CRG             0x0800000000000000 /* Cap Read Generation */
 #define PTE_CRM             0x1000000000000000 /* Cap Read Modifier */
+#define PTE_CD              0x2000000000000000 /* Cap Dirty */
+#define PTE_CR              0x4000000000000000 /* Cap Read */
+#define PTE_CW              0x8000000000000000 /* Cap Write */
+#define PTE_RESERVED(svrsw60t59b) 0x07C0000000000000ULL /* Reserved bits */
+#elif defined(TARGET_CHERI_RISCV_STD_093) && !defined(TARGET_RISCV32)
+#define PTE_CRG BIT_ULL(59) /* Cap Read Generation */
+#define PTE_CW  BIT_ULL(60) /* Cap Write */
+#define PTE_RESERVED(svrsw60t59b) 0x040000000000000ULL /* Reserved bits */
+#else
+#define PTE_RESERVED(svrsw60t59b) \
+    (svrsw60t59b ? 0x07C0000000000000ULL : 0x1FC0000000000000ULL) /* Reserved bits */
+#endif
 
 /* Page table PPN shift amount */
 #define PTE_PPN_SHIFT       10
@@ -815,9 +900,17 @@ typedef enum RISCVException {
     RISCV_EXCP_LOAD_GUEST_ACCESS_FAULT = 0x15,
     RISCV_EXCP_VIRT_INSTRUCTION_FAULT = 0x16,
     RISCV_EXCP_STORE_GUEST_AMO_ACCESS_FAULT = 0x17,
+#ifdef TARGET_CHERI
+#if defined(TARGET_CHERI_RISCV_V9) && !defined(TARGET_RISCV32)
+    RISCV_EXCP_LOAD_CAP_PAGE_FAULT = 0x1a,
+    RISCV_EXCP_STORE_AMO_CAP_PAGE_FAULT = 0x1b,
+#endif
+    RISCV_EXCP_CHERI = 0x1c,
+#endif
     RISCV_EXCP_SEMIHOST = 0x3f,
 } RISCVException;
 
+#define RISCV_HICAUSE                            0x3f
 /* zicfilp defines lp violation results in sw check with tval = 2*/
 #define RISCV_EXCP_SW_CHECK_FCFI_TVAL      2
 /* zicfiss defines ss violation results in sw check with tval = 3*/
@@ -891,6 +984,7 @@ typedef enum RISCVException {
 #define MENVCFG_CBIE                       (3UL << 4)
 #define MENVCFG_CBCFE                      BIT(6)
 #define MENVCFG_CBZE                       BIT(7)
+#define MENVCFG_CRE                        BIT(28)
 #define MENVCFG_PMM                        (3ULL << 32)
 #define MENVCFG_DTE                        (1ULL << 59)
 #define MENVCFG_CDE                        (1ULL << 60)
@@ -910,6 +1004,7 @@ typedef enum RISCVException {
 #define SENVCFG_CBIE                       MENVCFG_CBIE
 #define SENVCFG_CBCFE                      MENVCFG_CBCFE
 #define SENVCFG_CBZE                       MENVCFG_CBZE
+#define SENVCFG_CRE                        MENVCFG_CRE
 #define SENVCFG_UKTE                       BIT(8)
 #define SENVCFG_PMM                        MENVCFG_PMM
 
@@ -919,6 +1014,7 @@ typedef enum RISCVException {
 #define HENVCFG_CBIE                       MENVCFG_CBIE
 #define HENVCFG_CBCFE                      MENVCFG_CBCFE
 #define HENVCFG_CBZE                       MENVCFG_CBZE
+#define HENVCFG_CRE                        MENVCFG_CRE
 #define HENVCFG_PMM                        MENVCFG_PMM
 #define HENVCFG_DTE                        MENVCFG_DTE
 #define HENVCFG_ADUE                       MENVCFG_ADUE

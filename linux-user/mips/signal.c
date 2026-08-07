@@ -233,7 +233,8 @@ void setup_frame(int sig, struct target_sigaction * ka,
     /* The original kernel code sets CP0_EPC to the handler
     * since it returns to userland using eret
     * we cannot do this here, and we must set PC directly */
-    regs->active_tc.PC = regs->active_tc.gpr[25] = ka->_sa_handler;
+    regs->active_tc.gpr[25] = ka->_sa_handler;
+    mips_update_pc(env, ka->_sa_handler, /*can_be_unrepresentable=*/false);
     mips_set_hflags_isa_mode_from_pc(regs);
     unlock_user_struct(frame, frame_addr, 1);
     return;
@@ -276,7 +277,7 @@ long do_sigreturn(CPUMIPSState *regs)
     /* Unreached */
 #endif
 
-    regs->active_tc.PC = regs->CP0_EPC;
+    mips_update_pc(env, regs->CP0_EPC, /*can_be_unrepresentable=*/false);
     mips_set_hflags_isa_mode_from_pc(regs);
     /* I am not sure this is right, but it seems to work
     * maybe a problem with nested signals ? */
@@ -338,7 +339,8 @@ void setup_rt_frame(int sig, struct target_sigaction *ka,
      * since it returns to userland using eret
      * we cannot do this here, and we must set PC directly
      */
-    env->active_tc.PC = env->active_tc.gpr[25] = ka->_sa_handler;
+    env->active_tc.gpr[25] = ka->_sa_handler;
+    mips_update_pc(env, ka->_sa_handler, /*can_be_unrepresentable=*/false);
     mips_set_hflags_isa_mode_from_pc(env);
     unlock_user_struct(frame, frame_addr, 1);
     return;
@@ -366,7 +368,7 @@ long do_rt_sigreturn(CPUMIPSState *env)
     restore_sigcontext(env, &frame->rs_uc.tuc_mcontext);
     target_restore_altstack(&frame->rs_uc.tuc_stack, env);
 
-    env->active_tc.PC = env->CP0_EPC;
+    mips_update_pc(env, env->CP0_EPC, /*can_be_unrepresentable=*/false);
     mips_set_hflags_isa_mode_from_pc(env);
     /* I am not sure this is right, but it seems to work
     * maybe a problem with nested signals ? */

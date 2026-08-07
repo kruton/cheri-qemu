@@ -258,6 +258,7 @@ uintptr_t tcg_splitwx_diff;
 tcg_prologue_fn *tcg_qemu_tb_exec;
 #endif
 
+
 static TCGRegSet tcg_target_available_regs[TCG_TYPE_COUNT];
 static TCGRegSet tcg_target_call_clobber_regs;
 
@@ -4610,7 +4611,6 @@ static void temp_allocate_frame(TCGContext *s, TCGTemp *ts)
      */
     align = MIN(TCG_TARGET_STACK_ALIGN, align);
     off = ROUND_UP(s->current_frame_offset, align);
-
     /* If we've exhausted the stack frame, restart with a smaller TB. */
     if (off + size > s->frame_end) {
         tcg_raise_tb_overflow(s);
@@ -6855,6 +6855,7 @@ static void tcg_out_st_helper_args(TCGContext *s, const TCGLabelQemuLdst *ldst,
 static void sync_global(TCGContext *s, TCGOp *op)
 {
     TCGTemp *ts = arg_temp(op->args[0]);
+    tcg_debug_assert(ts->kind >= TEMP_GLOBAL);
     tcg_debug_assert(ts->val_type == TEMP_VAL_REG ||
                      ts->val_type == TEMP_VAL_MEM);
     // Liveness analysis should make sure that the sync happened at the last

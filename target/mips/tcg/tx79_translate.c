@@ -65,6 +65,7 @@ bool decode_ext_tx79(DisasContext *ctx, uint32_t insn)
 static bool trans_MFHI1(DisasContext *ctx, arg_r *a)
 {
     gen_store_gpr(cpu_HI[1], a->rd);
+    gen_log_instr_gpr_update(ctx, a->rd);
 
     return true;
 }
@@ -72,6 +73,7 @@ static bool trans_MFHI1(DisasContext *ctx, arg_r *a)
 static bool trans_MFLO1(DisasContext *ctx, arg_r *a)
 {
     gen_store_gpr(cpu_LO[1], a->rd);
+    gen_log_instr_gpr_update(ctx, a->rd);
 
     return true;
 }

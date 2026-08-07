@@ -44,14 +44,16 @@
 #include "hw/riscv/hobgoblin.h"
 #include "hw/riscv/boot.h"
 #include "hw/char/serial.h"
+#include "hw/char/serial-mm.h"
 #include "hw/char/xilinx_uartlite.h"
 #include "hw/misc/codasip_trng.h"
 #include "hw/pci-host/xilinx-pcie.h"
 #include "chardev/char.h"
-#include "sysemu/device_tree.h"
-#include "sysemu/sysemu.h"
-#include "sysemu/runstate.h"
-#include "exec/address-spaces.h"
+#include "system/device_tree.h"
+#include "system/system.h"
+#include "system/runstate.h"
+#include "system/address-spaces.h"
+
 #include "net/net.h"
 #include <libfdt.h>
 #ifdef TARGET_CHERI
@@ -261,6 +263,7 @@ static int hobgoblin_load_images(HobgoblinState *s, const memmapEntry_t *dram)
     uint64_t kernel_entry = 0;
     uint64_t fdt_load_addr = 0;
     target_ulong firmware_end_addr;
+    RISCVBootInfo boot_info;
 
     const memmapEntry_t *memmap = address_maps[MAPVERSION(s)];
 
@@ -269,11 +272,13 @@ static int hobgoblin_load_images(HobgoblinState *s, const memmapEntry_t *dram)
         start_addr = memmap[HOBGOBLIN_BOOT_ROM].base;
         firmware_end_addr = riscv_find_and_load_firmware(machine,
                                                          "fsbl_rom.xexe",
-                                                         start_addr,
+                                                         &start_addr,
                                                          NULL);
     } else {
         target_ulong kernel_start_addr = 0;
         int fdt_size = 0;
+
+        riscv_boot_info_init(&boot_info, &s->soc);
 
         start_addr = dram->base;
 
@@ -289,28 +294,16 @@ static int hobgoblin_load_images(HobgoblinState *s, const memmapEntry_t *dram)
         /* Load SBI into RAM */
         firmware_end_addr = riscv_find_and_load_firmware(machine,
                                                          RISCV64_BIOS_BIN,
-                                                         start_addr,
+                                                         &start_addr,
                                                          NULL);
 
         /* Load Kernel into RAM */
         if (machine->kernel_filename) {
-            kernel_start_addr = riscv_calc_kernel_start_addr(&s->soc,
+            kernel_start_addr = riscv_calc_kernel_start_addr(&boot_info,
                                                              firmware_end_addr);
-            kernel_entry = riscv_load_kernel(machine->kernel_filename,
-                                             kernel_start_addr, NULL);
-
-            if (machine->initrd_filename) {
-                hwaddr start, end;
-                end = riscv_load_initrd(machine->initrd_filename,
-                                        machine->ram_size, kernel_entry,
-                                        &start);
-                if (machine->fdt) {
-                    qemu_fdt_setprop_cell(machine->fdt, "/chosen",
-                                          "linux,initrd-start", start);
-                    qemu_fdt_setprop_cell(machine->fdt, "/chosen",
-                                          "linux,initrd-end", end);
-                }
-            }
+            riscv_load_kernel(machine, &boot_info, kernel_start_addr,
+                              true, NULL);
+            kernel_entry = boot_info.image_low_addr;
 
             if (machine->fdt && machine->kernel_cmdline &&
                 *machine->kernel_cmdline) {
@@ -321,9 +314,11 @@ static int hobgoblin_load_images(HobgoblinState *s, const memmapEntry_t *dram)
 
         /* Store (potentially modified) FDT into RAM */
         if (machine->fdt) {
-            fdt_load_addr = riscv_load_fdt(dram->base,
-                                           dram->size,
-                                           machine->fdt);
+            fdt_load_addr = riscv_compute_fdt_addr(dram->base,
+                                                   dram->size,
+                                                   machine,
+                                                   &boot_info);
+            riscv_load_fdt(fdt_load_addr, machine->fdt);
         }
     }
 
@@ -334,7 +329,7 @@ static int hobgoblin_load_images(HobgoblinState *s, const memmapEntry_t *dram)
      */
     riscv_setup_rom_reset_vec(machine, &s->soc, start_addr,
             memmap[HOBGOBLIN_MROM].base, memmap[HOBGOBLIN_MROM].size,
-            kernel_entry, fdt_load_addr, machine->fdt);
+            kernel_entry, fdt_load_addr);
 
     return 0;
 }
@@ -561,7 +556,11 @@ static void hobgoblin_add_uartlite(HobgoblinState *s,
     Chardev *chardev = serial_hd(1);
     qemu_irq irq = hobgoblin_make_plic_irq(s, HIRQ(s, HOBGOBLIN_UART1_IRQ));
 
-    xilinx_uartlite_create(mem_uart->base, irq, chardev);
+    DeviceState *dev = qdev_new(TYPE_XILINX_UARTLITE);
+    qdev_prop_set_chr(dev, "chardev", chardev);
+    sysbus_realize_and_unref(SYS_BUS_DEVICE(dev), &error_fatal);
+    sysbus_mmio_map(SYS_BUS_DEVICE(dev), 0, mem_uart->base);
+    sysbus_connect_irq(SYS_BUS_DEVICE(dev), 0, irq);
 }
 
 static void hobgoblin_gpio_1_3_event(void *opaque, int n, int level)
@@ -614,7 +613,7 @@ static void hobgoblin_add_sd(HobgoblinState *s)
 {
     /* create SD Card in SPI mode */
     DeviceState *sd_card_spi = qdev_new(TYPE_SD_CARD);
-    DriveInfo *dinfo = drive_get_next(IF_SD);
+    DriveInfo *dinfo = drive_get(IF_SD, 0, 0);
     BlockBackend *blk = dinfo ? blk_by_legacy_dinfo(dinfo) : NULL;
     qdev_prop_set_drive_err(sd_card_spi, "drive", blk, &error_fatal);
     qdev_prop_set_bit(sd_card_spi, "spi", true);
@@ -646,13 +645,11 @@ static void hobgoblin_add_ethernetlite(HobgoblinState *s)
     const memmapEntry_t *memmap = address_maps[MAPVERSION(s)];
     const memmapEntry_t *mem_eth = &memmap[HOBGOBLIN_ETHLITE];
 
-    NICInfo *nd = &nd_table[0];
     const char *model = TYPE_XILINX_ETHLITE;
 
     /* Ethernet (ethernetlite) */
-    qemu_check_nic_model(nd, model);
     DeviceState *eth = qdev_new(model);
-    qdev_set_nic_properties(eth, nd);
+    qemu_configure_nic_device(eth, true, NULL);
 
     SysBusDevice *bus_eth = SYS_BUS_DEVICE(eth);
     sysbus_realize_and_unref(bus_eth, &error_fatal);
@@ -672,12 +669,9 @@ static void hobgoblin_add_axi_ethernet(HobgoblinState *s, int eth_num,
     const memmapEntry_t *memmap = address_maps[MAPVERSION(s)];
     const memmapEntry_t *mem_eth = &memmap[eth_memmap];
     const memmapEntry_t *mem_dma = &memmap[dma_memmap];
-    NICInfo *nd = &nd_table[eth_num];
     const char *eth_model = TYPE_XILINX_AXI_ETHERNET;
     const char *eth_name = g_strdup_printf("xilinx-eth%d", eth_num);
     const char *dma_name = g_strdup_printf("xilinx-dma%d", eth_num);
-
-    qemu_check_nic_model(nd, eth_model);
 
     DeviceState *eth = qdev_new(eth_model);
     DeviceState *dma = qdev_new(TYPE_XILINX_AXI_DMA);
@@ -692,7 +686,7 @@ static void hobgoblin_add_axi_ethernet(HobgoblinState *s, int eth_num,
     cs = object_property_get_link(OBJECT(dma),
                                   "axistream-control-connected-target", NULL);
     assert(ds && cs);
-    qdev_set_nic_properties(eth, nd);
+    qemu_configure_nic_device(eth, true, NULL);
     qdev_prop_set_uint32(eth, "phyaddr", phy_addr);
     qdev_prop_set_uint32(eth, "rxmem", 0x4000);
     qdev_prop_set_uint32(eth, "txmem", 0x4000);
@@ -879,21 +873,45 @@ static char *custom_riscv_isa_string(RISCVCPU *cpu, bool is_32_bit)
     } ext_map_t;
     bool enable = true;
 
+    bool has_i = riscv_has_ext(&cpu->env, RVI);
+    bool has_m = riscv_has_ext(&cpu->env, RVM);
+    bool has_a = riscv_has_ext(&cpu->env, RVA);
+    bool has_f = riscv_has_ext(&cpu->env, RVF);
+    bool has_d = riscv_has_ext(&cpu->env, RVD);
+    bool has_c = riscv_has_ext(&cpu->env, RVC);
+    bool has_h = riscv_has_ext(&cpu->env, RVH);
+    bool has_v = riscv_has_ext(&cpu->env, RVV);
+
     ext_map_t base_exts[] = {
-        { &cpu->cfg.ext_i, "i" }, { &cpu->cfg.ext_m, "m" },
-        { &cpu->cfg.ext_a, "a" }, { &cpu->cfg.ext_f, "f" },
-        { &cpu->cfg.ext_d, "d" }, { &cpu->cfg.ext_c, "c" },
-        { &cpu->cfg.ext_h, "h" }, { &cpu->cfg.ext_j, "j" },
-        { &cpu->cfg.ext_v, "v" }
+        { &has_i, "i" }, { &has_m, "m" },
+        { &has_a, "a" }, { &has_f, "f" },
+        { &has_d, "d" }, { &has_c, "c" },
+        { &has_h, "h" },
+        { &has_v, "v" }
     };
 
     ext_map_t multi_exts[] = {
+        { &cpu->cfg.ext_zicbom, "_zicbom" },
+        { &enable, "_zicbop" },
+        { &cpu->cfg.ext_zicboz, "_zicboz" },
+#if defined(TARGET_CHERI_RISCV_STD_093)
+        { &cpu->cfg.ext_zish4add, "_zish4add" },
+#endif
+        { &cpu->cfg.ext_zihintpause, "_zihintpause" },
+        { &cpu->cfg.ext_zba, "_zba" },
+        { &cpu->cfg.ext_zbb, "_zbb" },
+        { &cpu->cfg.ext_zbc, "_zbc" },
+        { &cpu->cfg.ext_zbs, "_zbs" },
+        { &cpu->cfg.ext_zbkb, "_zbkb" },
         { &cpu->cfg.ext_zca, "_zca" },
         { &cpu->cfg.ext_zcb, "_zcb" },
         { &cpu->cfg.ext_zcd, "_zcd" },
         { &cpu->cfg.ext_zcf, "_zcf" },
+        { &cpu->cfg.ext_zfhmin, "_zfhmin" },
+        { &cpu->cfg.ext_svinval, "_svinval" },
 #if !defined(TARGET_CHERI_RISCV_V9)
-                               { &cpu->cfg.ext_svpbmt, "_svpbmt" }
+        { &cpu->cfg.ext_svnapot, "_svnapot" },
+        { &cpu->cfg.ext_svpbmt, "_svpbmt" },
 #endif
     };
 
@@ -909,10 +927,10 @@ static char *custom_riscv_isa_string(RISCVCPU *cpu, bool is_32_bit)
             g_string_append(result, multi_exts[i].ext);
     }
 
-    if (riscv_feature(&cpu->env, RISCV_FEATURE_CHERI)) {
+    if (riscv_has_cheri(&cpu->env)) {
         g_string_append(result, "_zcheripurecap");
     }
-    if (riscv_feature(&cpu->env, RISCV_FEATURE_CHERI_HYBRID)) {
+    if (riscv_has_cheri_hybrid(&cpu->env)) {
         g_string_append(result, "_zcherihybrid");
     }
 
@@ -1034,7 +1052,7 @@ static void create_fdt_socket_memory(HobgoblinState *s,
     qemu_fdt_setprop_cells(mc->fdt, name, "reg", dram0_base >> 32, dram0_base,
                            dram1_base >> 32, dram1_base);
     qemu_fdt_setprop_string(mc->fdt, name, "device_type", "memory");
-    riscv_socket_fdt_write_id(mc, mc->fdt, name, socket);
+    riscv_socket_fdt_write_id(mc, name, socket);
     g_free(name);
 }
 
@@ -1995,7 +2013,7 @@ static void hobgoblin_machine_instance_init(Object *obj)
     s->eth_type = ETH_TYPE_AXI_ETHERNET;
 }
 
-static void hobgoblin_machine_class_init(ObjectClass *oc, void *data)
+static void hobgoblin_machine_class_init(ObjectClass *oc, const void *data)
 {
     MachineClass *mc = MACHINE_CLASS(oc);
 
@@ -2032,11 +2050,11 @@ struct HobgoblinInitData {
     int irq_map_version;
 };
 
-static void hobgoblin_concrete_machine_class_init(ObjectClass *oc, void *data)
+static void hobgoblin_concrete_machine_class_init(ObjectClass *oc, const void *data)
 {
     MachineClass *mc = MACHINE_CLASS(oc);
     HobgoblinClass *hc = HOBGOBLIN_MACHINE_CLASS(oc);
-    struct HobgoblinInitData *hid = data;
+    const struct HobgoblinInitData *hid = data;
 
     mc->desc = hid->desc;
     mc->max_cpus = hid->cpus;

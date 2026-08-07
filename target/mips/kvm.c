@@ -1191,7 +1191,7 @@ int kvm_arch_put_registers(CPUState *cs, KvmPutState level, Error **errp)
 
     regs.hi = (int64_t)(target_long)env->active_tc.HI[0];
     regs.lo = (int64_t)(target_long)env->active_tc.LO[0];
-    regs.pc = (int64_t)(target_long)env->active_tc.PC;
+    regs.pc = (int64_t)(target_long)PC_ADDR(env);
 
     ret = kvm_vcpu_ioctl(cs, KVM_SET_REGS, &regs);
 
@@ -1232,7 +1232,7 @@ int kvm_arch_get_registers(CPUState *cs, Error **errp)
 
     env->active_tc.HI[0] = regs.hi;
     env->active_tc.LO[0] = regs.lo;
-    env->active_tc.PC = regs.pc;
+    mips_update_pc(env, regs.pc, /*can_be_unrepresentable=*/false);
 
     kvm_mips_get_cp0_registers(cs);
     kvm_mips_get_fpu_registers(cs);

@@ -44,23 +44,19 @@ static bool trans_flh(DisasContext *ctx, arg_flh *a)
 {
     MemOp memop = MO_UW;
     TCGv_i64 dest;
-    TCGv t0;
+    TCGv_cap_checked_ptr addr;
 
     REQUIRE_FPU;
     REQUIRE_ZFHMIN_OR_ZFBFMIN(ctx);
 
     memop |= mo_endian(ctx);
     decode_save_opc(ctx, 0);
-    t0 = get_gpr(ctx, a->rs1, EXT_NONE);
-    if (a->imm) {
-        TCGv temp = tcg_temp_new();
-        tcg_gen_addi_tl(temp, t0, a->imm);
-        t0 = temp;
-    }
-
+    addr = get_capmode_dependent_load_addr(ctx, a->rs1, a->imm, memop);
     dest = cpu_fpr[a->rd];
-    tcg_gen_qemu_ld_i64(dest, t0, ctx->mem_idx, memop);
+    tcg_gen_qemu_ld_i64_with_checked_addr(dest, addr, ctx->mem_idx, memop);
     gen_nanbox_h(dest, dest);
+
+
 
     mark_fs_dirty(ctx);
     return true;
@@ -68,22 +64,17 @@ static bool trans_flh(DisasContext *ctx, arg_flh *a)
 
 static bool trans_fsh(DisasContext *ctx, arg_fsh *a)
 {
+    TCGv_cap_checked_ptr addr;
     MemOp memop = MO_UW;
-    TCGv t0;
 
     REQUIRE_FPU;
     REQUIRE_ZFHMIN_OR_ZFBFMIN(ctx);
 
     memop |= mo_endian(ctx);
     decode_save_opc(ctx, 0);
-    t0 = get_gpr(ctx, a->rs1, EXT_NONE);
-    if (a->imm) {
-        TCGv temp = tcg_temp_new();
-        tcg_gen_addi_tl(temp, t0, a->imm);
-        t0 = temp;
-    }
-
-    tcg_gen_qemu_st_i64(cpu_fpr[a->rs2], t0, ctx->mem_idx, memop);
+    addr = get_capmode_dependent_store_addr(ctx, a->rs1, a->imm, memop);
+    tcg_gen_qemu_st_i64_with_checked_addr(cpu_fpr[a->rs2], addr, ctx->mem_idx,
+                                          memop);
 
     return true;
 }

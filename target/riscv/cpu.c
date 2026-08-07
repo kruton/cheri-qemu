@@ -21,12 +21,15 @@
 #include "qemu/qemu-print.h"
 #include "qemu/ctype.h"
 #include "qemu/log.h"
+#include "qemu/main-loop.h"
 #include "cpu.h"
 #include "cpu_vendorid.h"
 #include "internals.h"
+#include "exec/log_instr.h"
 #include "qapi/error.h"
 #include "qapi/visitor.h"
 #include "qemu/error-report.h"
+#include "qemu/cutils.h"
 #include "hw/qdev-properties.h"
 #include "hw/core/qdev-prop-internal.h"
 #include "migration/vmstate.h"
@@ -35,6 +38,17 @@
 #include "system/kvm.h"
 #include "system/tcg.h"
 #include "kvm/kvm_riscv.h"
+#include "system/cpus.h"
+#include "system/runstate.h"
+#include "disas/disas.h"
+#include "monitor/monitor.h"
+
+#include "rvfi_dii.h"
+#include "helper_utils.h"
+
+#ifdef TARGET_CHERI
+#include "cheri-lazy-capregs.h"
+#endif
 #include "tcg/tcg-cpu.h"
 #include "tcg/tcg.h"
 
@@ -121,6 +135,9 @@ const RISCVIsaExtData isa_edata_arr[] = {
     ISA_EXT_DATA_ENTRY(zihintntl, PRIV_VERSION_1_10_0, ext_zihintntl),
     ISA_EXT_DATA_ENTRY(zihintpause, PRIV_VERSION_1_10_0, ext_zihintpause),
     ISA_EXT_DATA_ENTRY(zihpm, PRIV_VERSION_1_12_0, ext_zihpm),
+#if defined(TARGET_CHERI_RISCV_STD_093)
+    ISA_EXT_DATA_ENTRY(zish4add, PRIV_VERSION_1_10_0, ext_zish4add),
+#endif
     ISA_EXT_DATA_ENTRY(zimop, PRIV_VERSION_1_13_0, ext_zimop),
     ISA_EXT_DATA_ENTRY(zmmul, PRIV_VERSION_1_12_0, ext_zmmul),
     ISA_EXT_DATA_ENTRY(za64rs, PRIV_VERSION_1_12_0, has_priv_1_12),
@@ -144,6 +161,18 @@ const RISCVIsaExtData isa_edata_arr[] = {
     ISA_EXT_DATA_ENTRY(zcmop, PRIV_VERSION_1_13_0, ext_zcmop),
     ISA_EXT_DATA_ENTRY(zcmp, PRIV_VERSION_1_12_0, ext_zcmp),
     ISA_EXT_DATA_ENTRY(zcmt, PRIV_VERSION_1_12_0, ext_zcmt),
+#ifdef TARGET_CHERI
+#if defined(TARGET_CHERI_RISCV_STD)
+    ISA_EXT_DATA_ENTRY(zcherihybrid, PRIV_VERSION_1_10_0, ext_zyhybrid),
+#ifdef TARGET_CHERI_RISCV_STD_093
+    ISA_EXT_DATA_ENTRY(zcherilevels, PRIV_VERSION_1_10_0, ext_zylevels1),
+#endif
+#endif
+    ISA_EXT_DATA_ENTRY(zcheripurecap, PRIV_VERSION_1_10_0, ext_cheri),
+#if defined(TARGET_CHERI_RISCV_STD)
+    ISA_EXT_DATA_ENTRY(zcheripte, PRIV_VERSION_1_10_0, cheri_pte),
+#endif
+#endif
     ISA_EXT_DATA_ENTRY(zba, PRIV_VERSION_1_12_0, ext_zba),
     ISA_EXT_DATA_ENTRY(zbb, PRIV_VERSION_1_12_0, ext_zbb),
     ISA_EXT_DATA_ENTRY(zbc, PRIV_VERSION_1_12_0, ext_zbc),
@@ -228,8 +257,10 @@ const RISCVIsaExtData isa_edata_arr[] = {
     ISA_EXT_DATA_ENTRY(ssctr, PRIV_VERSION_1_12_0, ext_ssctr),
     ISA_EXT_DATA_ENTRY(svadu, PRIV_VERSION_1_12_0, ext_svadu),
     ISA_EXT_DATA_ENTRY(svinval, PRIV_VERSION_1_12_0, ext_svinval),
+#if !defined(TARGET_CHERI_RISCV_V9)
     ISA_EXT_DATA_ENTRY(svnapot, PRIV_VERSION_1_12_0, ext_svnapot),
     ISA_EXT_DATA_ENTRY(svpbmt, PRIV_VERSION_1_12_0, ext_svpbmt),
+#endif
     ISA_EXT_DATA_ENTRY(svrsw60t59b, PRIV_VERSION_1_13_0, ext_svrsw60t59b),
     ISA_EXT_DATA_ENTRY(svukte, PRIV_VERSION_1_13_0, ext_svukte),
     ISA_EXT_DATA_ENTRY(svvptc, PRIV_VERSION_1_13_0, ext_svvptc),
@@ -285,6 +316,14 @@ const char * const riscv_int_regnamesh[] = {
     "x30h/t5h",  "x31h/t6h"
 };
 
+const char * const cheri_gp_regnames[32] = {
+    "c0/cnull", "c1/cra",  "c2/csp",  "c3/cgp",  "c4/ctp",  "c5/ct0",   "c6/ct1",
+    "c7/ct2",   "c8/cs0",  "c9/cs1",  "c10/ca0", "c11/ca1", "c12/ca2",  "c13/ca3",
+    "c14/ca4",  "c15/ca5", "c16/ca6", "c17/ca7", "c18/cs2", "c19/cs3",  "c20/cs4",
+    "c21/cs5",  "c22/cs6", "c23/cs7", "c24/cs8", "c25/cs9", "c26/cs10", "c27/cs11",
+    "c28/ct3",  "c29/ct4", "c30/ct5", "c31/ct6"
+};
+
 const char * const riscv_fpr_regnames[] = {
     "f0/ft0",   "f1/ft1",  "f2/ft2",   "f3/ft3",   "f4/ft4",  "f5/ft5",
     "f6/ft6",   "f7/ft7",  "f8/fs0",   "f9/fs1",   "f10/fa0", "f11/fa1",
@@ -317,8 +356,9 @@ static const char * const riscv_excp_names[] = {
     "machine_ecall",
     "exec_page_fault",
     "load_page_fault",
-    "reserved",
+    "reserved",         // 14 Reserved for future standard use
     "store_page_fault",
+    // 16–23 Reserved for future standard use
     "double_trap",
     "reserved",
     "reserved",
@@ -327,7 +367,17 @@ static const char * const riscv_excp_names[] = {
     "guest_load_page_fault",
     "reserved",
     "guest_store_page_fault",
+    // 24-31 Reserved for custom use
+#ifdef TARGET_CHERI
+#if !defined(TARGET_RISCV32) && !defined(TARGET_CHERI_RISCV_STD_093)
+    [RISCV_EXCP_LOAD_CAP_PAGE_FAULT] = "load_cap_page_fault",
+    [RISCV_EXCP_STORE_AMO_CAP_PAGE_FAULT] = "store_cap_page_fault",
+#endif
     [RISCV_EXCP_CHERI] = "cheri_fault"
+#endif
+    // 32–47 Reserved for future standard use
+    // 48-63 Reserved for custom use
+    // >64 Reserved for future standard use
 };
 
 static const char * const riscv_intr_names[] = {
@@ -349,14 +399,23 @@ static const char * const riscv_intr_names[] = {
     "reserved"
 };
 
+#ifdef CONFIG_TCG_LOG_INSTR
+const char * const riscv_cpu_mode_names[QEMU_LOG_INSTR_CPU_MODE_MAX] = {
+    "User", "Supervisor", "Hypervisor", "<invalid>", "Machine",
+};
+#endif
+
+static const Property riscv_cpu_properties[];
 const char *riscv_cpu_get_trap_name(target_ulong cause, bool async)
 {
     if (async) {
         return (cause < ARRAY_SIZE(riscv_intr_names)) ?
                riscv_intr_names[cause] : "(unknown)";
     } else {
-        return (cause < ARRAY_SIZE(riscv_excp_names)) ?
-               riscv_excp_names[cause] : "(unknown)";
+        // Not all entries are filled, need to check for NULL
+        const char *ret = (cause < ARRAY_SIZE(riscv_excp_names))
+                              ? riscv_excp_names[cause] : "(unknown)";
+        return ret ? ret : "(unknown)";
     }
 }
 
@@ -364,6 +423,7 @@ void riscv_cpu_set_misa_ext(CPURISCVState *env, uint32_t ext)
 {
     env->misa_ext_mask = env->misa_ext = ext;
 }
+
 
 int riscv_cpu_max_xlen(RISCVCPUClass *mcc)
 {
@@ -451,7 +511,14 @@ static bool get_satp_mode_supported(RISCVCPU *cpu, uint16_t *supported)
     int satp_mode = cpu->cfg.max_satp_mode;
 
 #ifdef TARGET_CHERI
+    if (!rv32 && satp_mode > VM_1_10_SV48) {
+        satp_mode = VM_1_10_SV48;
+        cpu->cfg.max_satp_mode = VM_1_10_SV48;
+    }
 #endif
+
+
+
     if (satp_mode == -1) {
         return false;
     }
@@ -481,6 +548,7 @@ static void set_satp_mode_default_map(RISCVCPU *cpu)
 }
 #endif
 
+
 #ifndef CONFIG_USER_ONLY
 static void riscv_register_custom_csrs(RISCVCPU *cpu, const RISCVCSR *csr_list)
 {
@@ -491,6 +559,7 @@ static void riscv_register_custom_csrs(RISCVCPU *cpu, const RISCVCSR *csr_list)
             riscv_set_csr_ops(csrno, csr_ops);
         }
     }
+
 }
 #endif
 
@@ -531,7 +600,7 @@ static void riscv_cpu_dump_state(CPUState *cs, FILE *f, int flags)
         qemu_fprintf(f, " %s %d\n", "V      =  ", env->virt_enabled);
     }
 #endif
-    qemu_fprintf(f, " %s " TARGET_FMT_lx "\n", "pc      ", env->pc);
+    qemu_fprintf(f, " %s " TARGET_FMT_lx "\n", "pc      ", PC_ADDR(env));
 #ifndef CONFIG_USER_ONLY
     {
         static const int dump_csrs[] = {
@@ -587,7 +656,7 @@ static void riscv_cpu_dump_state(CPUState *cs, FILE *f, int flags)
 
     for (i = 0; i < 32; i++) {
         qemu_fprintf(f, " %-8s " TARGET_FMT_lx,
-                     riscv_int_regnames[i], env->gpr[i]);
+                     riscv_int_regnames[i], gpr_int_value(env, i));
         if ((i & 3) == 3) {
             qemu_fprintf(f, "\n");
         }
@@ -648,27 +717,24 @@ static void riscv_cpu_set_pc(CPUState *cs, vaddr value)
 {
     RISCVCPU *cpu = RISCV_CPU(cs);
     CPURISCVState *env = &cpu->env;
-
-    if (env->xl == MXL_RV32) {
-        env->pc = (int32_t)value;
-    } else {
-        env->pc = value;
-    }
 #ifdef TARGET_CHERI
     cheri_update_pcc(&env->pcc, value, /*can_be_unrepresentable=*/true);
 #else
+    riscv_update_pc(env, value, env->xl, /*can_be_unrepresentable=*/false);
+#endif
 }
 
 static vaddr riscv_cpu_get_pc(CPUState *cs)
 {
     RISCVCPU *cpu = RISCV_CPU(cs);
     CPURISCVState *env = &cpu->env;
+    target_ulong pc = cpu_get_recent_pc(env);
 
     /* Match cpu_get_tb_cpu_state. */
     if (env->xl == MXL_RV32) {
-        return env->pc & UINT32_MAX;
+        return pc & UINT32_MAX;
     }
-    return env->pc;
+    return pc;
 }
 
 #ifndef CONFIG_USER_ONLY
@@ -686,18 +752,185 @@ bool riscv_cpu_has_work(CPUState *cs)
 }
 #endif /* !CONFIG_USER_ONLY */
 
+#ifdef CONFIG_RVFI_DII
+extern int rvfi_client_fd;
+extern bool rvfi_debug_output;
+
+static void send_rvfi_dii_packet(const void *data, size_t len)
+{
+    if (rvfi_debug_output) {
+        qemu_hexdump(stderr, "PACKET", data, len);
+    }
+    ssize_t nbytes = write(rvfi_client_fd, data, len);
+    if (nbytes != len) {
+        error_report("Failed to write packet to socket: %zd (%s)", nbytes,
+                     strerror(errno));
+        exit(EXIT_FAILURE);
+    }
+}
+
+static void rvfi_dii_send_v1_trace(CPURISCVState* env)
+{
+    struct rvfi_dii_trace_v1 trace;
+    // convert the state saved in env to a legacy v1 trace
+    trace.rvfi_dii_order = env->rvfi_dii_trace.INST.rvfi_order;
+    trace.rvfi_dii_pc_rdata = env->rvfi_dii_trace.PC.rvfi_pc_rdata;
+    trace.rvfi_dii_pc_wdata = env->rvfi_dii_trace.PC.rvfi_pc_wdata;
+    trace.rvfi_dii_insn = env->rvfi_dii_trace.INST.rvfi_insn;
+    trace.rvfi_dii_rs1_data = env->rvfi_dii_trace.INTEGER.rvfi_rs1_rdata;
+    trace.rvfi_dii_rs2_data = env->rvfi_dii_trace.INTEGER.rvfi_rs2_rdata;
+    trace.rvfi_dii_rd_wdata = env->rvfi_dii_trace.INTEGER.rvfi_rd_wdata;
+    trace.rvfi_dii_mem_addr = env->rvfi_dii_trace.MEM.rvfi_mem_addr;
+    trace.rvfi_dii_mem_rdata = env->rvfi_dii_trace.MEM.rvfi_mem_rdata[0];
+    trace.rvfi_dii_mem_wdata = env->rvfi_dii_trace.MEM.rvfi_mem_wdata[0];
+    trace.rvfi_dii_mem_rmask = env->rvfi_dii_trace.MEM.rvfi_mem_rmask;
+    trace.rvfi_dii_mem_wmask = env->rvfi_dii_trace.MEM.rvfi_mem_wmask;
+    trace.rvfi_dii_rs1_addr = env->rvfi_dii_trace.INTEGER.rvfi_rs1_addr;
+    trace.rvfi_dii_rs2_addr = env->rvfi_dii_trace.INTEGER.rvfi_rs2_addr;
+    trace.rvfi_dii_rd_addr = env->rvfi_dii_trace.INTEGER.rvfi_rd_addr;
+    trace.rvfi_dii_trap = env->rvfi_dii_trace.INST.rvfi_trap;
+    trace.rvfi_dii_halt = env->rvfi_dii_trace.INST.rvfi_halt;
+    trace.rvfi_dii_intr = env->rvfi_dii_trace.INST.rvfi_intr;
+
+    if (rvfi_debug_output) {
+        info_report("Sending %jd PCWD: 0x%08jx, RD: %02d, RWD: 0x%08jx, MA: "
+                    "0x%08jx, MWD: 0x%08jx, MWM: 0x%08x, I: 0x%016jx H:%u\n",
+                    (uintmax_t)trace.rvfi_dii_order,
+                    (uintmax_t)trace.rvfi_dii_pc_wdata, trace.rvfi_dii_rd_addr,
+                    (uintmax_t)trace.rvfi_dii_rd_wdata,
+                    (uintmax_t)trace.rvfi_dii_mem_addr,
+                    (uintmax_t)trace.rvfi_dii_mem_wdata,
+                    trace.rvfi_dii_mem_wmask, (uintmax_t)trace.rvfi_dii_insn,
+                    (unsigned)trace.rvfi_dii_halt);
+    }
+    send_rvfi_dii_packet(&trace, sizeof(trace));
+}
+
+static void rvfi_dii_send_v2_trace(CPURISCVState *env)
+{
+
+    struct rvfi_dii_trace_v2 trace = {
+        .magic = "trace-v2",
+        .available_fields = env->rvfi_dii_trace.available_fields,
+        .pc_data = env->rvfi_dii_trace.PC,
+        .basic_info = env->rvfi_dii_trace.INST,
+    };
+    GByteArray *buf = g_byte_array_new();
+    g_byte_array_append(buf, (const guint8*)&trace, sizeof(trace));
+    if (env->rvfi_dii_trace.available_fields & RVFI_INTEGER_DATA) {
+        g_byte_array_append(buf, (const guint8 *)"int-data", 8);
+        g_byte_array_append(buf, (const guint8 *)&env->rvfi_dii_trace.INTEGER,
+                            sizeof(env->rvfi_dii_trace.INTEGER));
+    }
+    if (env->rvfi_dii_trace.available_fields & RVFI_MEM_DATA) {
+        g_byte_array_append(buf, (const guint8 *)"mem-data", 8);
+        g_byte_array_append(buf, (const guint8 *)&env->rvfi_dii_trace.MEM,
+                            sizeof(env->rvfi_dii_trace.MEM));
+    }
+    // Now that we know the total size, we can update the trace header:
+    ((struct rvfi_dii_trace_v2 *)buf->data)->trace_size = buf->len;
+    if (rvfi_debug_output) {
+        fprintf(stderr,
+            "Sending %u bytes: %jd PCWD: 0x%08jx, RD: %02d, RWD: 0x%08jx, MA: "
+            "0x%08jx, MWD: 0x%08jx, MWM: 0x%08x, I: 0x%016jx H:%u T:%u\n",
+            buf->len, (uintmax_t)env->rvfi_dii_trace.INST.rvfi_order,
+            (uintmax_t)env->rvfi_dii_trace.PC.rvfi_pc_wdata,
+            env->rvfi_dii_trace.INTEGER.rvfi_rd_addr,
+            (uintmax_t)env->rvfi_dii_trace.INTEGER.rvfi_rd_wdata,
+            (uintmax_t)env->rvfi_dii_trace.MEM.rvfi_mem_addr,
+            (uintmax_t)env->rvfi_dii_trace.MEM.rvfi_mem_wdata[0],
+            env->rvfi_dii_trace.MEM.rvfi_mem_wmask,
+            (uintmax_t)env->rvfi_dii_trace.INST.rvfi_insn,
+            (unsigned)env->rvfi_dii_trace.INST.rvfi_halt,
+            (unsigned)env->rvfi_dii_trace.INST.rvfi_trap);
+    }
+    send_rvfi_dii_packet(buf->data, buf->len);
+    g_byte_array_free(buf, true);
+}
+
+static void rvfi_dii_send_trace(CPURISCVState *env, unsigned version)
+{
+    if (version == 1) {
+        rvfi_dii_send_v1_trace(env);
+    } else if (version == 2) {
+        rvfi_dii_send_v2_trace(env);
+    } else {
+        error_report("Invalid trace version %d", version);
+        exit(EXIT_FAILURE);
+    }
+}
+
+void rvfi_dii_communicate(CPUState* cs, CPURISCVState* env, bool was_trap) {
+    // needs to be global since this function is called for each instruction
+    // that is executed.
+    static bool rvfi_dii_started = false;
+    static unsigned rvfi_dii_version = 1;
     // Single-step completed -> update PC in the trace buffer
+    env->rvfi_dii_trace.PC.rvfi_pc_wdata = GET_SPECIAL_REG_ARCH(env, pc, pcc);
     env->rvfi_dii_trace.INST.rvfi_order++;
+
+    // TestRIG expects a zero $pc after a trap:
+    if (env->rvfi_dii_trace.INST.rvfi_trap && rvfi_debug_output) {
+        info_report("Got trap at " TARGET_FMT_lx, PC_ADDR(env));
+    }
+    env->rvfi_dii_have_injected_insn = false;
+    while (true) {
+        assert(cs->singlestep_enabled);
+        rvfi_dii_command_t cmd_buf;
+        _Static_assert(sizeof(cmd_buf) == 8, "Expected 8 bytes of data");
+#ifdef CONFIG_TCG_LOG_INSTR
         // Print the instruction now and skip the next commit() call that
         // happens when we return to the translator loop.
         qemu_log_instr_commit(env);
         qemu_log_instr_drop(env); // Avoid an invalid instruction log
+#endif
+        if (rvfi_dii_started) {
+            // Send previous state
+            rvfi_dii_send_trace(env, rvfi_dii_version);
+            // Zero the output trace for the next test except for instret
+            uint64_t old_instret = env->rvfi_dii_trace.INST.rvfi_order;
+            memset(&env->rvfi_dii_trace, 0, sizeof(env->rvfi_dii_trace));
+            env->rvfi_dii_trace.INST.rvfi_order = old_instret;
+        }
+        // Should be blocking, so we only read fewer bytes on EOF
+        ssize_t nbytes = read(rvfi_client_fd, &cmd_buf, sizeof(cmd_buf));
+        if (nbytes != sizeof(cmd_buf)) {
+            error_report("GOT EOF/Error reading from socket: %zd (%s)", nbytes,
+                         strerror(errno));
+            exit(EXIT_FAILURE);
+        }
+        if (rvfi_debug_output) {
+            info_report("Handling RVFI-DII command %d", cmd_buf.rvfi_dii_cmd);
+        }
+        switch (cmd_buf.rvfi_dii_cmd) {
+        case '\0': {
+            rvfi_dii_started = false;
+            if (cmd_buf.rvfi_dii_insn ==
+                (('V' << 24) | ('E' << 16) | ('R' << 8) | 'S')) {
+                // Version negotiation request -> send a v1 packet with halt=3
+                // to indicate that we support the v2 protocol
+                env->rvfi_dii_trace.INST.rvfi_halt = 3;
+            } else {
+                env->rvfi_dii_trace.INST.rvfi_halt = 1;
+            }
             env->rvfi_dii_trace.INST.rvfi_order = 0;
+            // Clear all fields that can be zeroes: we want a defined reset
+            // state for TestRIG even if the RISC-V ISA does not guarantee it.
+            memset(env, 0, offsetof(CPURISCVState, end_testrig_reset_fields));
+            // Overwrite the processor's resetvec as otherwise reset()
+            // writes PC with default RSTVECTOR (0x10000)
+            env->resetvec = RVFI_DII_RAM_START;
+            // Reset the processor (and ensure that it resets to 0x80000000)
+            cpu_reset(cs);
+            // FIXME: Hopefully this resets RAM?
+            qemu_system_reset(SHUTDOWN_CAUSE_HOST_SIGNAL);
             cs->cflags_next_tb = (curr_cflags(cs) & ~CF_USE_ICOUNT) | 1;
             hwaddr system_ram_addr = cpu_get_phys_page_debug(cs, PC_ADDR(env));
             hwaddr system_ram_size = RVFI_DII_RAM_SIZE;
             void *ram_ptr = cpu_physical_memory_map(
                 system_ram_addr, &system_ram_size, /*is_write=*/true);
+            assert(system_ram_size == RVFI_DII_RAM_SIZE);
+            // TODO: would be nice to do this lazily instead of writing 8 MiB
             // FIXME: is it safe to do a munmap/mmap? We could also MAP_FIXED over
             // the existing mapping. This should be faster since we rarely use more
             // than one page.
@@ -706,8 +939,53 @@ bool riscv_cpu_has_work(CPUState *cs)
             cpu_physical_memory_unmap(ram_ptr, system_ram_size, /*is_write=*/true, system_ram_size);
             // Flush the TCG state:
             tb_flush(cs);
+            tlb_flush(cs); // Flush the QEMU guest->host tlb
+
             // TestRIG expects all capability registers to be max perms
+#ifdef TARGET_CHERI
             set_max_perms_capregs(env);
+#endif
+            rvfi_dii_send_trace(env, rvfi_dii_version);
+            memset(&env->rvfi_dii_trace, 0, sizeof(env->rvfi_dii_trace));
+            continue;
+        }
+        case 'v': { /* Set wire format version */
+            if (cmd_buf.rvfi_dii_insn == 1) {
+                fprintf(stderr, "Requested trace in legacy format!\n");
+            } else if (cmd_buf.rvfi_dii_insn == 2) {
+                fprintf(stderr, "Requested trace in v2 format!\n");
+            } else {
+                fprintf(stderr, "Requested trace in unsupported format %jd!\n",
+                        (intmax_t)cmd_buf.rvfi_dii_insn);
+                exit(EXIT_FAILURE);
+            }
+            // From now on send traces in the requested format
+            rvfi_dii_version = cmd_buf.rvfi_dii_insn;
+            struct {
+                char msg[8];
+                uint64_t version;
+            } version_response = {"version=", rvfi_dii_version};
+            send_rvfi_dii_packet(&version_response, sizeof(version_response));
+            continue;
+        }
+        case 'B': {
+            fprintf(stderr, "*BLINK*\n");
+            info_report("*BLINK*\n");
+            break;
+        }
+        case 'Q': {
+            // The remote disconnected.
+            fprintf(stderr, "Received a quit command. Quitting.\n");
+            info_report("Received a quit command. Quitting.\n");
+            close(rvfi_client_fd);
+            rvfi_client_fd = 0;
+            exit(EXIT_SUCCESS);
+        }
+        case 1: {
+            // We send the resulting packet on the next call of this function.
+            rvfi_dii_started = true;
+            cpu_single_step(cs, SSTEP_ENABLE | SSTEP_NOIRQ | SSTEP_NOTIMER);
+            if (rvfi_debug_output) {
                 char buf[512];
                 FILE *tmp = fmemopen(buf, sizeof(buf), "w+");
                 target_disas_buf(tmp, cs, &cmd_buf.rvfi_dii_insn,
@@ -717,12 +995,51 @@ bool riscv_cpu_has_work(CPUState *cs)
                 info_report("injecting instruction %d '0x%08x' at %s",
                             cmd_buf.rvfi_dii_time, cmd_buf.rvfi_dii_insn, buf);
             }
+            // Ideally we would just completely disable caching of translated
+            // blocks in RVFI-DII mode, but I can't figure out how to do this.
+            // Instead let's just flush the entire TCG cache (which should have
+            // the same effect).
+            tb_flush(cs); // flush TCG state
+            env->rvfi_dii_injected_insn = cmd_buf.rvfi_dii_insn;
+            env->rvfi_dii_have_injected_insn = true;
             env->rvfi_dii_trace.PC.rvfi_pc_rdata = GET_SPECIAL_REG_ARCH(env, pc, pcc);
+            env->rvfi_dii_trace.INST.rvfi_mode = env->priv;
             env->rvfi_dii_trace.INST.rvfi_ixl = riscv_cpu_mxl(env);
+            resume_all_vcpus();
+            cpu_resume(cs);
+            env->rvfi_dii_trace.PC.rvfi_pc_wdata = -1; // Will be set after single-step trap
+            // Clear the EXCP_DEBUG flag to avoid dropping into GDB
+            cs->exception_index = RISCV_EXCP_NONE;
             cs->cflags_next_tb = (curr_cflags(cs) & ~CF_USE_ICOUNT) | 1;
+            // Continue execution at env->pc
+            cpu_loop_exit_noexc(cs); // noreturn -> jumps back to TCG
+        }
+        default:
+            error_report("rvfi_dii got unsupported command '%c'\n",
+                         cmd_buf.rvfi_dii_cmd);
+            exit(EXIT_FAILURE);
+        }
+        rvfi_dii_started = true;
+    }
+}
+
+#endif // CONFIG_RVFI_DII
+
+static void riscv_debug_excp_handler(CPUState *cs)
+{
     /*
+     * Called by core code when a watchpoint or breakpoint fires;
+     * Also happens for singlestep events
      */
+#ifdef CONFIG_RVFI_DII
+    ArchCPU *cpu = RISCV_CPU(cs);
+    CPUArchState *env = &cpu->env;
+    if (rvfi_client_fd && cs->singlestep_enabled) {
+        rvfi_dii_communicate(cs, env, false);
         return;
+    }
+#endif
+}
 static void riscv_cpu_reset_hold(Object *obj, ResetType type)
 {
 #ifndef CONFIG_USER_ONLY
@@ -764,7 +1081,6 @@ static void riscv_cpu_reset_hold(Object *obj, ResetType type)
     }
     env->mcause = 0;
     env->miclaim = MIP_SGEIP;
-    env->pc = env->resetvec;
     env->bins = 0;
     env->two_stage_lookup = false;
 
@@ -839,35 +1155,58 @@ static void riscv_cpu_reset_hold(Object *obj, ResetType type)
         kvm_riscv_reset_vcpu(cpu);
     }
 #endif
+
+#if !defined(TARGET_CHERI)
+    env->pc = env->resetvec;
     // Also reset mepc/sepc to zero for predicatable behaviour
     env->mepc = 0;
     env->sepc = 0;
+#else
     // Force the extension on as some tests try and toggle it
     cpu->cfg.ext_cheri = true;
 #ifdef TARGET_CHERI_RISCV_V9
+    cpu->cfg.ext_cheri_v9 = true;
 #endif
     if (!cpu->cfg.ext_cheri) {
+        error_report("CHERI extension can't be disabled yet!");
+        exit(EXIT_FAILURE);
     }
     env->mseccfg = 0;
+    env->menvcfg = 0;
+    env->senvcfg = 0;
+    env->henvcfg = 0;
+    // All general purpose capability registers are reset to NULL:
     reset_capregs(env);
+    /*
+     * See Table 5.2: Special Capability Registers (SCRs) in the CHERI ISA spec
+     */
     set_max_perms_capability(env, &env->pcc, env->resetvec);
     set_max_perms_capability(env, &env->ddc, 0);
+    // Supervisor mode trap handling
     set_max_perms_capability(env, &env->stvecc, 0);
     env->sscratchc = make_null_capability(env);
     set_max_perms_capability(env, &env->sepcc, 0);
+    // Machine mode trap handling
     set_max_perms_capability(env, &env->mtvecc, 0);
     env->mscratchc = make_null_capability(env);
     set_max_perms_capability(env, &env->mepcc, 0);
+
     env->utidc = make_null_capability(env);
     env->stidc = make_null_capability(env);
     env->vstidc = make_null_capability(env);
     env->mtidc = make_null_capability(env);
+#ifdef TARGET_CHERI_RISCV_V9
     env->mtdc = make_null_capability(env);
     env->stdc = make_null_capability(env);
     env->vstdc = make_null_capability(env);
 #elif defined(TARGET_CHERI_RISCV_STD_093)
     /* Need to initialize this since Type_None has a non-zero value. */
     env->last_cap_type = CapEx093_Type_None;
+#endif
+
+#endif /* TARGET_CHERI */
+#ifdef CONFIG_DEBUG_TCG
+    env->_pc_is_current = true;
 #endif
 }
 
@@ -901,10 +1240,15 @@ static void riscv_cpu_disas_set_info(CPUState *s, disassemble_info *info)
     }
 #ifdef TARGET_CHERI
     info->flags |= RISCV_DIS_FLAG_CHERI;
+#ifdef TARGET_CHERI_RISCV_V9
+    info->flags |= RISCV_DIS_FLAG_CHERI_V9;
 #endif
+    if (cheri_in_capmode(&cpu->env)) {
         info->flags |= RISCV_DIS_FLAG_CAPMODE;
     }
+#endif
 }
+
 
 #ifndef CONFIG_USER_ONLY
 static void riscv_cpu_satp_mode_finalize(RISCVCPU *cpu, Error **errp)
@@ -1001,6 +1345,7 @@ void riscv_cpu_finalize_features(RISCVCPU *cpu, Error **errp)
         }
     }
 }
+
 
 static void riscv_cpu_realize(DeviceState *dev, Error **errp)
 {
@@ -1356,10 +1701,25 @@ const RISCVCPUMultiExtConfig riscv_cpu_extensions[] = {
     MULTI_EXT_CFG_BOOL("zvfbfwma", ext_zvfbfwma, false),
     MULTI_EXT_CFG_BOOL("zvfh", ext_zvfh, false),
     MULTI_EXT_CFG_BOOL("zvfhmin", ext_zvfhmin, false),
-    MULTI_EXT_CFG_BOOL("sstc", ext_sstc, true),
+    MULTI_EXT_CFG_BOOL("sstc", ext_sstc, false),
     MULTI_EXT_CFG_BOOL("ssnpm", ext_ssnpm, false),
     MULTI_EXT_CFG_BOOL("sspm", ext_sspm, false),
     MULTI_EXT_CFG_BOOL("supm", ext_supm, false),
+
+#if defined(TARGET_CHERI_RISCV_STD_093)
+    /* zish4add is part of the cheri spec, so we enable it by default */
+    MULTI_EXT_CFG_BOOL("zish4add", ext_zish4add, true),
+#endif
+#ifdef TARGET_CHERI_RISCV_V9
+    MULTI_EXT_CFG_BOOL("Xcheri", ext_cheri, true),
+    MULTI_EXT_CFG_BOOL("Xcheri_v9", ext_cheri_v9, true),
+#elif defined(TARGET_CHERI_RISCV_STD)
+    MULTI_EXT_CFG_BOOL("y", ext_cheri, true),
+    MULTI_EXT_CFG_BOOL("Zyhybrid", ext_zyhybrid, true),
+    MULTI_EXT_CFG_BOOL("Zylevels1", ext_zylevels1, false),
+    MULTI_EXT_CFG_BOOL("cheri_pte", cheri_pte, false),
+    MULTI_EXT_CFG_BOOL("Svucrg", cheri_pte, false),
+#endif
 
     MULTI_EXT_CFG_BOOL("smaia", ext_smaia, false),
     MULTI_EXT_CFG_BOOL("smdbltrp", ext_smdbltrp, false),
@@ -1373,8 +1733,10 @@ const RISCVCPUMultiExtConfig riscv_cpu_extensions[] = {
     MULTI_EXT_CFG_BOOL("svade", ext_svade, false),
     MULTI_EXT_CFG_BOOL("svadu", ext_svadu, true),
     MULTI_EXT_CFG_BOOL("svinval", ext_svinval, false),
+#if !defined(TARGET_CHERI_RISCV_V9)
     MULTI_EXT_CFG_BOOL("svnapot", ext_svnapot, false),
     MULTI_EXT_CFG_BOOL("svpbmt", ext_svpbmt, false),
+#endif
     MULTI_EXT_CFG_BOOL("svrsw60t59b", ext_svrsw60t59b, false),
     MULTI_EXT_CFG_BOOL("svvptc", ext_svvptc, true),
 
@@ -2768,6 +3130,9 @@ static const Property riscv_cpu_properties[] = {
      * it with -x and default to 'false'.
      */
     DEFINE_PROP_BOOL("x-misa-w", RISCVCPU, cfg.misa_w, false),
+#if defined(TARGET_CHERI_RISCV_STD)
+    DEFINE_PROP_UINT8("cheri_levels", RISCVCPU, cfg._compat_cheri_levels, 0),
+#endif
 };
 
 static const gchar *riscv_gdb_arch_name(CPUState *cs)
@@ -2786,6 +3151,7 @@ static const gchar *riscv_gdb_arch_name(CPUState *cs)
     }
 }
 
+
 #ifndef CONFIG_USER_ONLY
 static int64_t riscv_get_arch_id(CPUState *cs)
 {
@@ -2803,6 +3169,14 @@ static const struct SysemuCPUOps riscv_sysemu_ops = {
     .write_elf32_note = riscv_cpu_write_elf32_note,
     .legacy_vmsd = &vmstate_riscv_cpu,
 };
+#endif
+
+#ifdef TARGET_CHERI
+static int riscv_cpu_memory_readcap_debug(CPUState *cpu, vaddr addr,
+                                          uint8_t *buf, int len)
+{
+    return cpu_memory_readcap_debug(cpu, addr, buf, len);
+}
 #endif
 
 static void riscv_cpu_common_class_init(ObjectClass *c, const void *data)
@@ -2825,6 +3199,10 @@ static void riscv_cpu_common_class_init(ObjectClass *c, const void *data)
     cc->gdb_read_register = riscv_cpu_gdb_read_register;
     cc->gdb_write_register = riscv_cpu_gdb_write_register;
     cc->gdb_stop_before_watchpoint = true;
+#ifdef TARGET_CHERI
+    cc->memory_readcap_debug = riscv_cpu_memory_readcap_debug;
+    cc->cheri_cap_size = CHERI_CAP_SIZE;
+#endif
     cc->disas_set_info = riscv_cpu_disas_set_info;
 #ifndef CONFIG_USER_ONLY
     cc->sysemu_ops = &riscv_sysemu_ops;
@@ -2927,7 +3305,6 @@ static void riscv_isa_string_ext(RISCVCPU *cpu, char **isa_str,
     const RISCVIsaExtData *edata;
     char *old = *isa_str;
     char *new = *isa_str;
-
     for (edata = isa_edata_arr; edata && edata->name; edata++) {
         if (isa_ext_is_enabled(cpu, edata->ext_enable_offset)) {
             new = g_strconcat(old, "_", edata->name, NULL);
@@ -3155,6 +3532,39 @@ static const TypeInfo riscv_cpu_type_infos[] = {
         .misa_mxl_max = MXL_RV32,
     ),
 
+    DEFINE_RISCV_CPU(TYPE_RISCV_CPU_CODASIP_L730, TYPE_RISCV_VENDOR_CPU,
+        .misa_mxl_max = MXL_RV32,
+        .misa_ext = RVI | RVM | RVA | RVF | RVD | RVC | RVS | RVU,
+        .priv_spec = PRIV_VERSION_1_12_0,
+        .cfg.mmu = false,
+#ifdef TARGET_CHERI
+        .cfg.pmp = false,
+#else
+        .cfg.pmp = true,
+#endif
+        .cfg.ext_zicbom = true,
+        .cfg.ext_zicboz = true,
+        .cfg.ext_zba = true,
+        .cfg.ext_zbb = true,
+        .cfg.ext_zbc = true,
+        .cfg.ext_zbs = true,
+        .cfg.ext_zfhmin = true,
+#if defined(TARGET_CHERI_RISCV_STD_093)
+        .cfg.ext_zish4add = true,
+        .cfg.ext_zylevels1 = true,
+        .cfg.ext_cheri = true,
+        .cfg.ext_zyhybrid = true,
+#endif
+        .cfg.cbom_blocksize = 64,
+        .cfg.cboz_blocksize = 64,
+        .cfg.ext_zca = true,
+        .cfg.ext_zcb = true,
+        .cfg.ext_zcd = true,
+        .cfg.ext_zcf = true,
+        .cfg.ext_zbkb = true,
+        .cfg.ext_zihintpause = true,
+    ),
+
     DEFINE_RISCV_CPU(TYPE_RISCV_CPU_RV32I, TYPE_RISCV_BARE_CPU,
         .misa_mxl_max = MXL_RV32,
         .misa_ext = RVI
@@ -3188,6 +3598,41 @@ static const TypeInfo riscv_cpu_type_infos[] = {
 
     DEFINE_RISCV_CPU(TYPE_RISCV_CPU_SHAKTI_C, TYPE_RISCV_CPU_SIFIVE_U,
         .misa_mxl_max = MXL_RV64,
+    ),
+
+    DEFINE_RISCV_CPU(TYPE_RISCV_CPU_CODASIP_A730, TYPE_RISCV_VENDOR_CPU,
+        .misa_mxl_max = MXL_RV64,
+        .misa_ext = RVI | RVM | RVA | RVF | RVD | RVC | RVS | RVU,
+        .priv_spec = PRIV_VERSION_1_12_0,
+        .cfg.mmu = true,
+        .cfg.pmp = false,
+        .cfg.ext_zicbom = true,
+        .cfg.ext_zicboz = true,
+        .cfg.ext_zba = true,
+        .cfg.ext_zbb = true,
+        .cfg.ext_zbc = true,
+        .cfg.ext_zbs = true,
+        .cfg.ext_zfhmin = true,
+#if !defined(TARGET_CHERI_RISCV_V9)
+        .cfg.ext_svnapot = true,
+        .cfg.ext_svpbmt = true,
+#endif
+        .cfg.ext_svinval = true,
+#if defined(TARGET_CHERI_RISCV_STD_093)
+        .cfg.ext_zish4add = true,
+        .cfg.ext_zylevels1 = true,
+        .cfg.cheri_pte = true,
+        .cfg.ext_cheri = true,
+        .cfg.ext_zyhybrid = true,
+#endif
+        .cfg.cbom_blocksize = 64,
+        .cfg.cboz_blocksize = 64,
+        .cfg.ext_zca = true,
+        .cfg.ext_zcb = true,
+        .cfg.ext_zcd = true,
+        .cfg.ext_zcf = true,
+        .cfg.ext_zbkb = true,
+        .cfg.ext_zihintpause = true,
     ),
 
     DEFINE_RISCV_CPU(TYPE_RISCV_CPU_THEAD_C906, TYPE_RISCV_VENDOR_CPU,
@@ -3335,7 +3780,6 @@ static const TypeInfo riscv_cpu_type_infos[] = {
 
         .cfg.max_satp_mode = VM_1_10_SV39,
     ),
-
     DEFINE_RISCV_CPU(TYPE_RISCV_CPU_XIANGSHAN_KMH, TYPE_RISCV_VENDOR_CPU,
         .misa_mxl_max = MXL_RV64,
         .misa_ext = RVG | RVC | RVB | RVS | RVU | RVH | RVV,
@@ -3393,7 +3837,6 @@ static const TypeInfo riscv_cpu_type_infos[] = {
         .cfg.pmp = true,
         .cfg.max_satp_mode = VM_1_10_SV48,
     ),
-
 #if defined(CONFIG_TCG) && !defined(CONFIG_USER_ONLY)
     DEFINE_RISCV_CPU(TYPE_RISCV_CPU_BASE128, TYPE_RISCV_DYNAMIC_CPU,
         .cfg.max_satp_mode = VM_1_10_SV57,

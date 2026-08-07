@@ -29,15 +29,16 @@ void mips_restore_state_to_opc(CPUState *cs,
 
 const char *mips_exception_name(int32_t exception);
 
-G_NORETURN void do_raise_exception_err(CPUMIPSState *env, uint32_t exception,
-                                       int error_code, uintptr_t pc);
+G_NORETURN void do_raise_exception_err(CPUMIPSState *env, MipsExcp exception,
+                                          int error_code, uintptr_t pc);
 
 static inline G_NORETURN
 void do_raise_exception(CPUMIPSState *env,
-                        uint32_t exception,
-                        uintptr_t pc)
+                                                    MipsExcp exception,
+                                                    uintptr_t pc)
 {
-    do_raise_exception_err(env, exception, 0, pc);
+    /* NOTE: pc is a HOST program counter (from GETPC()) and not a MIPS guest pc */
+    do_raise_exception_err(env, exception, env->error_code & EXCP_INST_NOTAVAIL, pc);
 }
 
 #if !defined(CONFIG_USER_ONLY)

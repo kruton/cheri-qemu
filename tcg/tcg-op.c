@@ -330,6 +330,11 @@ void tcg_gen_discard_i32(TCGv_i32 arg)
     tcg_gen_op1_i32(INDEX_op_discard, TCG_TYPE_I32, arg);
 }
 
+void tcg_gen_sync_i32(TCGv_i32 arg)
+{
+    tcg_gen_op1_i32(INDEX_op_sync, TCG_TYPE_I32, arg);
+}
+
 void tcg_gen_mov_i32(TCGv_i32 ret, TCGv_i32 arg)
 {
     if (ret != arg) {
@@ -1427,6 +1432,16 @@ void tcg_gen_discard_i64(TCGv_i64 arg)
     } else {
         tcg_gen_discard_i32(TCGV_LOW(arg));
         tcg_gen_discard_i32(TCGV_HIGH(arg));
+    }
+}
+
+void tcg_gen_sync_i64(TCGv_i64 arg)
+{
+    if (TCG_TARGET_REG_BITS == 64) {
+        tcg_gen_op1_i64(INDEX_op_sync, TCG_TYPE_I64, arg);
+    } else {
+        tcg_gen_sync_i32(TCGV_LOW(arg));
+        tcg_gen_sync_i32(TCGV_HIGH(arg));
     }
 }
 

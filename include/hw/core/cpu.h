@@ -35,6 +35,7 @@
 #include "qemu/queue.h"
 #include "qemu/lockcnt.h"
 #include "qemu/thread.h"
+#include "qemu/log_instr.h"
 #include "qom/object.h"
 
 typedef int (*WriteCoreDumpFunction)(const void *buf, size_t size,
@@ -84,6 +85,7 @@ DECLARE_CLASS_CHECKERS(CPUClass, CPU,
     typedef struct ArchCPU CpuInstanceType; \
     OBJECT_DECLARE_TYPE(ArchCPU, CpuClassType, CPU_MODULE_OBJ_NAME);
 
+
 typedef struct CPUWatchpoint CPUWatchpoint;
 
 /* see physmem.c */
@@ -106,6 +108,8 @@ struct SysemuCPUOps;
  * @parse_features: Callback to parse command line arguments.
  * @reset_dump_flags: #CPUDumpFlags to use for reset logging.
  * @memory_rw_debug: Callback for GDB memory access.
+ * @memory_readcap_debug: Callback for GDB capability memory access.
+ * @cheri_cap_size: Size of a CHERI capability in bytes.
  * @dump_state: Callback for dumping state.
  * @query_cpu_fast:
  *       Fill in target specific information for the "query-cpus-fast"
@@ -159,6 +163,9 @@ struct CPUClass {
 
     int (*memory_rw_debug)(CPUState *cpu, vaddr addr,
                            uint8_t *buf, size_t len, bool is_write);
+    int (*memory_readcap_debug)(CPUState *cpu, vaddr addr,
+                                uint8_t *buf, int len);
+    int cheri_cap_size;
     void (*dump_state)(CPUState *cpu, FILE *, int flags);
     void (*query_cpu_fast)(CPUState *cpu, CpuInfoFast *value);
     int64_t (*get_arch_id)(CPUState *cpu);
@@ -230,6 +237,34 @@ struct CPUTLBEntryFull {
      */
     hwaddr phys_addr;
 
+#define TLBENTRYCAP_MASK (uintptr_t)0x7
+    /* Trap if a non-zero tag is read/written. */
+#define TLBENTRYCAP_FLAG_TRAP (uintptr_t)0x1
+    /* Trap if any tag is read/written */
+#define TLBENTRYCAP_FLAG_TRAP_ANY (uintptr_t)0x4
+    /* Clear any tag read/written. */
+#define TLBENTRYCAP_FLAG_CLEAR (uintptr_t)0x2
+    /* This page contains only zero tag bits. */
+#define ALL_ZERO_TAGBLK ((void *)(uintptr_t)(~0 & ~TLBENTRYCAP_MASK))
+    /*
+     * Just as with CPUTLBEntry we split this via read/write for simpler logic
+     * generation. Eventually it will be moved there for fast TCG access.
+     * The lowest two bits of each address stash trapping/clearing.
+     */
+    uintptr_t tagmem_read;
+    /*
+     * There are two reasons to trap on writing a tag. The first is if MMU
+     * protection bits indicate that stores should trap. The second is that no
+     * tag block has been allocated. In order to align these cases, when there
+     * is no block allocated yet (and tags are not being clared), we add in the
+     * trap flag so tlb_fill will be called. It will then allocate a tagblock
+     * (and the suprious FLAG_TRAP will be removed), or will throw an exception.
+     */
+#define TLBENTRYCAP_INVALID_WRITE_MASK                                         \
+    (TLBENTRYCAP_FLAG_TRAP | TLBENTRYCAP_FLAG_CLEAR)
+#define TLBENTRYCAP_INVALID_WRITE_VALUE (TLBENTRYCAP_FLAG_TRAP)
+    uintptr_t tagmem_write;
+
     /* @attrs contains the memory transaction attributes for the page. */
     MemTxAttrs attrs;
 
@@ -269,6 +304,14 @@ struct CPUTLBEntryFull {
         } arm;
     } extra;
 };
+
+#define IOTLB_GET_TAGMEM(iotlbentry, rw)                                       \
+    ({                                                                         \
+        cheri_debug_assert(iotlbentry->tagmem_##rw != (uintptr_t)0);           \
+        (void *)((uintptr_t)iotlbentry->tagmem_##rw & ~TLBENTRYCAP_MASK);      \
+    })
+#define IOTLB_GET_TAGMEM_FLAGS(iotlbentry, rw)                                 \
+    ((uintptr_t)iotlbentry->tagmem_##rw & TLBENTRYCAP_MASK);
 
 /*
  * Data elements that are per MMU mode, minus the bits accessed by
@@ -465,6 +508,7 @@ struct qemu_work_item;
  *    ring is enabled.
  * @kvm_fetch_index: Keeps the index that we last fetched from the per-vCPU
  *    dirty ring structure.
+ * @log_state: The per-cpu instruction logging state.
  *
  * @neg_align: The CPUState is the common part of a concrete ArchCPU
  * which is allocated when an individual CPU instance is created. As
@@ -509,6 +553,7 @@ struct CPUState {
     int singlestep_enabled;
     int64_t icount_budget;
     int64_t icount_extra;
+    uint64_t breakcount;
     uint64_t random_seed;
     sigjmp_buf jmp_env;
 
@@ -585,10 +630,13 @@ struct CPUState {
     /* track IOMMUs whose translations we've cached in the TCG TLB */
     GArray *iommu_notifiers;
 
+#ifdef CONFIG_TCG_LOG_INSTR
+    cpu_log_instr_state_t log_state;
+#endif
     /*
      * MUST BE LAST in order to minimize the displacement to CPUArchState.
      */
-    char neg_align[-sizeof(CPUNegativeOffsetState) % 16] QEMU_ALIGNED(16);
+    char neg_align[-sizeof(CPUNegativeOffsetState) % 32] QEMU_ALIGNED(32);
     CPUNegativeOffsetState neg;
 };
 
@@ -1147,6 +1195,7 @@ void cpu_single_step(CPUState *cpu, int enabled);
 #define BP_WATCHPOINT_HIT_WRITE (BP_MEM_WRITE << BP_HIT_SHIFT)
 #define BP_WATCHPOINT_HIT       (BP_MEM_ACCESS << BP_HIT_SHIFT)
 
+int cpu_breakcount(CPUState *cpu, uint64_t count);
 int cpu_breakpoint_insert(CPUState *cpu, vaddr pc, int flags,
                           CPUBreakpoint **breakpoint);
 int cpu_breakpoint_remove(CPUState *cpu, vaddr pc, int flags);

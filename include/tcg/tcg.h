@@ -218,13 +218,16 @@ typedef struct TCGv_ptr_d *TCGv_ptr;
 typedef struct TCGv_vec_d *TCGv_vec;
 typedef TCGv_ptr TCGv_env;
 
-#if __SIZEOF_POINTER__ == 4
-typedef TCGv_i32 TCGv_vaddr;
-#elif __SIZEOF_POINTER__ == 8
-typedef TCGv_i64 TCGv_vaddr;
+#ifdef COMPILING_PER_TARGET
+#include "cpu.h"
+
+#if TARGET_LONG_BITS == 32
+typedef TCGv_i32 TCGv;
+#elif TARGET_LONG_BITS == 64
+typedef TCGv_i64 TCGv;
 #else
-# error "sizeof pointer is different from {4,8}"
-#endif /* __SIZEOF_POINTER__ */
+#error Unhandled TARGET_LONG_BITS value
+#endif
 
 #ifdef TARGET_CHERI
 /* Use a different type to get compiler warnings */
@@ -232,6 +235,15 @@ typedef struct TCGv_cap_checked_ptr_tl_d *TCGv_cap_checked_ptr;
 #else
 #define TCGv_cap_checked_ptr TCGv
 #endif
+#endif
+
+#if __SIZEOF_POINTER__ == 4
+typedef TCGv_i32 TCGv_vaddr;
+#elif __SIZEOF_POINTER__ == 8
+typedef TCGv_i64 TCGv_vaddr;
+#else
+# error "sizeof pointer is different from {4,8}"
+#endif /* __SIZEOF_POINTER__ */
 
 /* call flags */
 /* Helper does not read globals (either directly or through an exception). It
@@ -475,6 +487,17 @@ extern __thread TCGContext *tcg_ctx;
 extern const void *tcg_code_gen_epilogue;
 extern uintptr_t tcg_splitwx_diff;
 extern TCGv_env tcg_env;
+#ifdef COMPILING_PER_TARGET
+#ifdef TARGET_CHERI
+extern TCGv ddc_interposition;
+#endif
+#ifdef CONFIG_DEBUG_TCG
+extern TCGv _pc_is_current;
+#endif
+#endif
+#ifdef CONFIG_RVFI_DII
+extern TCGv_i32 cpu_rvfi_available_fields;
+#endif
 
 bool in_code_gen_buffer(const void *p);
 
@@ -538,10 +561,12 @@ static inline TCGTemp *tcgv_ptr_temp(TCGv_ptr v)
     return tcgv_i32_temp((TCGv_i32)v);
 }
 
+#ifdef COMPILING_PER_TARGET
 static inline TCGTemp *tcgv_cap_checked_ptr_temp(TCGv_cap_checked_ptr v)
 {
     return tcgv_i32_temp((TCGv_i32)v);
 }
+#endif
 
 static inline TCGTemp *tcgv_vec_temp(TCGv_vec v)
 {

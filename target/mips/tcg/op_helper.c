@@ -207,12 +207,6 @@ target_ulong helper_yield(CPUMIPSState *env, target_ulong arg)
     return env->CP0_YQMask;
 }
 
-static inline void check_hwrena(CPUMIPSState *env, int reg, uintptr_t pc)
-{
-    if ((env->hflags & MIPS_HFLAG_CP0) || (env->CP0_HWREna & (1 << reg))) {
-        return;
-}
-
 target_ulong helper_rdhwr_cpunum(CPUMIPSState *env)
 {
     check_hwrena(env, 0, GETPC());
@@ -297,7 +291,6 @@ target_ulong helper_lcsr_cpucfg(CPUMIPSState *env, target_ulong rs)
 #endif
 
 #if !defined(CONFIG_USER_ONLY)
-
 void mips_cpu_do_unaligned_access(CPUState *cs, vaddr addr,
                                   MMUAccessType access_type,
                                   int mmu_idx, uintptr_t retaddr)

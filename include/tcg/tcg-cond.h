@@ -130,4 +130,36 @@ static inline TCGCond tcg_high_cond(TCGCond c)
     }
 }
 
+static inline const char *tcg_cond_string(TCGCond c)
+{
+    switch (c) {
+    case TCG_COND_NEVER:
+        return "NEVER";
+    case TCG_COND_ALWAYS:
+        return "ALWAYS";
+    case TCG_COND_EQ:
+        return "==";
+    case TCG_COND_NE:
+        return "!=";
+    case TCG_COND_LT:
+        return "<_s";
+    case TCG_COND_LTU:
+        return "<_u";
+    case TCG_COND_GE:
+        return ">=_s";
+    case TCG_COND_GEU:
+        return ">=_u";
+    case TCG_COND_LE:
+        return "<=_s";
+    case TCG_COND_LEU:
+        return "<=_u";
+    case TCG_COND_GT:
+        return ">_s";
+    case TCG_COND_GTU:
+        return ">_u";
+    default:
+        return "?";
+    }
+}
+
 #endif /* TCG_COND_H */

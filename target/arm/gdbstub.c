@@ -622,6 +622,13 @@ void arm_cpu_register_gdb_regs_for_features(ARMCPU *cpu)
                              arm_gen_dynamic_sysreg_feature(cs, cs->gdb_num_regs),
                              0);
 
+#if defined(TARGET_CHERI)
+    if (arm_feature(env, ARM_FEATURE_AARCH64)) {
+        gdb_register_coprocessor(cs, aarch64_gdb_get_cheri_reg,
+                                 aarch64_gdb_set_cheri_reg,
+                                 gdb_find_static_feature("aarch64-capability.xml"), 0);
+    }
+#endif
 #ifdef CONFIG_TCG
     if (arm_feature(env, ARM_FEATURE_M) && tcg_enabled()) {
         gdb_register_coprocessor(cs,

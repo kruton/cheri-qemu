@@ -32,7 +32,6 @@
 #include <sys/syscall.h>
 #endif
 
-
 typedef struct RCUCloseFILE {
     struct rcu_head rcu;
     FILE *fd;
@@ -95,8 +94,8 @@ static FILE *qemu_log_trylock_with_err(Error **errp)
     logfile = thread_file;
     if (!logfile) {
         if (log_per_thread) {
-            g_autofree char *filename
-                = g_strdup_printf(global_filename, log_thread_id());
+            g_autofree char *filename =
+                g_strdup_printf(global_filename, log_thread_id());
             logfile = fopen(filename, "w");
             if (!logfile) {
                 error_setg_errno(errp, errno,
@@ -190,6 +189,8 @@ __attribute__((weak)) int qemu_log_instr_global_switch(int log_flags)
 {
     /* Real implementation in accel/tcg/log_instr.c. */
     return log_flags;
+}
+
 /**
  * valid_filename_template:
  *
@@ -227,8 +228,8 @@ valid_filename_template(const char *filename, bool per_thread, Error **errp)
 }
 
 /* enable or disable low levels log */
-static bool qemu_set_log_internal(const char *filename, bool changed_name,
-                                  int log_flags, Error **errp)
+bool qemu_set_log_internal(const char *filename, bool changed_name,
+                           int log_flags, Error **errp)
 {
     bool need_to_open_file;
     bool daemonized;
@@ -374,6 +375,7 @@ static bool qemu_set_log_internal(const char *filename, bool changed_name,
 
 bool qemu_set_log(int log_flags, Error **errp)
 {
+    log_flags = qemu_log_instr_global_switch(log_flags);
     return qemu_set_log_internal(NULL, false, log_flags, errp);
 }
 
@@ -384,6 +386,7 @@ bool qemu_set_log_filename(const char *filename, Error **errp)
 
 bool qemu_set_log_filename_flags(const char *name, int flags, Error **errp)
 {
+    flags = qemu_log_instr_global_switch(flags);
     return qemu_set_log_internal(name, true, flags, errp);
 }
 
@@ -498,6 +501,8 @@ const QEMULogItem qemu_log_items[] = {
       "show interrupts/exceptions in short format" },
     { CPU_LOG_EXEC, "exec",
       "show trace before each executed TB (lots of logs)" },
+    { CPU_LOG_INSTR, "instr",
+      "CHERI only: show executed instructions and changed CPU state" },
     { CPU_LOG_INSTR_U, "uinstr",
       "CHERI only: show executed instructions and changed CPU state (user)" },
     { CPU_LOG_GUEST_DEBUG_MSG, "guest_debug",

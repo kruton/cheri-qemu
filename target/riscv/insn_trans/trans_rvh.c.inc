@@ -20,6 +20,19 @@
 #define do_hlv(ctx, a, func)  false
 #define do_hsv(ctx, a, func)  false
 #else
+static bool check_access(DisasContext *ctx)
+{
+    if (ctx->virt_enabled) {
+        generate_exception(ctx, RISCV_EXCP_VIRT_INSTRUCTION_FAULT);
+        return false;
+    }
+    if (ctx->priv == PRV_U) {
+        generate_exception(ctx, RISCV_EXCP_ILLEGAL_INST);
+        return false;
+    }
+    return true;
+}
+
 static void gen_helper_hyp_hlv_b(TCGv r, TCGv_env e, TCGv a)
 {
     gen_helper_hyp_hlv_bu(r, e, a);
@@ -42,10 +55,41 @@ static bool do_hlv(DisasContext *ctx, arg_r2 *a,
                    void (*func)(TCGv, TCGv_env, TCGv))
 {
 #ifdef TARGET_CHERI
+    decode_save_opc(ctx, 0);
     if (check_access(ctx)) {
+        int mem_idx = ctx->mem_idx | MMU_2STAGE_BIT;
+        MemOp mop;
+        if (func == gen_helper_hyp_hlv_b) {
+            mop = MO_SB;
+        } else if (func == gen_helper_hyp_hlv_bu) {
+            mop = MO_UB;
+        } else if (func == gen_helper_hyp_hlv_h) {
+            mop = MO_TESW;
+        } else if (func == gen_helper_hyp_hlv_hu) {
+            mop = MO_TEUW;
+        } else if (func == gen_helper_hyp_hlv_w) {
+            mop = MO_TESL;
+        } else if (func == gen_helper_hyp_hlv_wu) {
+            mop = MO_TEUL;
+#if defined(TARGET_RISCV64)
+        } else if (func == gen_helper_hyp_hlv_d) {
+            mop = MO_TEUQ;
 #endif
+        } else {
+            g_assert_not_reached();
+        }
+
         if (ctx->capmode) {
             return gen_cap_load_mem_idx(ctx, a->rd, a->rs1, 0, mem_idx, mop);
+        }
+
+        TCGv dest = dest_gpr(ctx, a->rd);
+        TCGv addr = get_gpr(ctx, a->rs1, EXT_NONE);
+        gen_ddc_interposed_ld_tl(ctx, dest, NULL, addr, mem_idx, mop);
+        gen_set_gpr(ctx, a->rd, dest);
+    }
+    return true;
+#else
     TCGv dest = dest_gpr(ctx, a->rd);
     TCGv addr = get_gpr(ctx, a->rs1, EXT_NONE);
 
@@ -60,15 +104,41 @@ static bool do_hsv(DisasContext *ctx, arg_r2_s *a,
                    void (*func)(TCGv_env, TCGv, TCGv))
 {
 #ifdef TARGET_CHERI
+    decode_save_opc(ctx, 0);
     if (check_access(ctx)) {
+        int mem_idx = ctx->mem_idx | MMU_2STAGE_BIT;
+        MemOp mop;
+        if (func == gen_helper_hyp_hsv_b) {
+            mop = MO_UB;
+        } else if (func == gen_helper_hyp_hsv_h) {
+            mop = MO_TEUW;
+        } else if (func == gen_helper_hyp_hsv_w) {
+            mop = MO_TEUL;
+#if defined(TARGET_RISCV64)
+        } else if (func == gen_helper_hyp_hsv_d) {
+            mop = MO_TEUQ;
+#endif
+        } else {
+            g_assert_not_reached();
+        }
+
         if (ctx->capmode) {
             return gen_cap_store_mem_idx(ctx, a->rs1, a->rs2, 0, mem_idx, mop);
+        }
+        
+        TCGv addr = get_gpr(ctx, a->rs1, EXT_NONE);
+        TCGv data = get_gpr(ctx, a->rs2, EXT_NONE);
+        gen_ddc_interposed_st_tl(ctx, data, NULL, addr, mem_idx, mop);
+    }
+    return true;
+#else
     TCGv addr = get_gpr(ctx, a->rs1, EXT_NONE);
     TCGv data = get_gpr(ctx, a->rs2, EXT_NONE);
 
     decode_save_opc(ctx, 0);
     func(tcg_env, addr, data);
     return true;
+#endif
 }
 #endif /* CONFIG_USER_ONLY */
 

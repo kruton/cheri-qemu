@@ -52,9 +52,8 @@ typedef enum {
 } pmp_am_t;
 
 typedef enum {
-    MSECCFG_MML   = 1 << 0,
-    MSECCFG_MMWP  = 1 << 1,
-    MSECCFG_RLB   = 1 << 2,
+    MSECCFG_MML  = 1 << 0,
+    MSECCFG_MMWP = 1 << 1,
     MSECCFG_RLB  = 1 << 2,
 #ifdef TARGET_CHERI_RISCV_STD_093
     MSECCFG_CRE  = 1 << 3,

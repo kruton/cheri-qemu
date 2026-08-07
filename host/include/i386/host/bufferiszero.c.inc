@@ -12,7 +12,7 @@
 
 /* Note that these vectorized functions may assume len >= 256.  */
 
-static bool __attribute__((target("sse2")))
+static bool
 buffer_zero_sse2(const void *buf, size_t len)
 {
     /* Unaligned loads at head/tail.  */

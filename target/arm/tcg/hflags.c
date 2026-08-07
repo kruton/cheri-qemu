@@ -502,6 +502,11 @@ static CPUARMTBFlags rebuild_hflags_a64(CPUARMState *env, int el, int fp_el,
         }
     }
 
+#ifdef TARGET_CHERI
+    /* Also build the appropriate chflags */
+    arm_rebuild_chflags_el(env, el);
+#endif
+
     return rebuild_hflags_common(env, fp_el, mmu_idx, flags);
 }
 
@@ -578,6 +583,9 @@ static void assert_hflags_rebuild_correctly(CPUARMState *env)
 {
 #ifdef CONFIG_DEBUG_TCG
     CPUARMTBFlags c = env->hflags;
+#ifdef TARGET_CHERI
+    uint32_t cheri_flags = env->chflags;
+#endif
     CPUARMTBFlags r = rebuild_hflags_internal(env);
 
     if (unlikely(c.flags != r.flags || c.flags2 != r.flags2)) {
@@ -587,6 +595,14 @@ static void assert_hflags_rebuild_correctly(CPUARMState *env)
                 c.flags, c.flags2, r.flags, r.flags2);
         abort();
     }
+#ifdef TARGET_CHERI
+    if (unlikely(cheri_flags != env->chflags)) {
+        fprintf(stderr,
+                "TCG cheriflags mismatch (current:0x%08x rebuilt:0x%08x)\n",
+                cheri_flags, env->chflags);
+        abort();
+    }
+#endif
 #endif
 }
 
@@ -629,7 +645,7 @@ TCGTBCPUState arm_get_tb_cpu_state(CPUState *cs)
     flags = env->hflags;
 
     if (EX_TBFLAG_ANY(flags, AARCH64_STATE)) {
-        pc = env->pc;
+        pc = get_aarch_reg_as_x(&env->pc);
         if (cpu_isar_feature(aa64_bti, env_archcpu(env))) {
             DP_TBFLAG_A64(flags, BTYPE, env->btype);
         }
@@ -689,9 +705,18 @@ TCGTBCPUState arm_get_tb_cpu_state(CPUState *cs)
         DP_TBFLAG_ANY(flags, PSTATE__SS, 1);
     }
 
-    return (TCGTBCPUState){
+    TCGTBCPUState s = {
         .pc = pc,
         .flags = flags.flags,
         .cs_base = flags.flags2,
     };
+#ifdef TARGET_CHERI
+    if (EX_TBFLAG_ANY(flags, AARCH64_STATE)) {
+        cheri_cpu_get_tb_cpu_state(env, _cheri_get_pcc_unchecked(env),
+                                   cheri_get_ddc(env), &s.pcc_base, &s.pcc_top,
+                                   &s.cheri_flags);
+        s.cheri_flags |= (env->chflags << TB_FLAG_CHERI_SPARE_INDEX_START);
+    }
+#endif
+    return s;
 }

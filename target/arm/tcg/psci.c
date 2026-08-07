@@ -70,6 +70,7 @@ void arm_handle_psci_call(ARMCPU *cpu)
     uint64_t context_id, mpidr;
     target_ulong entry;
     int32_t ret = 0;
+    uint32_t psci_fn;
     int i;
 
     for (i = 0; i < 4; i++) {
@@ -78,17 +79,24 @@ void arm_handle_psci_call(ARMCPU *cpu)
          * arguments so we can simply zero-extend all arguments regardless
          * of which exact function we are about to call.
          */
-        param[i] = is_a64(env) ? env->xregs[i] : env->regs[i];
+        param[i] = is_a64(env) ? arm_get_a64_reg(env, i) : env->regs[i];
     }
     trace_arm_psci_call(param[0], param[1], param[2], param[3],
                         arm_cpu_mp_affinity(cpu));
 
-    if ((param[0] & QEMU_PSCI_0_2_64BIT) && !is_a64(env)) {
+    /*
+     * XXX-AM:
+     * DEN0028D mandates that implementation ignore the top 32bits from
+     * FN identifiers.
+     */
+    psci_fn = param[0] & QEMU_SMCCC_FN_ID_MASK;
+
+    if ((psci_fn & QEMU_PSCI_0_2_64BIT) && !is_a64(env)) {
         ret = QEMU_PSCI_RET_NOT_SUPPORTED;
         goto err;
     }
 
-    switch (param[0]) {
+    switch (psci_fn) {
         CPUState *target_cpu_state;
         ARMCPU *target_cpu;
 
@@ -168,9 +176,9 @@ void arm_handle_psci_call(ARMCPU *cpu)
         }
         /* Powerdown is not supported, we always go into WFI */
         if (is_a64(env)) {
-            env->xregs[0] = 0;
+            arm_set_a64_reg(env, 0, 0);
         } else {
-            env->regs[0] = 0;
+            arm_set_a32_reg(env, 0, 0);
         }
         helper_wfi(env, 4);
         break;
@@ -212,9 +220,9 @@ void arm_handle_psci_call(ARMCPU *cpu)
 
 err:
     if (is_a64(env)) {
-        env->xregs[0] = ret;
+        arm_set_a64_reg(env, 0, ret);
     } else {
-        env->regs[0] = ret;
+        arm_set_a32_reg(env, 0, ret);
     }
     return;
 

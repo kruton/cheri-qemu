@@ -68,3 +68,7 @@ subdir('vmapple')
 subdir('watchdog')
 subdir('xen')
 subdir('fsi')
+
+if 'arm' in hw_arch
+  arm_ss.add_all(arm_common_ss)
+endif

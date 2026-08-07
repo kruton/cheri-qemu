@@ -21,6 +21,11 @@
 #include "exec/translation-block.h"
 #include "tcg-cpu.h"
 #include "cpu.h"
+#include "helper_utils.h"
+#ifdef TARGET_CHERI
+#include "cheri-lazy-capregs.h"
+#endif
+#include "exec/log_instr.h"
 #include "exec/target_page.h"
 #include "internals.h"
 #include "pmu.h"
@@ -189,11 +194,16 @@ static TCGTBCPUState riscv_get_tb_cpu_state(CPUState *cs)
     flags = FIELD_DP32(flags, TB_FLAGS, PM_PMM, riscv_pm_get_pmm(env));
     flags = FIELD_DP32(flags, TB_FLAGS, PM_SIGNEXTEND, pm_signext);
 
-    return (TCGTBCPUState){
-        .pc = env->xl == MXL_RV32 ? env->pc & UINT32_MAX : env->pc,
+    TCGTBCPUState s = {
+        .pc = env->xl == MXL_RV32 ? PC_ADDR(env) & UINT32_MAX : PC_ADDR(env),
         .flags = flags,
         .cs_base = env->misa_ext,
     };
+#ifdef TARGET_CHERI
+    cheri_cpu_get_tb_cpu_state(env, &env->pcc, &env->ddc, &s.pcc_base, &s.pcc_top,
+                               &s.cheri_flags);
+#endif
+    return s;
 }
 
 static void riscv_cpu_synchronize_from_tb(CPUState *cs,
@@ -205,12 +215,13 @@ static void riscv_cpu_synchronize_from_tb(CPUState *cs,
         RISCVMXL xl = FIELD_EX32(tb->flags, TB_FLAGS, XL);
 
         tcg_debug_assert(!tcg_cflags_has(cs, CF_PCREL));
-
-        if (xl == MXL_RV32) {
-            env->pc = (int32_t) tb->pc;
-        } else {
-            env->pc = tb->pc;
-        }
+        riscv_update_pc(env, tb->pc, xl, /*can_be_unrepresentable=*/false);
+#ifdef TARGET_CHERI
+        cheri_debug_assert(tb_in_capmode(tb) == cheri_in_capmode(env));
+#endif
+#ifdef CONFIG_DEBUG_TCG
+        env->_pc_is_current = true;
+#endif
     }
 }
 
@@ -224,16 +235,25 @@ static void riscv_restore_state_to_opc(CPUState *cs,
     target_ulong pc;
 
     if (tb_cflags(tb) & CF_PCREL) {
+#ifdef TARGET_CHERI
+        pc = (env->pcc._cr_cursor & TARGET_PAGE_MASK) | data[0];
+#else
         pc = (env->pc & TARGET_PAGE_MASK) | data[0];
+#endif
     } else {
         pc = data[0];
     }
 
-    if (xl == MXL_RV32) {
-        env->pc = (int32_t)pc;
-    } else {
-        env->pc = pc;
+#ifdef TARGET_CHERI
+    assert(cap_is_in_bounds(&env->pcc, pc, 1));
+    if (unlikely(env->pcc._cr_cursor != pc)) {
+        qemu_log_instr_or_mask_msg(env, CPU_LOG_INT,
+            "%s: Updating pc from TB: " TARGET_FMT_lx " -> " TARGET_FMT_lx "\n",
+            __func__, (target_ulong)env->pcc._cr_cursor, (target_ulong)pc);
     }
+#endif
+
+    riscv_update_pc(env, pc, xl, /*can_be_unrepresentable=*/false);
     env->bins = data[1];
     env->excp_uw2 = data[2];
 }
@@ -264,8 +284,13 @@ static vaddr riscv_pointer_wrap(CPUState *cs, int mmu_idx,
 #endif
 
 const TCGCPUOps riscv_tcg_ops = {
+#ifdef TARGET_CHERI
+    .mttcg_supported = false,
+#else
     .mttcg_supported = true,
+#endif
     .guest_default_memory_order = 0,
+
 
     .initialize = riscv_translate_init,
     .translate_code = riscv_translate_code,
@@ -790,6 +815,35 @@ void riscv_cpu_validate_set_extensions(RISCVCPU *cpu, Error **errp)
         return;
     }
 
+#ifdef TARGET_CHERI
+    if (cpu->cfg.ext_cheri) {
+#ifdef TARGET_CHERI_RISCV_V9
+        /* Non-standard extensions present */
+        env->misa_ext |= RV('X');
+        env->misa_ext_mask |= RV('X');
+#elif defined(TARGET_CHERI_RISCV_STD)
+        /* Temporary compatibility for scripts that uses cheri_levels=2 */
+        if (cpu->cfg._compat_cheri_levels != 0) {
+            if (cpu->cfg._compat_cheri_levels == 1) {
+                cpu->cfg.ext_zylevels1 = false;
+            } else if (cpu->cfg._compat_cheri_levels == 2) {
+                cpu->cfg.ext_zylevels1 = true;
+            } else {
+                error_setg(errp, "cheri_levels must be 1 or 2");
+                return;
+            }
+        }
+        /* When Zylevels1 is enabled we have 1 level bits (local/global). */
+        cpu->cfg.lvbits = (uint8_t)cpu->cfg.ext_zylevels1;
+#endif
+    }
+#endif
+
+#ifdef TARGET_CHERI_RISCV_V9
+    /* Svpbmt and Svnapot are incompatible with CHERI RISC-V V9 */
+    cpu->cfg.ext_svpbmt = false;
+    cpu->cfg.ext_svnapot = false;
+#endif
     if (cpu->cfg.ext_zicntr && !cpu->cfg.ext_zicsr) {
         if (cpu_cfg_ext_is_user_set(CPU_CFG_OFFSET(ext_zicntr))) {
             error_setg(errp, "zicntr requires zicsr");
@@ -1287,7 +1341,11 @@ static bool riscv_tcg_cpu_realize(CPUState *cs, Error **errp)
 
     CPURISCVState *env = &cpu->env;
 
+#ifdef TARGET_CHERI
+    CPU(cs)->tcg_cflags &= ~CF_PCREL;
+#else
     tcg_cflags_set(CPU(cs), CF_PCREL);
+#endif
 
     if (cpu->cfg.ext_sstc) {
         riscv_timer_init(cpu);

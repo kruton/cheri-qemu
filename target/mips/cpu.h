@@ -12,7 +12,14 @@
 #include "hw/clock.h"
 #include "mips-defs.h"
 
+#ifdef TARGET_CHERI
+#include "cheri_defs.h"
+#include "cheri-lazy-capregs-types.h"
+#endif
+#include "exec/log_instr.h"
+
 typedef struct CPUMIPSTLBContext CPUMIPSTLBContext;
+
 
 /* MSA Context */
 #define MSA_WRLEN (128)
@@ -132,6 +139,25 @@ typedef struct mips_def_t mips_def_t;
 #define MIPS_DSP_ACC 4
 #define MIPS_KSCRATCH_NUM 6
 #define MIPS_MAAR_MAX 16 /* Must be an even number. */
+
+#if defined(TARGET_CHERI)
+
+struct cheri_cap_hwregs {
+    cap_register_t DDC;        /* CapHwr 0 */
+    cap_register_t UserTlsCap; /* CapHwr 1 */
+    cap_register_t PrivTlsCap; /* CapHwr 8 */
+    cap_register_t KR1C; /* CapHwr 22 */
+    cap_register_t KR2C; /* CapHwr 23 */
+    cap_register_t ErrorEPCC; /* CapHwr 28 */
+    cap_register_t KCC;  /* CapHwr 29 */
+    cap_register_t KDC;  /* CapHwr 30 */
+    cap_register_t EPCC; /* CapHwr 31 */
+};
+
+/* Needed for cheri-common logging */
+extern const char cheri_gp_regnames[32][4];
+
+#endif /* TARGET_CHERI */
 
 
 /*
@@ -468,15 +494,28 @@ struct TCState {
      */
     uint64_t gpr_hi[32];
 #endif /* TARGET_MIPS64 */
+#ifdef TARGET_CHERI
     cap_register_t PCC;
+    cap_register_t CapBranchTarget; /* Target of the next cjr/cjalr/ccall */
+#else
     target_ulong PC;
+#endif
+
+#ifdef CONFIG_DEBUG_TCG
+    target_ulong _pc_is_current;
+#endif
     target_ulong HI[MIPS_DSP_ACC];
     target_ulong LO[MIPS_DSP_ACC];
     target_ulong ACX[MIPS_DSP_ACC];
     target_ulong DSPControl;
+
 #if defined(TARGET_CHERI)
+    struct GPCapRegs gpcapregs;
+    struct cheri_cap_hwregs CHWR;
 // #define CP2CAP_RCC  24  /* Return Code Capability */
+// #define CP2CAP_EPCC_FAKE_OFFSET_VALUE 0xe9cce9cce9cce9cc /* cr_offset should not be used for EPCC */
 #endif /* TARGET_CHERI */
+
     int32_t CP0_TCStatus;
 #define CP0TCSt_TCU3    31
 #define CP0TCSt_TCU2    30
@@ -527,6 +566,25 @@ struct TCState {
 #define MXU_CR_MXU_EN   0
 
 };
+
+
+#if defined(TARGET_CHERI)
+#define CP2HWR_BASE_INDEX 0
+// TODO: start at 32: #define CP2HWR_BASE_NUM 32
+
+enum CP2HWR {
+    CP2HWR_DDC = CP2HWR_BASE_INDEX + 0, /* Default Data Capability */
+    CP2HWR_USER_TLS = CP2HWR_BASE_INDEX + 1, /* Unprivileged TLS Cap */
+    CP2HWR_PRIV_TLS = CP2HWR_BASE_INDEX + 8, /* Privileged TLS Cap */
+    CP2HWR_K1RC = CP2HWR_BASE_INDEX + 22, /* Reserved Kernel Cap #1 */
+    CP2HWR_K2RC = CP2HWR_BASE_INDEX + 23, /* Reserved Kernel Cap #2 */
+    CP2HWR_ErrorEPCC = CP2HWR_BASE_INDEX + 28, /* Error Exception PC Capability */
+    CP2HWR_KCC = CP2HWR_BASE_INDEX + 29, /* Kernel Code Capability */
+    CP2HWR_KDC = CP2HWR_BASE_INDEX + 30, /* Kernel Data Capability */
+    CP2HWR_EPCC = CP2HWR_BASE_INDEX + 31, /* Exception PC Capability */
+};
+
+#endif
 
 struct MIPSITUState;
 typedef struct CPUArchState {
@@ -609,8 +667,14 @@ typedef struct CPUArchState {
  */
     uint64_t CP0_EntryLo1;
 #if defined(TARGET_MIPS64)
+#if defined(TARGET_CHERI)
+# define CP0EnLo_S 63
+# define CP0EnLo_L 62
+# define CP0EnLo_CLG 61
+#else
 # define CP0EnLo_RI 63
 # define CP0EnLo_XI 62
+#endif /* TARGET_CHERI */
 #else
 # define CP0EnLo_RI 31
 # define CP0EnLo_XI 30
@@ -757,6 +821,15 @@ typedef struct CPUArchState {
  */
     target_ulong CP0_EntryHi;
 #define CP0EnHi_EHINV 10
+#if defined(TARGET_CHERI)
+#define CP0EnHi_CLGK 61
+#define CP0EnHi_CLGS 60
+#define CP0EnHi_CLGU 59
+#define CP0EnHi_CLG_MASK \
+    ((1ULL << CP0EnHi_CLGK) | (1ULL << CP0EnHi_CLGS) | (1UL << CP0EnHi_CLGU))
+#else
+#define CP0EnHi_CLG_MASK 0
+#endif
     target_ulong CP0_EntryHi_ASID_mask;
 /*
  * CP0 Register 11
@@ -823,7 +896,10 @@ typedef struct CPUArchState {
 /*
  * CP0 Register 14
  */
+#if !defined(TARGET_CHERI)
+    /* We use EPCC for TARGET_CHERI */
     target_ulong CP0_EPC;
+#endif
 /*
  * CP0 Register 15
  */
@@ -996,7 +1072,6 @@ typedef struct CPUArchState {
     target_ulong lladdr; /* LL virtual address compared against SC */
     target_ulong llval;
     uint64_t llval_wp;
-    uint32_t llnewval_wp;
     uint64_t CP0_LLAddr_rw_bitmask;
     int CP0_LLAddr_shift;
 /*
@@ -1064,7 +1139,10 @@ typedef struct CPUArchState {
 /*
  * CP0 Register 30
  */
+#if !defined(TARGET_CHERI)
+    /* We use ErrorEPCC for TARGET_CHERI */
     target_ulong CP0_ErrorEPC;
+#endif
 /*
  * CP0 Register 31
  */
@@ -1107,7 +1185,11 @@ typedef struct CPUArchState {
 #define EXCP_INST_NOTAVAIL 0x2 /* No valid instruction word for BadInstr */
     uint32_t hflags;    /* CPU State */
     /* TMASK defines different execution modes */
+#ifdef TARGET_CHERI
+#define MIPS_HFLAG_TMASK (0x3F5807FF | MIPS_HFLAG_COP2X)
+#else
 #define MIPS_HFLAG_TMASK  0x3F5807FF
+#endif /* TARGET_CHERI */
 #define MIPS_HFLAG_MODE   0x00007 /* execution modes                    */
     /*
      * The KSU flags must be the lowest bits in hflags. The flag order
@@ -1144,7 +1226,10 @@ typedef struct CPUArchState {
 #define MIPS_HFLAG_BC     0x01000 /* Conditional branch                 */
 #define MIPS_HFLAG_BL     0x01800 /* Likely branch                      */
 #define MIPS_HFLAG_BR     0x02000 /* branch to register (can't link TB) */
+#ifdef TARGET_CHERI
 #define MIPS_HFLAG_BRC     0x02800 /* branch to register and load PCC    */
+#define MIPS_HFLAG_BRCCALL 0x03000 /* ccall load PCC and IDC (no delay slot) */
+#endif /* TARGET_CHERI */
     /* Extra flags about the current pending branch.  */
 #define MIPS_HFLAG_BMASK_EXT 0x7C000
 #define MIPS_HFLAG_B16    0x04000 /* branch instruction was 16 bits     */
@@ -1166,6 +1251,9 @@ typedef struct CPUArchState {
 #define MIPS_HFLAG_ELPA  0x4000000
 #define MIPS_HFLAG_ITC_CACHE  0x8000000 /* CACHE instr. operates on ITC tag */
 #define MIPS_HFLAG_ERL   0x10000000 /* error level flag */
+#ifdef TARGET_CHERI
+#define MIPS_HFLAG_COP2X 0x40000000 /* CHERI/CP2 enabled              */
+#endif /* TARGET_CHERI */
     target_ulong btarget;        /* Jump / branch target               */
     target_ulong bcond;          /* Branch condition (if needed)       */
 
@@ -1175,7 +1263,51 @@ typedef struct CPUArchState {
     uint32_t CP0_TCStatus_rw_bitmask; /* Read/write bits in CP0_TCStatus */
     uint64_t insn_flags; /* Supported instruction set */
 
+
+
+    /* BERI Statcounters: */
+    uint64_t statcounters_icount_user;
+    uint64_t statcounters_icount_kernel;
+    /* The other ones are CHERI only for now */
+#if defined(TARGET_CHERI)
+    uint64_t statcounters_itlb_miss;
+    uint64_t statcounters_dtlb_miss;
+    uint64_t statcounters_cap_read;
+    uint64_t statcounters_cap_read_tagged;
+    uint64_t statcounters_cap_write;
+    uint64_t statcounters_cap_write_tagged;
+
+    uint64_t statcounters_imprecise_setbounds;
+    uint64_t statcounters_unrepresentable_caps;
+    /* TODO: we could implement the TLB ones as well */
+
+    /*
      * See section 3.9.2 (Table 3.3) of the CHERI Architecture Reference v7.
+     */
+    uint16_t CP2_CapCause; /* Upper 8 bits exception code; lower reg# */
+    /* See cheri-archspecific.h */
+    uint8_t reg_if_exception;
+    bool capcause_reg_already_set;
+
+    target_ulong cheri_capfilter_lo;
+    target_ulong cheri_capfilter_hi;
+    target_ulong cheri_capfilter_perms;
+
+#define MASK_CCALL_SEL(op)  ((op) & 0x7ff)
+#define CCALL_SELECTOR_0 (0x0)
+#define CCALL_SELECTOR_1 (0x01)
+#define CCALL_SELECTOR_2 (0x02)
+#define CCALL_SELECTOR_CRETURN (0x7ff)
+
+#endif /* TARGET_CHERI */
+
+    /* TODO(am2419): deprecated, remove */
+#ifdef CONFIG_TCG_LOG_INSTR
+#define TRACE_MODE_USER "User mode"
+    const char *last_mode;
+#define IN_USERSPACE(env) ((env->hflags & MIPS_HFLAG_UM) == MIPS_HFLAG_UM)
+#endif /* CONFIG_TCG_LOG_INSTR */
+
     /* Fields up to this point are cleared by a CPU reset */
     struct {} end_reset_fields;
 
@@ -1237,6 +1369,7 @@ struct MIPSCPUClass {
     bool no_data_aborts;
 };
 
+
 void cpu_wrdsp(uint32_t rs, uint32_t mask_num, CPUMIPSState *env);
 uint32_t cpu_rddsp(uint32_t mask_num, CPUMIPSState *env);
 
@@ -1262,10 +1395,11 @@ static inline int mips_env_mmu_index(CPUMIPSState *env)
     return hflags_mmu_index(env->hflags);
 }
 
+#include "cpu_cheri.h"
 /* Exceptions */
-enum {
-    EXCP_NONE          = -1,
-    EXCP_RESET         = 0,
+typedef enum {
+    EXCP_NONE = -1,
+    EXCP_RESET = 0,
     EXCP_SRESET,
     EXCP_DSS,
     EXCP_DINT,
@@ -1306,7 +1440,7 @@ enum {
     EXCP_SEMIHOST,
 
     EXCP_LAST = EXCP_SEMIHOST,
-};
+} MipsExcp;
 
 /*
  * This is an internally generated WAKE request line.
@@ -1356,6 +1490,7 @@ void cpu_set_exception_base(int vp_index, target_ulong address);
 /* addr.c */
 uint64_t cpu_mips_kseg0_to_phys(void *opaque, uint64_t addr);
 uint64_t cpu_mips_phys_to_kseg0(void *opaque, uint64_t addr);
+uint64_t cpu_mips_translate_elf_to_phys(void *opaque, uint64_t addr);
 
 uint64_t cpu_mips_kseg1_to_phys(void *opaque, uint64_t addr);
 uint64_t cpu_mips_phys_to_kseg1(void *opaque, uint64_t addr);
@@ -1372,6 +1507,110 @@ void cpu_mips_clock_init(MIPSCPU *cpu);
 /* helper.c */
 target_ulong exception_resume_pc(CPUMIPSState *env);
 
+static inline bool should_use_error_epc(CPUMIPSState *env)
+{
+    // If ERL is set, eret and exceptions use ErrorEPC instead of EPC
+    return env->CP0_Status & (1 << CP0St_ERL);
+}
+
+static inline bool in_kernel_mode(CPUMIPSState *env) {
+    // TODO: what about env->CP0_Debug & (1 << CP0DB_DM)
+    // If ERL or EXL is set we have taken an exception and are in the kernel
+    if ((env->CP0_Status & BIT(CP0St_ERL)) || (env->CP0_Status & BIT(CP0St_EXL))) {
+        return true;
+    }
+    uint32_t ksu = extract32(env->CP0_Status, CP0St_KSU, 2);
+    // KSU = 0 -> kernel, 1 -> supervisor, 2 -> user
+    if (ksu == 0 || ksu == 1) {
+        return true;
+    }
+    return false;
+}
+
+#ifdef TARGET_CHERI
+#define is_beri_or_cheri(env)  true
+#else
+#define is_beri_or_cheri(env) (strcmp(env->cpu_model->name, "BERI") == 0)
+#endif
+
+// Note: the pc does not have to be up-to-date, tb start is fine.
+// We may miss a few dumps or print too many if -dfilter is on but
+// that shouldn't really matter.
+static inline target_ulong cpu_get_recent_pc(CPUMIPSState *env)
+{
+#ifdef TARGET_CHERI
+    return env->active_tc.PCC._cr_cursor;
+#else
+    return env->active_tc.PC;
+#endif
+}
+
+static inline bool pc_is_current(CPUArchState *env)
+{
+#ifdef CONFIG_DEBUG_TCG
+    return env->active_tc._pc_is_current;
+#else
+    return true;
+#endif
+}
+static inline void mips_update_pc_impl(TCState *state, target_ulong pc_addr, bool can_be_unrepresenable)
+{
+#ifdef TARGET_CHERI
+    cheri_update_pcc(&state->PCC, pc_addr, can_be_unrepresenable);
+#else
+    state->PC = pc_addr;
+#endif
+#ifdef CONFIG_DEBUG_TCG
+    state->_pc_is_current = true;
+#endif
+}
+
+static inline void mips_update_pc(CPUMIPSState *env, target_ulong pc_addr, bool can_be_unrepresenable)
+{
+    mips_update_pc_impl(&env->active_tc, pc_addr, can_be_unrepresenable);
+}
+
+
+#ifdef CONFIG_TCG_LOG_INSTR
+#define MIPS_LOG_INSTR_CPU_USER QEMU_LOG_INSTR_CPU_USER
+#define MIPS_LOG_INSTR_CPU_SUPERVISOR QEMU_LOG_INSTR_CPU_TARGET1
+#define MIPS_LOG_INSTR_CPU_KERNEL QEMU_LOG_INSTR_CPU_SUPERVISOR
+#define MIPS_LOG_INSTR_CPU_DEBUG QEMU_LOG_INSTR_CPU_DEBUG
+extern const char * const mips_cpu_mode_names[];
+
+/*
+ * Check whether the cpu is in user mode.
+ * TODO(am2419): this may be superseded by cpu-mode logging API.
+ */
+static inline bool cpu_in_user_mode(CPUMIPSState *env)
+{
+    return ((env->hflags & MIPS_HFLAG_UM) == MIPS_HFLAG_UM);
+}
+
+static inline unsigned cpu_get_asid(CPUMIPSState *env, target_ulong pc)
+{
+    uint16_t ASID = env->CP0_EntryHi & env->CP0_EntryHi_ASID_mask;
+    return ASID;
+}
+
+static inline const char *cpu_get_mode_name(qemu_log_instr_cpu_mode_t mode)
+{
+    if (mips_cpu_mode_names[mode])
+        return mips_cpu_mode_names[mode];
+    return "<invalid>";
+}
+
+void mips_log_instr_mode_changed(CPUMIPSState *env, target_ulong pc);
+#endif
+
+#if defined(TARGET_CHERI)
+void cheri_cpu_dump_statistics(CPUState *cs, int flags);
+void cheri_cpu_dump_statistics_f(CPUState *cs, FILE* f, int flags);
+void qemu_log_capreg(const cap_register_t *cr, const char* prefix, const char* name);
+hwaddr cpu_mips_translate_address_c2(CPUMIPSState *env, target_ulong address,
+                                     MMUAccessType rw, int reg, int *prot,
+                                     uintptr_t retpc);
+#endif /* TARGET_CHERI */
 /**
  * mips_cpu_create_with_clock:
  * @typename: a MIPS CPU type.

@@ -169,8 +169,12 @@ static bool trans_mulhu(DisasContext *ctx, arg_mulhu *a)
 static void gen_div_i128(TCGv rdl, TCGv rdh,
                          TCGv rs1l, TCGv rs1h, TCGv rs2l, TCGv rs2h)
 {
+#ifdef TARGET_CHERI
+    g_assert_not_reached();
+#else
     gen_helper_divs_i128(rdl, tcg_env, rs1l, rs1h, rs2l, rs2h);
     tcg_gen_ld_tl(rdh, tcg_env, offsetof(CPURISCVState, retxh));
+#endif
 }
 
 static void gen_div(TCGv ret, TCGv source1, TCGv source2)
@@ -212,8 +216,12 @@ static bool trans_div(DisasContext *ctx, arg_div *a)
 static void gen_divu_i128(TCGv rdl, TCGv rdh,
                           TCGv rs1l, TCGv rs1h, TCGv rs2l, TCGv rs2h)
 {
+#ifdef TARGET_CHERI
+    g_assert_not_reached();
+#else
     gen_helper_divu_i128(rdl, tcg_env, rs1l, rs1h, rs2l, rs2h);
     tcg_gen_ld_tl(rdh, tcg_env, offsetof(CPURISCVState, retxh));
+#endif
 }
 
 static void gen_divu(TCGv ret, TCGv source1, TCGv source2)
@@ -244,8 +252,12 @@ static bool trans_divu(DisasContext *ctx, arg_divu *a)
 static void gen_rem_i128(TCGv rdl, TCGv rdh,
                          TCGv rs1l, TCGv rs1h, TCGv rs2l, TCGv rs2h)
 {
+#ifdef TARGET_CHERI
+    g_assert_not_reached();
+#else
     gen_helper_rems_i128(rdl, tcg_env, rs1l, rs1h, rs2l, rs2h);
     tcg_gen_ld_tl(rdh, tcg_env, offsetof(CPURISCVState, retxh));
+#endif
 }
 
 static void gen_rem(TCGv ret, TCGv source1, TCGv source2)
@@ -289,8 +301,12 @@ static bool trans_rem(DisasContext *ctx, arg_rem *a)
 static void gen_remu_i128(TCGv rdl, TCGv rdh,
                           TCGv rs1l, TCGv rs1h, TCGv rs2l, TCGv rs2h)
 {
+#ifdef TARGET_CHERI
+    g_assert_not_reached();
+#else
     gen_helper_remu_i128(rdl, tcg_env, rs1l, rs1h, rs2l, rs2h);
     tcg_gen_ld_tl(rdh, tcg_env, offsetof(CPURISCVState, retxh));
+#endif
 }
 
 static void gen_remu(TCGv ret, TCGv source1, TCGv source2)
@@ -359,6 +375,7 @@ static bool trans_remuw(DisasContext *ctx, arg_remuw *a)
     return gen_arith(ctx, a, EXT_ZERO, gen_remu, NULL);
 }
 
+#ifndef TARGET_CHERI
 static bool trans_muld(DisasContext *ctx, arg_muld *a)
 {
     REQUIRE_128BIT(ctx);
@@ -398,3 +415,4 @@ static bool trans_remud(DisasContext *ctx, arg_remud *a)
     ctx->ol = MXL_RV64;
     return gen_arith(ctx, a, EXT_ZERO, gen_remu, NULL);
 }
+#endif /* TARGET_CHERI */

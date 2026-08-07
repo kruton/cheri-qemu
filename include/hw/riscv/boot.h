@@ -55,6 +55,7 @@ char *riscv_plic_hart_config_string(int hart_count);
 void riscv_boot_info_init(RISCVBootInfo *info, RISCVHartArrayState *harts);
 hwaddr riscv_calc_kernel_start_addr(RISCVBootInfo *info,
                                     hwaddr firmware_end_addr);
+G_GNUC_WARN_UNUSED_RESULT
 hwaddr riscv_find_and_load_firmware(MachineState *machine,
                                     const char *default_machine_firmware,
                                     hwaddr *firmware_load_addr,

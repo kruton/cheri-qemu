@@ -245,7 +245,7 @@ void init_main_thread(CPUState *cs, struct image_info *info)
     target_ulong entry = info->entry;
 
     env->active_tc.gpr[29] = info->start_stack;
-    env->active_tc.PC = entry & ~(target_ulong)1;
+    mips_update_pc(env, entry & ~(target_ulong)1, /*can_be_unrepresentable=*/false);
     if (entry & 1) {
         env->hflags |= MIPS_HFLAG_M16;
     }

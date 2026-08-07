@@ -22,12 +22,14 @@
 #include "qemu/help_option.h"
 #include "monitor/monitor-internal.h"
 #include "qapi/error.h"
+#include "qemu/error-report.h"
 #include "qapi/qapi-commands-control.h"
 #include "qapi/qapi-commands-machine.h"
 #include "qapi/qapi-commands-misc.h"
 #include "qobject/qdict.h"
 #include "qemu/cutils.h"
 #include "qemu/log.h"
+#include "qemu/log_instr.h"
 #include "system/system.h"
 
 bool hmp_handle_error(Monitor *mon, Error *err)
@@ -255,6 +257,15 @@ void hmp_logfile(Monitor *mon, const QDict *qdict)
     if (!qemu_set_log_filename(qdict_get_str(qdict, "filename"), &err)) {
         error_report_err(err);
     }
+}
+
+void hmp_cheri_log_buffer(Monitor *mon, const QDict *qdict)
+{
+#if defined(CONFIG_TCG_LOG_INSTR)
+    qemu_log_instr_set_buffer_size(qdict_get_int(qdict, "buffer_size"));
+#else
+    warn_report("The CHERI trace buffer requires CONFIG_TCG_LOG_INSTR");
+#endif
 }
 
 void hmp_log(Monitor *mon, const QDict *qdict)

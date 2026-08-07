@@ -21,11 +21,16 @@
 #include "qemu/osdep.h"
 #include "cpu.h"
 #include "internals.h"
+#include "qemu/error-report.h"
 #include "exec/cputlb.h"
 #include "accel/tcg/cpu-ldst.h"
 #include "accel/tcg/probe.h"
 #include "exec/helper-proto.h"
 #include "exec/tlb-flags.h"
+#include "exec/tswap.h"
+#include "system/tcg.h"
+
+
 #include "trace.h"
 #ifdef TARGET_CHERI
 #include "cheri-helper-utils.h"
@@ -55,17 +60,35 @@ G_NORETURN void riscv_raise_exception(CPURISCVState *env,
 
     trace_riscv_exception(exception,
                           riscv_cpu_get_trap_name(exception, false),
-                          env->pc);
+                          PC_ADDR(env));
 
     cs->exception_index = exception;
-    cpu_loop_exit_restore(cs, pc);
+    // Expand this call to print debug info: cpu_loop_exit_restore(cs, pc);
+    if (pc) {
         cpu_restore_state(cs, pc);
+    }
 #ifdef CONFIG_RVFI_DII
     if (exception == RISCV_EXCP_ILLEGAL_INST &&
         env->rvfi_dii_have_injected_insn) {
+        env->badaddr = env->rvfi_dii_injected_insn;
     } else
 #endif
+    if (exception == RISCV_EXCP_ILLEGAL_INST) {
+        // Try to fetch the faulting instruction and store it in badaddr
+        uint32_t opcode = 0;
+        int ret = cpu_memory_rw_debug(env_cpu(env), PC_ADDR(env),
+                                      (uint8_t *)&opcode, sizeof(opcode),
+                                      /*is_write=*/false);
+        opcode = tswap32(opcode); // FIXME is this needed?
         if (ret != 0 && PC_ADDR(env) != 0) {
+            warn_report("RISCV_EXCP_ILLEGAL_INST: Could not read %zu bytes at "
+                        "vaddr 0x" TARGET_FMT_lx "\r\n",
+                        sizeof(opcode), PC_ADDR(env));
+        } else {
+            env->badaddr = opcode;
+        }
+    }
+    cpu_loop_exit(cs);
 }
 
 void helper_raise_exception(CPURISCVState *env, uint32_t exception)
@@ -85,7 +108,7 @@ target_ulong helper_csrr(CPURISCVState *env, int csr)
     }
 
     target_ulong val = 0;
-    RISCVException ret = riscv_csrr(env, csr, &val);
+    RISCVException ret = riscv_csrr(env, csr, &val, GETPC());
 
     if (ret != RISCV_EXCP_NONE) {
         riscv_raise_exception(env, ret, GETPC());
@@ -115,10 +138,11 @@ target_ulong helper_csrrw(CPURISCVState *env, int csr,
     return val;
 }
 
+#ifndef TARGET_CHERI
 target_ulong helper_csrr_i128(CPURISCVState *env, int csr)
 {
     Int128 rv = int128_zero();
-    RISCVException ret = riscv_csrr_i128(env, csr, &rv);
+    RISCVException ret = riscv_csrr_i128(env, csr, &rv, GETPC());
 
     if (ret != RISCV_EXCP_NONE) {
         riscv_raise_exception(env, ret, GETPC());
@@ -157,8 +181,7 @@ target_ulong helper_csrrw_i128(CPURISCVState *env, int csr,
     env->retxh = int128_gethi(rv);
     return int128_getlo(rv);
 }
-
-
+#endif /* TARGET_CHERI */
 /*
  * check_zicbo_envcfg
  *
@@ -192,7 +215,6 @@ static void do_cbo_zero(CPURISCVState *env, target_ulong address, uintptr_t ra)
     uint16_t cbozlen = cpu->cfg.cboz_blocksize;
     int mmu_idx = riscv_env_mmu_index(env, false);
     void *mem;
-
 
     /* Caller must pass an address that is aligned-down to the cache-block. */
     g_assert(QEMU_IS_ALIGNED(address, cbozlen));
@@ -243,11 +265,15 @@ void helper_cbo_zero(CPURISCVState *env, target_ulong address)
     RISCVCPU *cpu = env_archcpu(env);
     uint16_t cbozlen = cpu->cfg.cboz_blocksize;
     uintptr_t ra = GETPC();
+
     check_zicbo_envcfg(env, MENVCFG_CBZE, ra);
+
     /* Mask off low-bits to align-down to the cache-block. */
     address &= ~(cbozlen - 1);
+
     do_cbo_zero(env, address, ra);
 }
+
 #ifdef TARGET_CHERI
 void helper_cbo_zero_cap(CPURISCVState *env, uint32_t addr_reg)
 {
@@ -263,16 +289,23 @@ void helper_cbo_zero_cap(CPURISCVState *env, uint32_t addr_reg)
     }
     if (!cap_has_perms(auth_cap, CAP_PERM_STORE)) {
         raise_cheri_exception(env, CapEx_PermitStoreViolation, auth_reg);
+    }
     if (cap_has_invalid_perms_encoding(env, auth_cap)) {
         raise_cheri_exception(env, CapEx_UserDefViolation, auth_reg);
+    }
     target_ulong address = get_capreg_cursor(env, addr_reg);
     uint16_t cbozlen = cpu->cfg.cboz_blocksize;
     /* Mask off low-bits to align-down to the cache-block. */
     address &= ~(cbozlen - 1);
+
     if (!cap_is_in_bounds(auth_cap, address, cbozlen)) {
         raise_cheri_exception(env, CapEx_LengthViolation, auth_reg);
+    }
+
     do_cbo_zero(env, address, _host_return_address);
+}
 #endif
+
 /*
  * check_zicbom_access
  *
@@ -306,6 +339,18 @@ static void check_zicbom_access(CPURISCVState *env,
      * addresses, whether a cache-block management instruction is
      * permitted to access the cache block is UNSPECIFIED."
      */
+
+    /*
+     * Please note that in qemu 6.x, probe_access_flags does not yet have a
+     * size parameter. Upstream commit 1770b2f2d3d ("accel/tcg: Add 'size'
+     * param to probe_access_flags()") adds the size parameter and explains
+     * the background. On risc-v systems, size is used for checking different
+     * PMP permissions within a page.
+     *
+     * The upstream implementation of zicbom calls probe_access_flags with
+     * size = cbomlen.
+     */
+
     ret = probe_access_flags(env, address, cbomlen, MMU_DATA_LOAD,
                              mmu_idx, true, &phost, ra);
     if (ret != TLB_INVALID_MASK) {
@@ -358,9 +403,9 @@ void helper_cbo_clean_flush_cap(CPURISCVState *env, uint32_t addr_reg)
     /* Mask off low-bits to align-down to the cache-block. */
     address &= ~(cbomlen - 1);
 
-    /* Check if any of the bytes are outside the bounds */
-    if ((cap_get_top_full(auth_cap) < address) ||
-        (cap_get_base(auth_cap) > (address + cbomlen))) {
+    /* Check if the block is entirely outside the bounds */
+    if ((address >= cap_get_top_full(auth_cap)) ||
+        (cap_get_base(auth_cap) >= (cap_length_t)address + cbomlen)) {
         raise_cheri_exception(env, CapEx_LengthViolation, auth_reg);
     }
     check_zicbom_access(env, address, _host_return_address);
@@ -411,14 +456,15 @@ void helper_cbo_inval_cap(CPURISCVState *env, uint32_t addr_reg)
     /* Mask off low-bits to align-down to the cache-block. */
     address &= ~(cbomlen - 1);
 
-    /* Check if any of the bytes are outside the bounds */
-    if ((cap_get_top_full(auth_cap) < address) ||
-        (cap_get_base(auth_cap) > (address + cbomlen))) {
-        raise_cheri_exception(env, CapEx_LengthViolation, addr_reg);
+    /* Check if the block is entirely outside the bounds */
+    if ((address >= cap_get_top_full(auth_cap)) ||
+        (cap_get_base(auth_cap) >= (cap_length_t)address + cbomlen)) {
+        raise_cheri_exception(env, CapEx_LengthViolation, auth_reg);
     }
     check_zicbom_access(env, address, _host_return_address);
 }
 #endif
+
 #ifndef CONFIG_USER_ONLY
 
 target_ulong helper_sret(CPURISCVState *env)
@@ -438,17 +484,16 @@ target_ulong helper_sret(CPURISCVState *env)
     }
 #endif
 
-    target_ulong retpc = env->sepc & get_xepc_mask(env);
-    if (!riscv_cpu_allow_16bit_insn(&env_archcpu(env)->cfg,
-                                    env->priv_ver,
-                                    env->misa_ext) && (retpc & 0x3)) {
-    }
+    target_ulong retpc = GET_SPECIAL_REG_ADDR(env, sepc, sepcc) & get_xepc_mask(env);
     // We have to clear the low bit of the address since that is defined as zero
     // in the privileged spec. The cheri_update_pcc_for_exc_return() check below
     // will de-tag pcc if this would result changing the address for sealed caps.
     // If RVC is not supported, we also mask sepc[1] as specified in the RISC-V
     // privileged spec 4.1.7 Supervisor Exception Program Counter (sepc):
     // "This masking occurs also for the implicit read by the SRET instruction."
+    retpc &= ~(target_ulong)(riscv_cpu_allow_16bit_insn(&env_archcpu(env)->cfg,
+                                                        env->priv_ver,
+                                                        env->misa_ext) ? 1 : 3);
 
     if (get_field(env->mstatus, MSTATUS_TSR) && !(env->priv >= PRV_M)) {
         riscv_raise_exception(env, RISCV_EXCP_ILLEGAL_INST, GETPC());
@@ -483,6 +528,7 @@ target_ulong helper_sret(CPURISCVState *env)
         mstatus = set_field(mstatus, MSTATUS_MPRV, 0);
     }
     env->mstatus = mstatus;
+    riscv_log_instr_csr_changed(env, CSR_MSTATUS);
 
     if (riscv_has_ext(env, RVH) && !env->virt_enabled) {
         /* We support Hypervisor extensions and virtulisation is disabled */
@@ -500,10 +546,12 @@ target_ulong helper_sret(CPURISCVState *env)
 
     riscv_cpu_set_mode(env, prev_priv, prev_virt);
 
+#ifdef TARGET_CHERI
     cheri_update_pcc_for_exc_return(&env->pcc, &env->sepcc, retpc);
     /* TODO(am2419): do we log PCC as a changed register? */
     qemu_log_instr_dbg_cap(env, "PCC", &env->pcc);
 #endif
+
     /*
      * If forward cfi enabled for new priv, restore elp status
      * and clear spelp in mstatus
@@ -512,12 +560,10 @@ target_ulong helper_sret(CPURISCVState *env)
         env->elp = get_field(env->mstatus, MSTATUS_SPELP);
     }
     env->mstatus = set_field(env->mstatus, MSTATUS_SPELP, 0);
-
     if (riscv_cpu_cfg(env)->ext_smctr || riscv_cpu_cfg(env)->ext_ssctr) {
-        riscv_ctr_add_entry(env, env->pc, retpc, CTRDATA_TYPE_EXCEP_INT_RET,
-                            src_priv, src_virt);
+        riscv_ctr_add_entry(env, GET_SPECIAL_REG_ADDR(env, pc, pcc), retpc,
+                            CTRDATA_TYPE_EXCEP_INT_RET, src_priv, src_virt);
     }
-
     return retpc;
 }
 
@@ -531,15 +577,9 @@ static void check_ret_from_m_mode(CPURISCVState *env, target_ulong retpc,
 #ifdef TARGET_CHERI
     if (!cheri_have_access_sysregs(env)) {
         raise_cheri_exception_impl(env, CapEx_AccessSystemRegsViolation,
-                                   CHERI_EXC_REGNUM_PCC, 0, true, GETPC());
+                                   CHERI_EXC_REGNUM_PCC, 0, true, ra);
     }
 #endif
-
-    if (!riscv_cpu_allow_16bit_insn(&env_archcpu(env)->cfg,
-                                    env->priv_ver,
-                                    env->misa_ext) && (retpc & 0x3)) {
-        riscv_raise_exception(env, RISCV_EXCP_INST_ADDR_MIS, ra);
-    }
 
 #if 0
     /* FIXME: upstream diff seems wrong, the ifetch should fail not the mret */
@@ -549,6 +589,7 @@ static void check_ret_from_m_mode(CPURISCVState *env, target_ulong retpc,
     }
 #endif
 }
+
 static target_ulong ssdbltrp_mxret(CPURISCVState *env, target_ulong mstatus,
                                    target_ulong prev_priv,
                                    target_ulong prev_virt)
@@ -568,13 +609,16 @@ static target_ulong ssdbltrp_mxret(CPURISCVState *env, target_ulong mstatus,
 
 target_ulong helper_mret(CPURISCVState *env)
 {
-    target_ulong retpc = env->mepc & get_xepc_mask(env);
+    target_ulong retpc = GET_SPECIAL_REG_ADDR(env, mepc, mepcc) & get_xepc_mask(env);
     // We have to clear the low bit of the address since that is defined as zero
     // in the privileged spec. The cheri_update_pcc_for_exc_return() check below
     // will de-tag pcc if this would result changing the address for sealed caps.
     // If RVC is not supported, we also mask sepc[1] as specified in the RISC-V
     // privileged spec 3.1.15 Machine Exception Program Counter (mepc):
     // "This masking occurs also for the implicit read by the MRET instruction."
+    retpc &= ~(target_ulong)(riscv_cpu_allow_16bit_insn(&env_archcpu(env)->cfg,
+                                                        env->priv_ver,
+                                                        env->misa_ext) ? 1 : 3);
     uint64_t mstatus = env->mstatus;
     target_ulong prev_priv = get_field(mstatus, MSTATUS_MPP);
     uintptr_t ra = GETPC();
@@ -615,20 +659,29 @@ target_ulong helper_mret(CPURISCVState *env)
     env->mstatus = set_field(env->mstatus, MSTATUS_MPELP, 0);
 
     if (riscv_cpu_cfg(env)->ext_smctr || riscv_cpu_cfg(env)->ext_ssctr) {
-        riscv_ctr_add_entry(env, env->pc, retpc, CTRDATA_TYPE_EXCEP_INT_RET,
-                            PRV_M, false);
+        riscv_ctr_add_entry(env, GET_SPECIAL_REG_ADDR(env, pc, pcc), retpc,
+                            CTRDATA_TYPE_EXCEP_INT_RET, PRV_M, false);
     }
 
     riscv_log_instr_csr_changed(env, CSR_MSTATUS);
+#ifdef TARGET_RISCV32
+    riscv_log_instr_csr_changed(env, CSR_MSTATUSH);
+#endif
+
+#ifdef TARGET_CHERI
     cheri_update_pcc_for_exc_return(&env->pcc, &env->mepcc, retpc);
     /* TODO(am2419): do we log PCC as a changed register? */
     qemu_log_instr_dbg_cap(env, "PCC", &env->pcc);
+#endif
     return retpc;
 }
 
 target_ulong helper_mnret(CPURISCVState *env)
 {
     target_ulong retpc = env->mnepc;
+    retpc &= ~(target_ulong)(riscv_cpu_allow_16bit_insn(&env_archcpu(env)->cfg,
+                                                        env->priv_ver,
+                                                        env->misa_ext) ? 1 : 3);
     target_ulong prev_priv = get_field(env->mnstatus, MNSTATUS_MNPP);
     target_ulong prev_virt;
     uintptr_t ra = GETPC();
@@ -657,7 +710,7 @@ target_ulong helper_mnret(CPURISCVState *env)
     }
 
     if (riscv_has_ext(env, RVH) && prev_virt) {
-        riscv_cpu_swap_hypervisor_regs(env);
+        riscv_cpu_swap_hypervisor_regs(env, false);
     }
 
     riscv_cpu_set_mode(env, prev_priv, prev_virt);
@@ -717,6 +770,8 @@ void HELPER(check_alignment)(CPURISCVState *env, target_ulong addr, MemOp op,
         env->badaddr = addr;
         riscv_raise_exception(env, exc, GETPC());
     }
+}
+
 void helper_wfi(CPURISCVState *env)
 {
     CPUState *cs = env_cpu(env);

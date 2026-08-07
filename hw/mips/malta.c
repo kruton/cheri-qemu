@@ -62,6 +62,10 @@
 #include "target/mips/internal.h"
 #include "trace.h"
 #include "hw/virtio/virtio-mmio.h"
+
+#if defined(TARGET_CHERI)
+#include "cheri_tagmem.h"
+#endif
 #include "cpu.h"
 
 #define ENVP_PADDR          0x2000
@@ -76,9 +80,11 @@
 
 // Maximum number of virtio transports. These sit idle if no devices are specified when QEMU is run.
 #define VIRTIO_N_TRANSPORTS    2
+
 #define VIRTIO_MMIO_MMAP_BASE     0x1e400000ULL
 #define VIRTIO_MMIO_MMAP_SIZE     0x200ULL
 #define VIRTIO_MMIO_IRQ_START     5
+
 #define FLASH_SIZE          0x400000
 #define BIOS_SIZE           (4 * MiB)
 
@@ -497,6 +503,8 @@ static void malta_fpga_write(void *opaque, hwaddr addr,
     case 0x00500:
         if (val == 0x42) {
             qemu_system_reset_request(SHUTDOWN_CAUSE_GUEST_RESET);
+        } else if (val == 0x42 + 2) {
+          qemu_system_shutdown_request(SHUTDOWN_CAUSE_GUEST_SHUTDOWN);
         }
         break;
 
@@ -875,7 +883,7 @@ static uint64_t load_kernel(void)
     size_t rng_seed_prom_offset;
 
     kernel_size = load_elf(loaderparams.kernel_filename, NULL,
-                           cpu_mips_kseg0_to_phys, NULL,
+                           cpu_mips_translate_elf_to_phys, NULL,
                            &kernel_entry, NULL,
                            &kernel_high, NULL,
                            TARGET_BIG_ENDIAN ? ELFDATA2MSB : ELFDATA2LSB,
@@ -1024,6 +1032,7 @@ static void main_cpu_reset(void *opaque)
     }
 
     malta_mips_config(cpu);
+
 }
 
 static void create_cpu_without_cps(MachineState *ms, MaltaState *s,
@@ -1082,15 +1091,20 @@ static void create_virtio_devices(void)
 {
     CPUMIPSState *env;
     MIPSCPU *cpu;
+
     cpu = MIPS_CPU(first_cpu);
     env = &cpu->env;
+
     // Looping backwards makes the attachment order on the command-line match
     // increasing address order.
+
     for (int i = VIRTIO_N_TRANSPORTS-1; i >= 0; i--) {
         sysbus_create_simple(TYPE_VIRTIO_MMIO,
             VIRTIO_MMIO_MMAP_BASE+(VIRTIO_MMIO_MMAP_SIZE*i),
             env->irq[VIRTIO_MMIO_IRQ_START+i]);
     }
+}
+
 static
 void mips_malta_init(MachineState *machine)
 {
@@ -1280,6 +1294,7 @@ void mips_malta_init(MachineState *machine)
 
     /* Optional PCI video card */
     pci_vga_init(pci_bus);
+
     /* Virtio over MMIO */
     create_virtio_devices();
 }
@@ -1314,7 +1329,9 @@ static void mips_malta_machine_init(MachineClass *mc)
     mc->block_default_type = IF_IDE;
     mc->max_cpus = 16;
     mc->is_default = true;
-#ifdef TARGET_MIPS64
+#if defined(TARGET_CHERI)
+    mc->default_cpu_type = MIPS_CPU_TYPE_NAME("BERI");
+#elif defined(TARGET_MIPS64)
     mc->default_cpu_type = MIPS_CPU_TYPE_NAME("20Kc");
 #else
     mc->default_cpu_type = MIPS_CPU_TYPE_NAME("24Kf");

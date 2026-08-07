@@ -90,6 +90,10 @@ quote_sh() {
     printf "%s" "$1" | sed "s,','\\\\'',g; s,.*,'&',"
 }
 
+add_to() {
+    eval $1=\${$1:+\"\$$1 \"}\$2
+}
+
 error_exit() {
     (echo
     echo "ERROR: $1"
@@ -194,6 +198,7 @@ EXTRA_LDFLAGS=""
 # Distributions want to ensure that several features are compiled in, and it
 # is impossible without a --enable-foo that exits if a feature is not found.
 default_feature=""
+
 
 for opt do
   optarg=$(expr "x$opt" : 'x[^=]*=\(.*\)')
@@ -721,6 +726,8 @@ for opt do
       meson_option_parse --enable-debug-tcg ""
       meson_option_parse --enable-debug-graph-lock ""
       meson_option_parse --enable-debug-mutex ""
+      meson_option_parse --enable-tcg-log-instr ""
+      meson_option_parse --enable-rvfi-dii ""
       meson_option_add -Doptimization=0
       default_cflags='-O0 -g'
   ;;
@@ -1114,6 +1121,26 @@ if test -z "${target_list+xxx}" ; then
 else
     default_targets=no
     target_list=$(echo "$target_list" | sed -e 's/,/ /g')
+    new_target_list=""
+    for target in $target_list; do
+        # Remap cheri128 to mips64cheri128 etc for compatibility.
+        # Remove once no longer required.
+        case "$target" in
+            cheri*)
+                add_to new_target_list "mips64$target"
+                echo "Warning, '$target' is a deprecated name for 'mips64$target'."
+                ;;
+            riscv32cheri-*|riscv64cheri-*)
+                _new_target=$(echo "$target" | sed -e 's/cheri-/xcheri-/')
+                add_to new_target_list "${_new_target}"
+                echo "Warning, '$target' is a deprecated name for '${_new_target}'."
+                ;;
+            *)
+                add_to new_target_list "$target"
+                ;;
+        esac
+    done
+    target_list="$new_target_list"
     for target in $target_list; do
         # Check that we recognised the target name; this allows a more
         # friendly error message than if we let it fall through.

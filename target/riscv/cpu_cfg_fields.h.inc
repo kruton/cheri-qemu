@@ -116,6 +116,17 @@ BOOL_FIELD(rvv_ta_all_1s)
 BOOL_FIELD(rvv_ma_all_1s)
 BOOL_FIELD(rvv_vl_half_avl)
 BOOL_FIELD(rvv_vsetvl_x0_vill)
+
+BOOL_FIELD(ext_zish4add)
+
+BOOL_FIELD(ext_cheri)
+BOOL_FIELD(ext_cheri_v9) /* Temporary flag to support new semantics. */
+BOOL_FIELD(ext_zyhybrid)
+BOOL_FIELD(ext_zylevels1)
+/* number of levels (Zcherilevels): 0 invalid, 1 disabled (default)) */
+TYPED_FIELD(uint8_t, _compat_cheri_levels, 0) /* To keep existing scripts working */
+TYPED_FIELD(uint8_t, lvbits, 0) /* Only 0 and 1 (Zylevels1) are currently supported. */
+BOOL_FIELD(cheri_pte)
 /* Named features  */
 BOOL_FIELD(ext_svade)
 BOOL_FIELD(ext_zic64b)

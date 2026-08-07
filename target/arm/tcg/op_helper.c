@@ -394,7 +394,7 @@ void HELPER(wfi)(CPUARMState *env, uint32_t insn_len)
 
     if (target_el) {
         if (env->aarch64) {
-            env->pc -= insn_len;
+            increment_aarch_reg(&env->pc, -(target_ulong)insn_len);
         } else {
             env->regs[15] -= insn_len;
         }
@@ -447,7 +447,7 @@ void HELPER(wfit)(CPUARMState *env, uint64_t timeout)
     }
 
     if (target_el) {
-        env->pc -= 4;
+        increment_aarch_reg(&env->pc, -4);
         raise_exception(env, excp, syn_wfx(1, 0xe, 0, false), target_el);
     }
 
@@ -591,6 +591,8 @@ void HELPER(set_user_reg)(CPUARMState *env, uint32_t regno, uint32_t val)
         env->usr_regs[regno - 8] = val;
     } else {
         env->regs[regno] = val;
+        qemu_log_instr_reg(env, arm32_regnames[regno], val, regno,
+                           LRI_GPR_ACCESS);
     }
 }
 
@@ -700,7 +702,7 @@ void HELPER(msr_banked)(CPUARMState *env, uint32_t value, uint32_t tgtmode,
         }
         break;
     case 17: /* ELR_Hyp */
-        env->elr_el[2] = value;
+        set_aarch_reg_to_x(env, &env->elr_el[2], value);
         break;
     case 13:
         env->banked_r13[bank_number(tgtmode)] = value;
@@ -738,7 +740,7 @@ uint32_t HELPER(mrs_banked)(CPUARMState *env, uint32_t tgtmode, uint32_t regno)
             return env->banked_spsr[bank_number(tgtmode)];
         }
     case 17: /* ELR_Hyp */
-        return env->elr_el[2];
+        return get_aarch_reg_as_x(&env->elr_el[2]);
     case 13:
         return env->banked_r13[bank_number(tgtmode)];
     case 14:
@@ -1010,6 +1012,43 @@ void HELPER(set_cp_reg64)(CPUARMState *env, const void *rip, uint64_t value)
     }
 }
 
+#ifdef TARGET_CHERI
+
+void HELPER(set_cp_cap)(CPUARMState *env, const void *rip, uint64_t value,
+                        uint32_t src_reg)
+{
+    const ARMCPRegInfo *ri = rip;
+    assert(cpreg_field_is_cap(ri));
+    const cap_register_t *cap = get_readonly_capreg(env, src_reg);
+    if (ri->type & ARM_CP_IO) {
+        bql_lock();
+        ri->writefn_cap(env, ri, value, cap);
+        bql_unlock();
+    } else {
+        ri->writefn_cap(env, ri, value, cap);
+    }
+}
+
+uint64_t HELPER(get_cp_cap)(CPUARMState *env, const void *rip, uint32_t dest_reg)
+{
+    const ARMCPRegInfo *ri = rip;
+    assert(cpreg_field_is_cap(ri));
+    cap_register_t result;
+
+    if (ri->type & ARM_CP_IO) {
+        bql_lock();
+        ri->readfn_cap(env, ri, &result);
+        bql_unlock();
+    } else {
+        ri->readfn_cap(env, ri, &result);
+    }
+
+    update_capreg(env, dest_reg, &result);
+    return result._cr_cursor;
+}
+
+#endif
+
 uint64_t HELPER(get_cp_reg64)(CPUARMState *env, const void *rip)
 {
     const ARMCPRegInfo *ri = rip;
@@ -1223,7 +1262,7 @@ uint32_t HELPER(ror_cc)(CPUARMState *env, uint32_t x, uint32_t i)
     }
 }
 
-void HELPER(probe_access)(CPUARMState *env, vaddr ptr,
+void HELPER(probe_access)(CPUARMState *env, target_ulong ptr,
                           uint32_t access_type, uint32_t mmu_idx,
                           uint32_t size)
 {
